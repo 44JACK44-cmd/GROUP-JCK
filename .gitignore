@@ -1,0 +1,24 @@
+# Secretos y claves locales — NUNCA subir
+scripts/secrets.ps1
+*.local.ps1
+
+# Binarios grandes / herramientas descargadas
+tools/
+*.apk
+*.aab
+
+# Builds de Flutter (app/.gitignore ya cubre la mayoría)
+app/build/
+app/.dart_tool/
+
+# Backend Java
+backend/target/
+
+# MySQL local
+mysql/data/
+
+# SO / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
