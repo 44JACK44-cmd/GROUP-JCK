@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: gas-reparto-api
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/gasreparto?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8}
+    username: ${DB_USER:gas}
+    password: ${DB_PASSWORD:gasdev}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+
+server:
+  port: ${PORT:8080}
+  error:
+    include-stacktrace: never
+    include-message: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+app:
+  zona-horaria: America/Lima
+  jwt:
+    # Debe tener al menos 32 caracteres. En producción se define con JWT_SECRET.
+    secret: ${JWT_SECRET:}
+    access-token-minutos: ${JWT_ACCESS_MIN:30}
+    refresh-token-dias: ${JWT_REFRESH_DIAS:7}
+  bootstrap:
+    # Si no hay usuarios y se define una contraseña, se crea el administrador inicial.
+    admin-usuario: ${ADMIN_USUARIO:admin}
+    admin-password: ${ADMIN_PASSWORD:}

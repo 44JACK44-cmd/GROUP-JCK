@@ -1,0 +1,7 @@
+app:
+  jwt:
+    secret: dev-secret-solo-para-desarrollo-local-0123456789
+  bootstrap:
+    admin-password: Admin2026!
+    repartidor-demo-usuario: carlos
+    repartidor-demo-password: Reparto2026!

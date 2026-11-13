@@ -1,0 +1,7 @@
+app:
+  jwt:
+    secret: test-secret-solo-para-pruebas-0123456789abcdef
+  bootstrap:
+    admin-password: Admin2026!
+    repartidor-demo-usuario: carlos
+    repartidor-demo-password: Reparto2026!

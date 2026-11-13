@@ -1,0 +1,22 @@
+# Entorno local: MySQL para el backend. Uso: docker compose up -d
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: gas-mysql
+    environment:
+      MYSQL_DATABASE: gasreparto
+      MYSQL_USER: gas
+      MYSQL_PASSWORD: ${DB_PASSWORD:-gasdev}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootdev}
+      TZ: UTC
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      retries: 10
+
+volumes:
+  mysql-data:
