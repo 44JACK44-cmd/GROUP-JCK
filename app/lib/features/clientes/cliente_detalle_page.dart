@@ -1,28 +1,42 @@
+/// Ficha del cliente: el centro de información del pedido.
+///
+/// Muestra contacto, ubicación, precio habitual, deuda, balones pendientes,
+/// total de pedidos y el último pedido. Con acciones directas.
+library;
+
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
+import '../../core/data/clientes_repo.dart';
+import '../../core/data/pagos_repo.dart';
+import '../../core/data/sb.dart';
+import '../../core/domain/estado_pedido.dart';
+import '../../core/domain/formato.dart';
+import '../../core/domain/navegacion.dart';
+import '../../core/ui/widgets.dart';
+import '../auth/auth_controller.dart';
+import '../pagos/pago_sheet.dart';
+import '../pedidos/nuevo_pedido_page.dart';
 import 'cliente_form_page.dart';
 
-/// Ficha del cliente: datos de contacto, ubicación, deuda estimada,
-/// balones en su poder y últimos pedidos.
-class ClienteDetallePage extends StatefulWidget {
+class ClienteDetallePage extends ConsumerStatefulWidget {
   final Map<String, dynamic> cliente;
 
   const ClienteDetallePage({super.key, required this.cliente});
 
   @override
-  State<ClienteDetallePage> createState() => _ClienteDetallePageState();
+  ConsumerState<ClienteDetallePage> createState() => _ClienteDetallePageState();
 }
 
-class _ClienteDetallePageState extends State<ClienteDetallePage> {
+class _ClienteDetallePageState extends ConsumerState<ClienteDetallePage> {
   bool _cargando = true;
   double _deuda = 0;
-  int _balones = 0;
+  int _balonesPendientes = 0;
+  int _fierrosPendientes = 0;
+  int _totalPedidos = 0;
+  double _precioHabitual = 0;
   List<Map<String, dynamic>> _pedidos = [];
-
-  SupabaseClient get _sb => Supabase.instance.client;
 
   String get _clienteId => widget.cliente['id'] as String;
 
@@ -34,68 +48,49 @@ class _ClienteDetallePageState extends State<ClienteDetallePage> {
 
   Future<void> _cargar() async {
     try {
-      final resultados = await Future.wait([
-        // Pedidos con su estado de pago en la entrega
-        _sb.from('pedidos')
-            .select('id, numero, fecha, total, estado, entregas(estado_pago)')
-            .eq('cliente_id', _clienteId)
-            .order('fecha', ascending: false)
-            .limit(10),
-        // Todos los pedidos entregados-pendientes para la deuda
-        _sb.from('pedidos')
-            .select('id, total, estado, entregas(estado_pago)')
-            .eq('cliente_id', _clienteId)
-            .eq('estado', 'ENTREGADO'),
-        _sb.from('pagos').select('monto').eq('cliente_id', _clienteId),
-        _sb.from('movimiento_bal_on').select('tipo, cantidad').eq('cliente_id', _clienteId),
+      final res = await Future.wait([
+        clientesRepo.resumenDe(_clienteId),
+        clientesRepo.totalPedidos(_clienteId),
+        clientesRepo.ultimosPedidos(_clienteId, limite: 10),
+        _cargarPrecioHabitual(),
       ]);
-
       if (!mounted) return;
-
-      final pedidosRecientes = List<Map<String, dynamic>>.from(resultados[0] as List);
-      final pedidosEntregados = List<Map<String, dynamic>>.from(resultados[1] as List);
-      final pagos = List<Map<String, dynamic>>.from(resultados[2] as List);
-      final movimientos = List<Map<String, dynamic>>.from(resultados[3] as List);
-
-      // Deuda = entregas pendientes de pago − abonos registrados
-      double pendiente = 0;
-      for (final p in pedidosEntregados) {
-        if (_entregaPendiente(p)) pendiente += (p['total'] as num? ?? 0).toDouble();
-      }
-      double abonado = 0;
-      for (final p in pagos) {
-        abonado += (p['monto'] as num? ?? 0).toDouble();
-      }
-      final deuda = (pendiente - abonado) < 0 ? 0.0 : pendiente - abonado;
-
-      var balones = 0;
-      for (final m in movimientos) {
-        final cant = (m['cantidad'] as num? ?? 0).toInt();
-        balones += m['tipo'] == 'ENTREGA_LLENO' ? cant : -cant;
-      }
-
+      final resumen = res[0] as ResumenCliente;
       setState(() {
-        _pedidos = pedidosRecientes;
-        _deuda = deuda;
-        _balones = balones;
+        _deuda = resumen.deuda;
+        _balonesPendientes = resumen.balonesPendientes;
+        _fierrosPendientes = resumen.fierrosPendientes;
+        _totalPedidos = res[1] as int;
+        _pedidos = res[2] as List<Map<String, dynamic>>;
+        _precioHabitual = res[3] as double;
         _cargando = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No pudimos cargar la ficha. Revisa tu conexión.')),
+        SnackBar(content: Text(traducirError(e, contexto: 'No pudimos cargar la ficha').mensaje)),
       );
     }
   }
 
-  bool _entregaPendiente(Map<String, dynamic> pedido) {
-    final e = pedido['entregas'];
-    if (e is List) {
-      return e.any((x) => x['estado_pago'] == 'PENDIENTE');
+  /// Precio que este cliente paga habitualmente (precio especial o base).
+  Future<double> _cargarPrecioHabitual() async {
+    try {
+      final especiales = await clientesRepo.preciosDe(_clienteId);
+      if (especiales.isNotEmpty) {
+        return especiales.values.reduce((a, b) => a > b ? a : b);
+      }
+      final productos = await sb
+          .from('productos')
+          .select('precio_base')
+          .eq('activo', true)
+          .limit(1);
+      if (productos.isEmpty) return 0;
+      return (productos.first['precio_base'] as num? ?? 0).toDouble();
+    } catch (_) {
+      return 0;
     }
-    if (e is Map) return e['estado_pago'] == 'PENDIENTE';
-    return false;
   }
 
   Future<void> _editar() async {
@@ -105,37 +100,87 @@ class _ClienteDetallePageState extends State<ClienteDetallePage> {
     if (cambio == true && mounted) _cargar();
   }
 
-  Future<void> _llamar() async {
-    final tel = widget.cliente['telefono'] as String?;
-    if (tel == null || tel.isEmpty) return;
-    final uri = Uri(scheme: 'tel', path: tel.replaceAll(' ', ''));
-    await launchUrl(uri);
+  Future<void> _nuevoPedido() async {
+    final creado = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => NuevoPedidoPage(clienteInicial: widget.cliente)),
+    );
+    if (creado == true && mounted) _cargar();
   }
 
-  Future<void> _comoLlegar() async {
-    final lat = widget.cliente['latitud'];
-    final lng = widget.cliente['longitud'];
-    final dir = widget.cliente['direccion'] as String?;
-    String destino;
-    if (lat != null && lng != null) {
-      destino = '$lat,$lng';
-    } else if (dir != null && dir.isNotEmpty) {
-      destino = Uri.encodeComponent(dir);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Este cliente no tiene ubicación registrada.')),
+  Future<void> _registrarPago() async {
+    final resultado = await mostrarHojaPago(
+      context,
+      clienteNombre: widget.cliente['nombre'] as String? ?? 'cliente',
+      suggestedMonto: _deuda > 0 ? _deuda : 0,
+    );
+    if (resultado == null) return;
+
+    final auth = ref.read(authProvider);
+    try {
+      await pagosRepo.registrar(
+        empresaId: auth.empresaId!,
+        usuarioId: auth.usuarioId!,
+        clienteId: _clienteId,
+        monto: resultado['monto'] as double,
+        metodo: resultado['metodo'] as String,
       );
-      return;
+      _cargar();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pago registrado.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(traducirError(e, contexto: 'No pudimos registrar el pago').mensaje)),
+      );
     }
-    final uri = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$destino');
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _verHistorial() async {
+    final data = await clientesRepo.ultimosPedidos(_clienteId, limite: 50);
+    if (!mounted) return;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.7,
+        builder: (ctx, controller) => ListView(
+          controller: controller,
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text('Pedidos de ${widget.cliente['nombre']}',
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 12),
+            if (data.isEmpty)
+              const Text('Sin pedidos registrados.',
+                  style: TextStyle(color: Colors.black54)),
+            for (final p in data)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  EstadoPedido.desdeDb(p['estado']).icono,
+                  color: EstadoPedido.desdeDb(p['estado']).color,
+                ),
+                title: Text('#${p['numero']} · ${dinero((p['total'] as num? ?? 0))}'),
+                subtitle: Text(fechaCorta(parseFecha(p['fecha'] as String?))),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final c = widget.cliente;
-    final tieneTel = (c['telefono'] as String? ?? '').isNotEmpty;
-    final tieneUbicacion = c['latitud'] != null && c['longitud'] != null;
+    final tel = c['telefono'] as String? ?? '';
+    final direccion = c['direccion'] as String? ?? '';
+    final referencia = c['referencia'] as String? ?? '';
+    final lat = (c['latitud'] as num?)?.toDouble();
+    final lng = (c['longitud'] as num?)?.toDouble();
+    final ultimo = _pedidos.isEmpty ? null : _pedidos.first;
 
     return Scaffold(
       appBar: AppBar(
@@ -149,9 +194,9 @@ class _ClienteDetallePageState extends State<ClienteDetallePage> {
           : RefreshIndicator(
               onRefresh: _cargar,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
                 children: [
-                  // Datos principales
+                  // ---- Datos ----
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -163,78 +208,53 @@ class _ClienteDetallePageState extends State<ClienteDetallePage> {
                               Expanded(
                                 child: Text(
                                   c['nombre'] as String? ?? '',
-                                  style: Theme.of(context).textTheme.titleLarge
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleLarge
                                       ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                               ),
                               _ChipTipo(c['tipo'] as String? ?? 'PARTICULAR'),
                             ],
                           ),
-                          if (tieneTel) ...[
-                            const SizedBox(height: 6),
+                          if (tel.isNotEmpty) ...[
+                            const SizedBox(height: 8),
                             InkWell(
-                              onTap: _llamar,
+                              onTap: () => llamar(tel),
                               child: Row(
                                 children: [
                                   const Icon(Icons.phone_outlined, size: 18, color: AppTheme.primary),
                                   const SizedBox(width: 6),
-                                  Text(c['telefono'] as String,
-                                      style: const TextStyle(color: AppTheme.primary)),
+                                  Text(tel, style: const TextStyle(color: AppTheme.primary)),
                                 ],
                               ),
                             ),
                           ],
-                          if ((c['direccion'] as String? ?? '').isNotEmpty) ...[
-                            const SizedBox(height: 6),
+                          if (direccion.isNotEmpty) ...[
+                            const SizedBox(height: 8),
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Icon(Icons.place_outlined, size: 18, color: Colors.black45),
                                 const SizedBox(width: 6),
                                 Expanded(
-                                  child: Text(c['direccion'] as String,
-                                      style: const TextStyle(color: Colors.black87)),
+                                  child: Text(direccion,
+                                      style: const TextStyle(fontSize: 15, height: 1.3)),
                                 ),
                               ],
                             ),
                           ],
-                          if ((c['referencia'] as String? ?? '').isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text('Ref: ${c['referencia']}',
-                                style: const TextStyle(color: Colors.black54, fontSize: 13)),
-                          ],
-                          if ((c['observaciones'] as String? ?? '').isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(c['observaciones'] as String,
-                                style: const TextStyle(color: Colors.black54, fontSize: 13)),
-                          ],
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: tieneTel ? _llamar : null,
-                                  icon: const Icon(Icons.call_outlined),
-                                  label: const Text('Llamar'),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: FilledButton.icon(
-                                  onPressed: _comoLlegar,
-                                  icon: const Icon(Icons.directions_outlined),
-                                  label: const Text('Cómo llegar'),
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (!tieneUbicacion)
-                            const Padding(
-                              padding: EdgeInsets.only(top: 8),
-                              child: Text(
-                                'Sin ubicación exacta: la ruta usará la dirección escrita.',
-                                style: TextStyle(color: Colors.black45, fontSize: 12),
-                              ),
+                          if (referencia.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 24, top: 2),
+                              child: Text('Referencia: $referencia',
+                                  style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                            ),
+                          if ((c['observaciones'] as String? ?? '').isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Text(c['observaciones'] as String,
+                                  style: const TextStyle(color: Colors.black54, fontSize: 13)),
                             ),
                         ],
                       ),
@@ -242,35 +262,113 @@ class _ClienteDetallePageState extends State<ClienteDetallePage> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Deuda y balones
+                  // ---- Números ----
                   Row(
                     children: [
-                      Expanded(child: _TarjetaValor(
-                        titulo: 'Saldo pendiente',
-                        valor: 'S/ ${_deuda.toStringAsFixed(2)}',
-                        color: _deuda > 0 ? AppTheme.danger : AppTheme.success,
-                        icono: Icons.account_balance_wallet_outlined,
-                      )),
-                      const SizedBox(width: 12),
-                      Expanded(child: _TarjetaValor(
-                        titulo: 'Balones con él',
-                        valor: '$_balones',
-                        color: _balones > 0 ? AppTheme.warning : Colors.black54,
-                        icono: Icons.local_fire_department_outlined,
-                      )),
+                      Expanded(
+                        child: TarjetaMetrica(
+                          titulo: 'Deuda',
+                          valor: dinero(_deuda, conDecimales: false),
+                          icono: Icons.account_balance_wallet_outlined,
+                          color: _deuda > 0 ? AppTheme.danger : AppTheme.success,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TarjetaMetrica(
+                          titulo: 'Balones pendientes',
+                          valor: '$_balonesPendientes',
+                          icono: Icons.local_fire_department_outlined,
+                          color: _balonesPendientes > 0 ? AppTheme.warning : Colors.black54,
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          FilaValor(
+                            'Precio habitual',
+                            _precioHabitual > 0 ? dinero(_precioHabitual) : 'Sin definir',
+                          ),
+                          FilaValor('Pedidos realizados', '$_totalPedidos'),
+                          FilaValor(
+                            'Último pedido',
+                            ultimo == null
+                                ? 'Sin pedidos'
+                                : fechaCorta(parseFecha(ultimo['fecha'] as String?)),
+                          ),
+                          if (_fierrosPendientes > 0)
+                            FilaValor('Fierros pendientes', '$_fierrosPendientes',
+                                color: AppTheme.warning),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-                  // Historial
+                  // ---- Acciones ----
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _nuevoPedido,
+                      icon: const Icon(Icons.add_circle_outline),
+                      label: const Text('NUEVO PEDIDO'),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.fromHeight(52),
+                        backgroundColor: AppTheme.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: (lat == null || lng == null) && direccion.isEmpty
+                              ? null
+                              : () => (lat != null && lng != null)
+                                  ? abrirMapaCliente(latitud: lat, longitud: lng)
+                                  : abrirMapaPorDireccion(direccion),
+                          icon: const Icon(Icons.map_outlined),
+                          label: const Text('Ver ubicación'),
+                          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _verHistorial,
+                          icon: const Icon(Icons.history_outlined),
+                          label: const Text('Historial'),
+                          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _registrarPago,
+                      icon: const Icon(Icons.payments_outlined),
+                      label: const Text('Registrar pago'),
+                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ---- Últimos pedidos ----
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Últimos pedidos',
-                              style: Theme.of(context).textTheme.titleMedium),
+                          Text('Últimos pedidos', style: Theme.of(context).textTheme.titleMedium),
                           const SizedBox(height: 8),
                           if (_pedidos.isEmpty)
                             const Text('Sin pedidos registrados.',
@@ -281,7 +379,6 @@ class _ClienteDetallePageState extends State<ClienteDetallePage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -316,91 +413,35 @@ class _ChipTipo extends StatelessWidget {
   }
 }
 
-class _TarjetaValor extends StatelessWidget {
-  final String titulo;
-  final String valor;
-  final Color color;
-  final IconData icono;
-
-  const _TarjetaValor({
-    required this.titulo,
-    required this.valor,
-    required this.color,
-    required this.icono,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icono, color: color, size: 22),
-            const SizedBox(height: 6),
-            Text(titulo, style: const TextStyle(color: Colors.black54, fontSize: 12)),
-            Text(valor, style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _FilaPedido extends StatelessWidget {
   final Map<String, dynamic> pedido;
   const _FilaPedido(this.pedido);
 
-  static const _estados = {
-    'NUEVO': 'Nuevo',
-    'ASIGNADO': 'Asignado',
-    'EN_CAMINO': 'En camino',
-    'ENTREGADO': 'Entregado',
-    'CANCELADO': 'Cancelado',
-  };
-
-  static const _colores = {
-    'NUEVO': AppTheme.info,
-    'ASIGNADO': AppTheme.warning,
-    'EN_CAMINO': AppTheme.warning,
-    'ENTREGADO': AppTheme.success,
-    'CANCELADO': AppTheme.danger,
-  };
-
   @override
   Widget build(BuildContext context) {
-    final estado = pedido['estado'] as String? ?? '';
-    final fecha = DateTime.tryParse(pedido['fecha'] as String? ?? '');
-    final color = _colores[estado] ?? Colors.black54;
+    final estado = EstadoPedido.desdeDb(pedido['estado']);
+    final fecha = parseFecha(pedido['fecha'] as String?);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
+          Icon(estado.icono, size: 18, color: estado.color),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Pedido #${pedido['numero']}', style: const TextStyle(fontWeight: FontWeight.w600)),
+                Text('Pedido #${pedido['numero']}',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
                 Text(
-                  fecha == null ? '' : '${fecha.day}/${fecha.month}/${fecha.year}',
+                  fecha == null ? '' : fechaCorta(fecha),
                   style: const TextStyle(color: Colors.black54, fontSize: 12),
                 ),
               ],
             ),
           ),
-          Text('S/ ${(pedido['total'] as num? ?? 0).toStringAsFixed(2)}',
+          Text(dinero((pedido['total'] as num? ?? 0)),
               style: const TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(_estados[estado] ?? estado,
-                style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600)),
-          ),
         ],
       ),
     );

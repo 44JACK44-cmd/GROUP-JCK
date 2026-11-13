@@ -1,3 +1,6 @@
+/// Menú "Más" del administrador: control y módulos secundarios.
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,7 +10,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../app/theme.dart';
 import '../../core/update/app_update_service.dart';
 
-/// Menú "Más": módulos secundarios del administrador.
 class MasPage extends StatelessWidget {
   const MasPage({super.key});
 
@@ -19,39 +21,53 @@ class MasPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _Tile(
+            icono: Icons.delivery_dining_outlined,
+            titulo: 'Mis pedidos',
+            subtitulo: 'Pedidos en ruta y entregas',
+            color: AppTheme.primary,
+            onTap: () => context.push('/mis-pedidos'),
+          ),
+          _Tile(
+            icono: Icons.account_balance_wallet_outlined,
+            titulo: 'Deudas',
+            subtitulo: 'Clientes que deben y cobro de deuda',
+            color: AppTheme.danger,
+            onTap: () => context.push('/deudas'),
+          ),
+          _Tile(
             icono: Icons.local_fire_department_outlined,
             titulo: 'Balones',
-            subtitulo: 'Control de balones prestados y devoluciones',
+            subtitulo: 'Vacíos pendientes y devoluciones',
             color: AppTheme.warning,
             onTap: () => context.push('/balones'),
           ),
           _Tile(
             icono: Icons.point_of_sale_outlined,
             titulo: 'Caja',
-            subtitulo: 'Dinero del día, gastos e ingresos',
+            subtitulo: 'Dinero del día, ingresos y gastos',
             color: AppTheme.success,
             onTap: () => context.push('/caja'),
           ),
           _Tile(
-            icono: Icons.payments_outlined,
-            titulo: 'Cobros',
-            subtitulo: 'Registrar pagos y ver historial',
+            icono: Icons.receipt_long_outlined,
+            titulo: 'Rendición',
+            subtitulo: 'Cuentas por motorizado y periodo',
             color: AppTheme.info,
-            onTap: () => context.push('/cobros'),
-          ),
-          _Tile(
-            icono: Icons.local_gas_station_outlined,
-            titulo: 'Combustible',
-            subtitulo: 'Gastos de gasolina por vehículo',
-            color: AppTheme.warning,
-            onTap: () => context.push('/combustible'),
+            onTap: () => context.push('/rendicion'),
           ),
           _Tile(
             icono: Icons.bar_chart_outlined,
-            titulo: 'Reportes',
-            subtitulo: 'Ventas, cobros y gastos del día y la semana',
+            titulo: 'Informes',
+            subtitulo: 'Pedidos, ventas, pagos, deudas y balones',
             color: AppTheme.primary,
             onTap: () => context.push('/reportes'),
+          ),
+          _Tile(
+            icono: Icons.people_outline,
+            titulo: 'Clientes',
+            subtitulo: 'Directorio de clientes',
+            color: AppTheme.primary,
+            onTap: () => context.go('/clientes'),
           ),
           _Tile(
             icono: Icons.delivery_dining_outlined,
@@ -61,11 +77,50 @@ class MasPage extends StatelessWidget {
             onTap: () => context.push('/motorizados'),
           ),
           _Tile(
-            icono: Icons.people_outline,
-            titulo: 'Clientes',
-            subtitulo: 'Directorio de clientes',
-            color: AppTheme.primary,
-            onTap: () => context.push('/clientes'),
+            icono: Icons.local_gas_station_outlined,
+            titulo: 'Combustible',
+            subtitulo: 'Gastos de gasolina por vehículo',
+            color: AppTheme.warning,
+            onTap: () => context.push('/combustible'),
+          ),
+          const _UpdateTile(),
+        ],
+      ),
+    );
+  }
+}
+
+/// Menú "Más" del motorizado: lo que necesita en la calle.
+class MasMotoPage extends StatelessWidget {
+  const MasMotoPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Más')),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _Tile(
+            icono: Icons.local_fire_department_outlined,
+            titulo: 'Balones',
+            subtitulo: 'Vacíos pendientes y devoluciones',
+            color: AppTheme.warning,
+            onTap: () => context.push('/balones'),
+          ),
+          _Tile(
+            icono: Icons.account_balance_wallet_outlined,
+            titulo: 'Deudas',
+            subtitulo: 'Clientes que te deben',
+            color: AppTheme.danger,
+            onTap: () => context.push('/deudas'),
+          ),
+          _Tile(
+            icono: Icons.payments_outlined,
+            titulo: 'Cobros',
+            subtitulo: 'Registro de cobros',
+            color: AppTheme.info,
+            onTap: () => context.push('/cobros'),
           ),
           const _UpdateTile(),
         ],
@@ -181,7 +236,8 @@ class _UpdateTileState extends ConsumerState<_UpdateTile> {
         subtitle: Text(_version.isEmpty ? 'Revisar versión nueva' : '$_version · tocar para revisar'),
         trailing: _verificando
             ? const SizedBox(
-                height: 20, width: 20,
+                height: 20,
+                width: 20,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.chevron_right),

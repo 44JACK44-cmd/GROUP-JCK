@@ -1,11 +1,21 @@
+/// Registro de cobros y pagos de clientes + historial.
+///
+/// Un cobro guarda: monto, método (efectivo, Yape, …), fecha, hora y el
+/// usuario que lo registró. Un cobro no se registra dos veces.
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
+import '../../core/data/clientes_repo.dart';
+import '../../core/data/pagos_repo.dart';
+import '../../core/data/sb.dart';
+import '../../core/domain/formato.dart';
+import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
-/// Registro de cobros/pagos de clientes + historial reciente.
 class CobrosPage extends ConsumerStatefulWidget {
   const CobrosPage({super.key});
 
@@ -17,8 +27,6 @@ class _CobrosPageState extends ConsumerState<CobrosPage> {
   List<Map<String, dynamic>> _pagos = [];
   bool _cargando = true;
 
-  SupabaseClient get _sb => Supabase.instance.client;
-
   @override
   void initState() {
     super.initState();
@@ -27,20 +35,18 @@ class _CobrosPageState extends ConsumerState<CobrosPage> {
 
   Future<void> _cargar() async {
     try {
-      final data = await _sb
-          .from('pagos')
-          .select('id, monto, metodo, fecha, clientes(nombre, telefono)')
-          .order('fecha', ascending: false)
-          .limit(100);
+      final data = await pagosRepo.listar(limite: 100);
       if (!mounted) return;
       setState(() {
-        _pagos = List<Map<String, dynamic>>.from(data);
+        _pagos = data;
         _cargando = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
-      _error('No pudimos cargar los cobros. Revisa tu conexión.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(traducirError(e, contexto: 'No pudimos cargar los cobros').mensaje)),
+      );
     }
   }
 
@@ -52,60 +58,68 @@ class _CobrosPageState extends ConsumerState<CobrosPage> {
     );
     if (datos == null) return;
 
+    final auth = ref.read(authProvider);
     try {
-      await _sb.from('pagos').insert({
-        'empresa_id': ref.read(authProvider).empresaId,
-        'cliente_id': datos['clienteId'],
-        'pedido_id': datos['pedidoId'],
-        'monto': datos['monto'],
-        'metodo': datos['metodo'],
-        'registrado_por': ref.read(authProvider).usuarioId,
-      });
+      await pagosRepo.registrar(
+        empresaId: auth.empresaId!,
+        usuarioId: auth.usuarioId!,
+        clienteId: datos['clienteId'] as String,
+        monto: datos['monto'] as double,
+        metodo: datos['metodo'] as String,
+      );
       _cargar();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cobro registrado.')),
-        );
-      }
-    } catch (_) {
-      _error('No se pudo registrar el cobro.');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cobro registrado.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(traducirError(e, contexto: 'No pudimos registrar el cobro').mensaje)),
+      );
     }
-  }
-
-  void _error(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   double get _totalHoy {
     final hoy = DateTime.now();
     return _pagos
         .where((p) {
-          final f = DateTime.tryParse(p['fecha'] as String? ?? '');
+          final f = parseFecha(p['fecha']);
           return f != null &&
-              f.day == hoy.day && f.month == hoy.month && f.year == hoy.year;
+              f.day == hoy.day &&
+              f.month == hoy.month &&
+              f.year == hoy.year;
         })
         .fold(0.0, (s, p) => s + (p['monto'] as num).toDouble());
   }
 
-  String _labelMetodo(String m) => switch (m) {
-        'EFECTIVO' => 'Efectivo',
-        'YAPE' => 'Yape',
-        'PLIN' => 'Plin',
-        'TRANSFERENCIA' => 'Transf.',
-        'OTRO' => 'Otro',
-        _ => m,
-      };
-
-  String _fecha(String? iso) {
-    final f = DateTime.tryParse(iso ?? '');
-    if (f == null) return '';
-    return '${f.day}/${f.month} ${f.hour.toString().padLeft(2, '0')}:${f.minute.toString().padLeft(2, '0')}';
+  double get _yapeHoy {
+    final hoy = DateTime.now();
+    return _pagos
+        .where((p) {
+          final f = parseFecha(p['fecha']);
+          return p['metodo'] == 'YAPE' &&
+              f != null &&
+              f.day == hoy.day &&
+              f.month == hoy.month &&
+              f.year == hoy.year;
+        })
+        .fold(0.0, (s, p) => s + (p['monto'] as num).toDouble());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Cobros')),
+      appBar: AppBar(
+        title: const Text('Cobros'),
+        actions: [
+          IconButton(
+            tooltip: 'Ver deudas',
+            onPressed: () => context.push('/deudas'),
+            icon: const Icon(Icons.account_balance_wallet_outlined),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _registrar,
         backgroundColor: AppTheme.primary,
@@ -117,30 +131,28 @@ class _CobrosPageState extends ConsumerState<CobrosPage> {
           : RefreshIndicator(
               onRefresh: _cargar,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
                 children: [
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.today_outlined, size: 36, color: AppTheme.success),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Cobrado hoy',
-                                    style: TextStyle(color: Colors.black54)),
-                                Text('S/ ${_totalHoy.toStringAsFixed(2)}',
-                                    style: const TextStyle(
-                                        fontSize: 24, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ),
-                        ],
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TarjetaMetrica(
+                          titulo: 'Cobrado hoy',
+                          valor: dinero(_totalHoy, conDecimales: false),
+                          icono: Icons.today_outlined,
+                          color: AppTheme.success,
+                        ),
                       ),
-                    ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TarjetaMetrica(
+                          titulo: 'Yape hoy',
+                          valor: dinero(_yapeHoy, conDecimales: false),
+                          icono: Icons.smartphone_outlined,
+                          color: AppTheme.info,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Text('Historial', style: Theme.of(context).textTheme.titleMedium),
@@ -157,16 +169,21 @@ class _CobrosPageState extends ConsumerState<CobrosPage> {
                     for (final p in _pagos)
                       Card(
                         child: ListTile(
-                          leading: const Icon(Icons.payments_outlined,
-                              color: AppTheme.success),
+                          leading: Icon(
+                            p['metodo'] == 'YAPE'
+                                ? Icons.smartphone_outlined
+                                : Icons.payments_outlined,
+                            color: p['metodo'] == 'YAPE' ? AppTheme.info : AppTheme.success,
+                          ),
                           title: Text(
                             (p['clientes'] as Map?)?['nombre'] as String? ?? 'Cliente',
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                           subtitle: Text(
-                            '${_fecha(p['fecha'] as String?)}  ·  ${_labelMetodo(p['metodo'] as String? ?? '')}',
+                            '${fechaRelativa(parseFecha(p['fecha'] as String?))}  ·  '
+                            '${metodoPago(p['metodo'] as String?)}',
                           ),
-                          trailing: Text('S/ ${(p['monto'] as num).toStringAsFixed(2)}',
+                          trailing: Text(dinero((p['monto'] as num? ?? 0)),
                               style: const TextStyle(
                                   fontWeight: FontWeight.bold, color: AppTheme.success)),
                         ),
@@ -194,14 +211,12 @@ class _CobroSheetState extends State<_CobroSheet> {
   String _metodo = 'EFECTIVO';
   bool _buscando = false;
 
-  SupabaseClient get _sb => Supabase.instance.client;
-
   static const _metodos = {
-    'EFECTIVO': 'Efectivo',
-    'YAPE': 'Yape',
-    'PLIN': 'Plin',
-    'TRANSFERENCIA': 'Transferencia',
-    'OTRO': 'Otro',
+    'EFECTIVO': '💵 Efectivo',
+    'YAPE': '📱 Yape',
+    'PLIN': '📱 Plin',
+    'TRANSFERENCIA': '🏦 Transferencia',
+    'OTRO': '💳 Otro',
   };
 
   @override
@@ -219,16 +234,10 @@ class _CobroSheetState extends State<_CobroSheet> {
     }
     setState(() => _buscando = true);
     try {
-      final data = await _sb
-          .from('clientes')
-          .select('id, nombre, telefono')
-          .eq('activo', true)
-          .or('nombre.ilike.%$q%,telefono.ilike.%$q%')
-          .order('nombre')
-          .limit(8);
+      final data = await clientesRepo.buscar(q);
       if (!mounted) return;
       setState(() {
-        _sugerencias = List<Map<String, dynamic>>.from(data);
+        _sugerencias = data;
         _buscando = false;
       });
     } catch (_) {
@@ -236,11 +245,28 @@ class _CobroSheetState extends State<_CobroSheet> {
     }
   }
 
+  void _confirmar() {
+    final monto = double.tryParse(_montoCtrl.text) ?? 0;
+    if (monto <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El monto debe ser mayor a cero.')),
+      );
+      return;
+    }
+    Navigator.of(context).pop({
+      'clienteId': _cliente!['id'],
+      'monto': monto,
+      'metodo': _metodo,
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: EdgeInsets.only(
-        left: 20, right: 20, top: 20,
+        left: 20,
+        right: 20,
+        top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: SingleChildScrollView(
@@ -261,7 +287,11 @@ class _CobroSheetState extends State<_CobroSheet> {
                   suffixIcon: _buscando
                       ? const Padding(
                           padding: EdgeInsets.all(12),
-                          child: SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         )
                       : null,
                 ),
@@ -298,37 +328,31 @@ class _CobroSheetState extends State<_CobroSheet> {
             TextField(
               controller: _montoCtrl,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Monto (S/) *'),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              decoration: const InputDecoration(prefixText: 'S/ ', labelText: 'Monto'),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _metodo,
-              decoration: const InputDecoration(labelText: 'Método'),
-              items: [
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
                 for (final e in _metodos.entries)
-                  DropdownMenuItem(value: e.key, child: Text(e.value)),
+                  ChoiceChip(
+                    label: Text(e.value),
+                    selected: _metodo == e.key,
+                    selectedColor: AppTheme.primary.withValues(alpha: 0.15),
+                    labelStyle: TextStyle(
+                      color: _metodo == e.key ? AppTheme.primary : Colors.black87,
+                      fontWeight: _metodo == e.key ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    onSelected: (_) => setState(() => _metodo = e.key),
+                  ),
               ],
-              onChanged: (v) => setState(() => _metodo = v ?? 'EFECTIVO'),
             ),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: _cliente == null
-                  ? null
-                  : () {
-                      final monto = double.tryParse(_montoCtrl.text) ?? 0;
-                      if (monto <= 0) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('El monto debe ser mayor a cero.')),
-                        );
-                        return;
-                      }
-                      Navigator.of(context).pop({
-                        'clienteId': _cliente!['id'],
-                        'monto': monto,
-                        'metodo': _metodo,
-                        'pedidoId': null,
-                      });
-                    },
+              onPressed: _cliente == null ? null : _confirmar,
+              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
               child: const Text('Guardar cobro'),
             ),
             const SizedBox(height: 8),

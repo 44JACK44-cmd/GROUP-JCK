@@ -1,11 +1,19 @@
+/// Control de balones y fierros.
+///
+/// Muestra quién tiene balones vacíos pendientes y permite registrar la
+/// devolución cuando el cliente los devuelve. Nada se borra: cada devolución
+/// es un movimiento nuevo (queda la trazabilidad).
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
+import '../../core/data/balones_repo.dart';
+import '../../core/data/sb.dart';
+import '../../core/domain/formato.dart';
 import '../auth/auth_controller.dart';
 
-/// Control de balones: cuántos tiene cada cliente y registro de devoluciones.
 class BalonesPage extends ConsumerStatefulWidget {
   const BalonesPage({super.key});
 
@@ -14,11 +22,11 @@ class BalonesPage extends ConsumerStatefulWidget {
 }
 
 class _BalonesPageState extends ConsumerState<BalonesPage> {
-  List<Map<String, dynamic>> _saldos = [];
+  List<PendienteDevolucion> _balones = [];
+  List<PendienteDevolucion> _fierros = [];
   List<Map<String, dynamic>> _movimientos = [];
   bool _cargando = true;
-
-  SupabaseClient get _sb => Supabase.instance.client;
+  bool _mostrarFierros = false;
 
   @override
   void initState() {
@@ -28,121 +36,107 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
 
   Future<void> _cargar() async {
     try {
-      final resultados = await Future.wait([
-        _sb.from('movimiento_bal_on')
-            .select('cliente_id, tipo, cantidad, fecha')
-            .order('fecha', ascending: false),
-        _sb.from('clientes').select('id, nombre, telefono').eq('activo', true),
+      final res = await Future.wait([
+        balonesRepo.pendientesBalones(),
+        balonesRepo.pendientesFierros(),
+        balonesRepo.movimientos(limite: 30),
       ]);
       if (!mounted) return;
-
-      final nombres = {
-        for (final c in resultados[1] as List)
-          (c as Map)['id'] as String: c,
-      };
-
-      // Saldo por cliente: llenos entregados − vacíos devueltos.
-      final saldo = <String, int>{};
-      for (final m in resultados[0] as List) {
-        final row = m as Map<String, dynamic>;
-        final cid = row['cliente_id'] as String;
-        final cant = (row['cantidad'] as num).toInt();
-        saldo[cid] = (saldo[cid] ?? 0) + (row['tipo'] == 'ENTREGA_LLENO' ? cant : -cant);
-      }
-
-      final saldos = saldo.entries
-          .where((e) => e.value > 0)
-          .map((e) => {
-                'cliente': nombres[e.key],
-                'saldo': e.value,
-              })
-          .where((e) => e['cliente'] != null)
-          .toList()
-        ..sort((a, b) => (b['saldo'] as int).compareTo(a['saldo'] as int));
-
       setState(() {
-        _saldos = saldos;
-        _movimientos = List<Map<String, dynamic>>.from(
-            (resultados[0] as List).take(15).toList());
+        _balones = res[0] as List<PendienteDevolucion>;
+        _fierros = res[1] as List<PendienteDevolucion>;
+        _movimientos = res[2] as List<Map<String, dynamic>>;
         _cargando = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
-      _error('No pudimos cargar los balones. Revisa tu conexión.');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(traducirError(e, contexto: 'No pudimos cargar los balones').mensaje)),
+      );
     }
   }
 
-  Future<void> _registrarDevolucion() async {
-    if (_saldos.isEmpty) {
-      _error('Ningún cliente tiene balones pendientes.');
-      return;
-    }
-    final elegido = await showModalBottomSheet<Map<String, dynamic>>(
+  int get _totalBalones => _balones.fold(0, (s, p) => s + p.cantidad);
+
+  Future<void> _registrarDevolucion(PendienteDevolucion pendiente, {bool esFierro = false}) async {
+    final resultado = await showModalBottomSheet<int>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _DevolucionSheet(saldos: _saldos),
+      builder: (_) => _DevolucionSheet(pendiente: pendiente, esFierro: esFierro),
     );
-    if (elegido == null) return;
+    if (resultado == null) return;
 
+    final auth = ref.read(authProvider);
     try {
-      await _sb.from('movimiento_bal_on').insert({
-        'empresa_id': ref.read(authProvider).empresaId,
-        'cliente_id': elegido['cliente_id'],
-        'tipo': 'DEVOLUCION_VACIO',
-        'cantidad': elegido['cantidad'],
-        'usuario_id': ref.read(authProvider).usuarioId,
-      });
-      _cargar();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Devolución registrada: ${elegido['cantidad']} balón(es).')),
+      if (esFierro) {
+        await balonesRepo.registrarDevolucionFierro(
+          empresaId: auth.empresaId!,
+          usuarioId: auth.usuarioId!,
+          clienteId: pendiente.clienteId,
+          cantidad: resultado,
+        );
+      } else {
+        await balonesRepo.registrarDevolucionBalon(
+          empresaId: auth.empresaId!,
+          usuarioId: auth.usuarioId!,
+          clienteId: pendiente.clienteId,
+          cantidad: resultado,
         );
       }
-    } catch (_) {
-      _error('No se pudo registrar. Inténtalo de nuevo.');
+      _cargar();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Devolución registrada: $resultado ${esFierro ? 'fierro(s)' : 'balón(es)'}.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(traducirError(e, contexto: 'No pudimos registrar la devolución').mensaje)),
+      );
     }
-  }
-
-  void _error(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   @override
   Widget build(BuildContext context) {
-    final totalPrestados = _saldos.fold<int>(0, (s, e) => s + (e['saldo'] as int));
+    final lista = _mostrarFierros ? _fierros : _balones;
     return Scaffold(
       appBar: AppBar(title: const Text('Balones')),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _registrarDevolucion,
-        backgroundColor: AppTheme.primary,
-        icon: const Icon(Icons.assignment_return_outlined),
-        label: const Text('Devolución'),
-      ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : RefreshIndicator(
               onRefresh: _cargar,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
                   Card(
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Row(
                         children: [
-                          const Icon(Icons.local_fire_department_outlined,
-                              size: 36, color: AppTheme.warning),
+                          Icon(
+                            _mostrarFierros ? Icons.handyman_outlined : Icons.local_fire_department_outlined,
+                            size: 36,
+                            color: AppTheme.warning,
+                          ),
                           const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Balones en la calle',
-                                    style: TextStyle(color: Colors.black54)),
-                                Text('$totalPrestados',
-                                    style: const TextStyle(
-                                        fontSize: 26, fontWeight: FontWeight.bold)),
+                                Text(
+                                  _mostrarFierros
+                                      ? 'Fierros pendientes de devolución'
+                                      : 'Balones vacíos pendientes',
+                                  style: const TextStyle(color: Colors.black54),
+                                ),
+                                Text(
+                                  _mostrarFierros
+                                      ? '${_fierros.fold(0, (s, p) => s + p.cantidad)}'
+                                      : '$_totalBalones',
+                                  style: const TextStyle(
+                                      fontSize: 26, fontWeight: FontWeight.bold),
+                                ),
                               ],
                             ),
                           ),
@@ -150,43 +144,85 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(value: false, label: Text('Balones')),
+                      ButtonSegment(value: true, label: Text('Fierros')),
+                    ],
+                    selected: {_mostrarFierros},
+                    onSelectionChanged: (s) => setState(() => _mostrarFierros = s.first),
+                  ),
                   const SizedBox(height: 16),
-                  Text('Clientes con balones (${_saldos.length})',
-                      style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    lista.isEmpty
+                        ? 'Sin pendientes'
+                        : '${lista.length} cliente(s) con pendiente',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 8),
-                  if (_saldos.isEmpty)
+                  if (lista.isEmpty)
                     const Card(
                       child: Padding(
                         padding: EdgeInsets.all(20),
-                        child: Text('Nadie tiene balones pendientes.',
+                        child: Text('Nadie tiene pendiente de devolución.',
                             style: TextStyle(color: Colors.black54)),
                       ),
                     )
                   else
-                    for (final s in _saldos)
-                      Card(
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: AppTheme.warning.withValues(alpha: 0.15),
-                            child: const Icon(Icons.local_fire_department_outlined,
-                                color: AppTheme.warning),
-                          ),
-                          title: Text(
-                            (s['cliente'] as Map?)?['nombre'] as String? ?? 'Cliente',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text(
-                            (s['cliente'] as Map?)?['telefono'] as String? ?? '',
-                          ),
-                          trailing: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppTheme.warning.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(14),
+                    for (final p in lista)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        p.nombre,
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: AppTheme.warning.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(14),
+                                      ),
+                                      child: Text(
+                                        '${p.cantidad}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppTheme.warning,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if ((p.telefono ?? '').isNotEmpty)
+                                  Text(p.telefono!,
+                                      style: const TextStyle(color: Colors.black54)),
+                                const SizedBox(height: 10),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: () =>
+                                        _registrarDevolucion(p, esFierro: _mostrarFierros),
+                                    icon: const Icon(Icons.assignment_return_outlined),
+                                    label: const Text('Registrar devolución'),
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size.fromHeight(44),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: Text('${s['saldo']}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold, color: AppTheme.warning)),
                           ),
                         ),
                       ),
@@ -201,13 +237,17 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
                         m['tipo'] == 'ENTREGA_LLENO'
                             ? Icons.south_west
                             : Icons.north_east,
-                        color: m['tipo'] == 'ENTREGA_LLENO' ? AppTheme.primary : AppTheme.success,
+                        color: m['tipo'] == 'ENTREGA_LLENO'
+                            ? AppTheme.primary
+                            : AppTheme.success,
                         size: 20,
                       ),
                       title: Text(m['tipo'] == 'ENTREGA_LLENO'
                           ? 'Entrega de ${m['cantidad']} lleno(s)'
                           : 'Devolución de ${m['cantidad']} vacío(s)'),
-                      subtitle: Text(_fecha(m['fecha'] as String?)),
+                      subtitle: Text(
+                        '${(m['clientes'] as Map?)?['nombre'] ?? ''} · ${fechaHora(parseFecha(m['fecha'] as String?))}',
+                      ),
                     ),
                   const SizedBox(height: 24),
                 ],
@@ -215,90 +255,72 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
             ),
     );
   }
-
-  String _fecha(String? iso) {
-    final f = DateTime.tryParse(iso ?? '');
-    if (f == null) return '';
-    return '${f.day}/${f.month}/${f.year} ${f.hour.toString().padLeft(2, '0')}:${f.minute.toString().padLeft(2, '0')}';
-  }
 }
 
+/// Hoja para registrar la cantidad devuelta.
 class _DevolucionSheet extends StatefulWidget {
-  final List<Map<String, dynamic>> saldos;
-  const _DevolucionSheet({required this.saldos});
+  final PendienteDevolucion pendiente;
+  final bool esFierro;
+
+  const _DevolucionSheet({required this.pendiente, required this.esFierro});
 
   @override
   State<_DevolucionSheet> createState() => _DevolucionSheetState();
 }
 
 class _DevolucionSheetState extends State<_DevolucionSheet> {
-  String? _clienteId;
-  final _cantidadCtrl = TextEditingController(text: '1');
+  late final TextEditingController _ctrl =
+      TextEditingController(text: '${widget.pendiente.cantidad}');
 
   @override
   void dispose() {
-    _cantidadCtrl.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
-  int get _maxSaldo {
-    for (final s in widget.saldos) {
-      if (s['cliente']?['id'] == _clienteId) return s['saldo'] as int;
+  void _confirmar() {
+    final cant = int.tryParse(_ctrl.text) ?? 0;
+    if (cant <= 0 || cant > widget.pendiente.cantidad) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Cantidad inválida (1 a ${widget.pendiente.cantidad}).')),
+      );
+      return;
     }
-    return 0;
+    Navigator.of(context).pop(cant);
   }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 20,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('Registrar devolución de balón vacío',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            initialValue: _clienteId,
-            decoration: const InputDecoration(labelText: 'Cliente'),
-            items: [
-              for (final s in widget.saldos)
-                DropdownMenuItem(
-                  value: (s['cliente'] as Map)['id'] as String,
-                  child: Text(
-                    '${(s['cliente'] as Map)['nombre']} — debe ${s['saldo']}',
-                  ),
-                ),
-            ],
-            onChanged: (v) => setState(() => _clienteId = v),
+          Text(
+            widget.esFierro
+                ? 'Devolución de fierro — ${widget.pendiente.nombre}'
+                : 'Devolución de balón vacío — ${widget.pendiente.nombre}',
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           TextField(
-            controller: _cantidadCtrl,
+            controller: _ctrl,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: 'Cantidad (máx. $_maxSaldo)',
+              labelText: 'Cantidad (máx. ${widget.pendiente.cantidad})',
             ),
           ),
           const SizedBox(height: 16),
           FilledButton(
-            onPressed: _clienteId == null
-                ? null
-                : () {
-                    final cant = int.tryParse(_cantidadCtrl.text) ?? 0;
-                    if (cant <= 0 || cant > _maxSaldo) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Cantidad inválida (1 a $_maxSaldo).')),
-                      );
-                      return;
-                    }
-                    Navigator.of(context).pop({
-                      'cliente_id': _clienteId,
-                      'cantidad': cant,
-                    });
-                  },
-            child: const Text('Registrar'),
+            onPressed: _confirmar,
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+            child: const Text('Registrar devolución'),
           ),
           const SizedBox(height: 8),
         ],

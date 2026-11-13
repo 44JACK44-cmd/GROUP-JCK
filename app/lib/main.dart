@@ -12,15 +12,21 @@ import 'features/auth/register_empresa_page.dart';
 import 'features/auth/welcome_page.dart';
 import 'features/balones/balones_page.dart';
 import 'features/clientes/clientes_page.dart';
+import 'features/deudas/deudas_page.dart';
 import 'features/finanzas/caja_page.dart';
 import 'features/finanzas/cobros_page.dart';
 import 'features/finanzas/combustible_page.dart';
+import 'features/home/home_moto_page.dart';
 import 'features/home/home_page.dart';
 import 'features/mas/mas_page.dart';
 import 'features/motorizados/motorizados_page.dart';
+import 'features/pedidos/historial_page.dart';
+import 'features/pedidos/mis_pedidos_page.dart';
+import 'features/pedidos/nuevo_pedido_page.dart';
 import 'features/pedidos/pedidos_page.dart';
+import 'features/rendicion/rendicion_page.dart';
 import 'features/reportes/reportes_page.dart';
-import 'features/reparto/reparto_page.dart';
+import 'features/shell/app_shell.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,6 +40,9 @@ class GasApp extends ConsumerStatefulWidget {
   const GasApp({super.key});
 
   static const _rutasPublicas = {'/welcome', '/login', '/registro-empresa'};
+
+  /// Pestañas que solo puede usar el administrador.
+  static const _rutasAdmin = {'/pedidos', '/clientes', '/cobros', '/mas'};
 
   @override
   ConsumerState<GasApp> createState() => _GasAppState();
@@ -160,12 +169,15 @@ class _GasAppState extends ConsumerState<GasApp> {
             return GasApp._rutasPublicas.contains(loc) ? null : '/welcome';
           case AuthStatus.autenticado:
             if (GasApp._rutasPublicas.contains(loc) || loc == '/splash') {
-              return auth.esMotorizado ? '/reparto' : '/home';
+              return '/inicio';
             }
-            // El motorizado no accede a las funciones de admin.
-            if (auth.esMotorizado && loc != '/reparto') return '/reparto';
-            // El admin no entra a la vista de reparto ni a motorizados como motorizado.
-            if (auth.esAdmin && loc == '/reparto') return '/home';
+            // El motorizado no entra a las pestañas de administración.
+            if (auth.esMotorizado &&
+                (GasApp._rutasAdmin.contains(loc) || loc == '/pedidos/nuevo')) {
+              return '/mis-pedidos';
+            }
+            // El administrador usa su propio menú "Más".
+            if (auth.esAdmin && loc == '/mas-moto') return '/mas';
             return null;
         }
       },
@@ -174,17 +186,36 @@ class _GasAppState extends ConsumerState<GasApp> {
         GoRoute(path: '/welcome', builder: (_, state) => const WelcomePage()),
         GoRoute(path: '/login', builder: (_, state) => const LoginPage()),
         GoRoute(path: '/registro-empresa', builder: (_, state) => const RegisterEmpresaPage()),
-        GoRoute(path: '/home', builder: (_, state) => const HomePage()),
-        GoRoute(path: '/motorizados', builder: (_, state) => const MotorizadosPage()),
-        GoRoute(path: '/clientes', builder: (_, state) => const ClientesPage()),
-        GoRoute(path: '/pedidos', builder: (_, state) => const PedidosPage()),
-        GoRoute(path: '/mas', builder: (_, state) => const MasPage()),
+
+        // ------- Barra inferior (pestañas) -------
+        ShellRoute(
+          builder: (context, state, child) => AppShell(
+            child: child,
+            location: state.uri.path,
+          ),
+          routes: [
+            GoRoute(path: '/inicio', builder: (_, state) => const _InicioPorRol()),
+            GoRoute(path: '/pedidos', builder: (_, state) => const PedidosPage()),
+            GoRoute(path: '/clientes', builder: (_, state) => const ClientesPage()),
+            GoRoute(path: '/cobros', builder: (_, state) => const CobrosPage()),
+            GoRoute(path: '/mas', builder: (_, state) => const MasPage()),
+            GoRoute(path: '/mis-pedidos', builder: (_, state) => const MisPedidosPage()),
+            GoRoute(path: '/historial', builder: (_, state) => const HistorialPage()),
+            GoRoute(path: '/mas-moto', builder: (_, state) => const MasMotoPage()),
+          ],
+        ),
+        // Ruta antigua: la pantalla de reparto ahora es "Mis pedidos".
+        GoRoute(path: '/reparto', redirect: (_, __) => '/mis-pedidos'),
+
+        // ------- Pantallas completas (sin barra inferior) -------
+        GoRoute(path: '/pedidos/nuevo', builder: (_, state) => const NuevoPedidoPage()),
         GoRoute(path: '/balones', builder: (_, state) => const BalonesPage()),
+        GoRoute(path: '/deudas', builder: (_, state) => const DeudasPage()),
         GoRoute(path: '/caja', builder: (_, state) => const CajaPage()),
-        GoRoute(path: '/cobros', builder: (_, state) => const CobrosPage()),
-        GoRoute(path: '/combustible', builder: (_, state) => const CombustiblePage()),
+        GoRoute(path: '/rendicion', builder: (_, state) => const RendicionPage()),
         GoRoute(path: '/reportes', builder: (_, state) => const ReportesPage()),
-        GoRoute(path: '/reparto', builder: (_, state) => const RepartoPage()),
+        GoRoute(path: '/motorizados', builder: (_, state) => const MotorizadosPage()),
+        GoRoute(path: '/combustible', builder: (_, state) => const CombustiblePage()),
       ],
     );
 
@@ -197,6 +228,19 @@ class _GasAppState extends ConsumerState<GasApp> {
   }
 }
 
+/// La pantalla de inicio depende del rol: el admin controla, el motorizado reparte.
+class _InicioPorRol extends ConsumerWidget {
+  const _InicioPorRol();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authProvider);
+    return auth.esMotorizado ? const HomeMotoPage() : const HomePage();
+  }
+}
+
+/// Rutas/páginas que se abren como modal (fuera de la barra inferior).
+/// Se usan con `abrirPagina` para no romper la navegación actual.
 class _Splash extends StatelessWidget {
   const _Splash();
 

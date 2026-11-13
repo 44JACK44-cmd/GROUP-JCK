@@ -1,12 +1,20 @@
+/// Caja del día: fondo, ingresos, egresos y balance esperado.
+///
+/// Los cobros de los pedidos entran solos a la caja (trigger de la base de
+/// datos), así que aquí no se duplica nada: solo se muestra.
+/// Solo ADMIN (RLS lo garantiza).
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
+import '../../core/data/caja_repo.dart';
+import '../../core/data/sb.dart';
+import '../../core/domain/formato.dart';
+import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
-/// Caja del día: fondo, ingresos, egresos y balance esperado.
-/// Solo ADMIN (RLS lo garantiza).
 class CajaPage extends ConsumerStatefulWidget {
   const CajaPage({super.key});
 
@@ -17,9 +25,8 @@ class CajaPage extends ConsumerStatefulWidget {
 class _CajaPageState extends ConsumerState<CajaPage> {
   Map<String, dynamic>? _caja;
   List<Map<String, dynamic>> _movimientos = [];
+  ResumenCaja _resumen = const ResumenCaja();
   bool _cargando = true;
-
-  SupabaseClient get _sb => Supabase.instance.client;
 
   @override
   void initState() {
@@ -29,45 +36,24 @@ class _CajaPageState extends ConsumerState<CajaPage> {
 
   Future<void> _cargar() async {
     try {
-      final caja = await _sb
-          .from('cajas')
-          .select('id, fecha_apertura, fondo_inicial, estado')
-          .eq('estado', 'ABIERTA')
-          .order('fecha_apertura', ascending: false)
-          .limit(1)
-          .maybeSingle();
-
-      List<Map<String, dynamic>> movs = [];
-      if (caja != null) {
-        final data = await _sb
-            .from('movimiento_caja')
-            .select('id, tipo, origen, monto, descripcion, fecha')
-            .eq('caja_id', caja['id'])
-            .order('fecha', ascending: false)
-            .limit(50);
-        movs = List<Map<String, dynamic>>.from(data);
-      }
+      final caja = await cajaRepo.cajaAbierta();
+      final movs = caja == null
+          ? <Map<String, dynamic>>[]
+          : await cajaRepo.movimientos(caja['id'] as String);
+      final resumen = await cajaRepo.resumen(caja: caja);
       if (!mounted) return;
       setState(() {
         _caja = caja;
         _movimientos = movs;
+        _resumen = resumen;
         _cargando = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
-      _error('No pudimos cargar la caja. Revisa tu conexión.');
+      _error(traducirError(e, contexto: 'No pudimos cargar la caja').mensaje);
     }
   }
-
-  double get _ingresos => _movimientos
-      .where((m) => m['tipo'] == 'INGRESO')
-      .fold(0.0, (s, m) => s + (m['monto'] as num).toDouble());
-  double get _egresos => _movimientos
-      .where((m) => m['tipo'] == 'EGRESO')
-      .fold(0.0, (s, m) => s + (m['monto'] as num).toDouble());
-  double get _esperado =>
-      ((_caja?['fondo_inicial'] as num?)?.toDouble() ?? 0) + _ingresos - _egresos;
 
   Future<void> _abrirCaja() async {
     final ctrl = TextEditingController(text: '0.00');
@@ -89,15 +75,18 @@ class _CajaPageState extends ConsumerState<CajaPage> {
         ],
       ),
     );
+    ctrl.dispose();
     if (fondo == null) return;
+    final auth = ref.read(authProvider);
     try {
-      await _sb.from('cajas').insert({
-        'empresa_id': ref.read(authProvider).empresaId,
-        'fondo_inicial': fondo,
-      });
+      await cajaRepo.abrir(
+        empresaId: auth.empresaId!,
+        usuarioId: auth.usuarioId!,
+        fondoInicial: fondo,
+      );
       _cargar();
-    } catch (_) {
-      _error('No se pudo abrir la caja.');
+    } catch (e) {
+      _error(traducirError(e, contexto: 'No pudimos abrir la caja').mensaje);
     }
   }
 
@@ -130,51 +119,46 @@ class _CajaPageState extends ConsumerState<CajaPage> {
         ],
       ),
     );
-    if (ok != true) return;
+    if (ok != true) {
+      montoCtrl.dispose();
+      descCtrl.dispose();
+      return;
+    }
     final monto = double.tryParse(montoCtrl.text) ?? 0;
+    final descripcion = descCtrl.text.trim();
+    montoCtrl.dispose();
+    descCtrl.dispose();
     if (monto <= 0) {
       _error('El monto debe ser mayor a cero.');
       return;
     }
+    final auth = ref.read(authProvider);
     try {
       if (esIngreso) {
-        await _sb.from('movimiento_caja').insert({
-          'empresa_id': ref.read(authProvider).empresaId,
-          'caja_id': _caja!['id'],
-          'tipo': 'INGRESO',
-          'origen': 'MANUAL',
-          'monto': monto,
-          'descripcion': descCtrl.text.trim().isEmpty ? null : descCtrl.text.trim(),
-          'usuario_id': ref.read(authProvider).usuarioId,
-        });
+        await cajaRepo.registrarIngreso(
+          empresaId: auth.empresaId!,
+          usuarioId: auth.usuarioId!,
+          cajaId: _caja!['id'] as String,
+          monto: monto,
+          descripcion: descripcion,
+        );
       } else {
-        // El gasto también descuenta de caja
-        final mov = await _sb.from('movimiento_caja').insert({
-          'empresa_id': ref.read(authProvider).empresaId,
-          'caja_id': _caja!['id'],
-          'tipo': 'EGRESO',
-          'origen': 'GASTO',
-          'monto': monto,
-          'descripcion': descCtrl.text.trim().isEmpty ? 'Gasto' : descCtrl.text.trim(),
-          'usuario_id': ref.read(authProvider).usuarioId,
-        }).select('id').single();
-        await _sb.from('gastos').insert({
-          'empresa_id': ref.read(authProvider).empresaId,
-          'descripcion': descCtrl.text.trim().isEmpty ? 'Gasto' : descCtrl.text.trim(),
-          'monto': monto,
-          'categoria': 'GENERAL',
-          'usuario_id': ref.read(authProvider).usuarioId,
-          'movimiento_caja_id': mov['id'],
-        });
+        await cajaRepo.registrarGasto(
+          empresaId: auth.empresaId!,
+          usuarioId: auth.usuarioId!,
+          cajaId: _caja!['id'] as String,
+          monto: monto,
+          descripcion: descripcion.isEmpty ? 'Gasto' : descripcion,
+        );
       }
       _cargar();
-    } catch (_) {
-      _error('No se pudo registrar el movimiento.');
+    } catch (e) {
+      _error(traducirError(e, contexto: 'No pudimos registrar el movimiento').mensaje);
     }
   }
 
   Future<void> _cerrarCaja() async {
-    final ctrl = TextEditingController(text: _esperado.toStringAsFixed(2));
+    final ctrl = TextEditingController(text: _resumen.saldo.toStringAsFixed(2));
     final declarado = await showDialog<double>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -182,7 +166,7 @@ class _CajaPageState extends ConsumerState<CajaPage> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Según el sistema deberías tener S/ ${_esperado.toStringAsFixed(2)}',
+            Text('Según el sistema deberías tener ${dinero(_resumen.saldo)}',
                 style: const TextStyle(color: Colors.black54)),
             const SizedBox(height: 10),
             TextField(
@@ -201,16 +185,18 @@ class _CajaPageState extends ConsumerState<CajaPage> {
         ],
       ),
     );
+    ctrl.dispose();
     if (declarado == null) return;
+    final auth = ref.read(authProvider);
     try {
-      await _sb.from('cajas').update({
-        'estado': 'CERRADA',
-        'fecha_cierre': DateTime.now().toIso8601String(),
-        'monto_declarado': declarado,
-      }).eq('id', _caja!['id']);
+      await cajaRepo.cerrar(
+        cajaId: _caja!['id'] as String,
+        usuarioId: auth.usuarioId!,
+        montoDeclarado: declarado,
+      );
       _cargar();
-    } catch (_) {
-      _error('No se pudo cerrar la caja.');
+    } catch (e) {
+      _error(traducirError(e, contexto: 'No pudimos cerrar la caja').mensaje);
     }
   }
 
@@ -237,24 +223,32 @@ class _CajaPageState extends ConsumerState<CajaPage> {
               : RefreshIndicator(
                   onRefresh: _cargar,
                   child: ListView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                     children: [
-                      // Resumen
+                      // ---- Resumen del dinero ----
                       Card(
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Column(
                             children: [
-                              _FilaResumen('Fondo inicial',
-                                  'S/ ${((_caja!['fondo_inicial'] as num?)?.toStringAsFixed(2) ?? '0.00')}'),
-                              _FilaResumen('Ingresos', 'S/ ${_ingresos.toStringAsFixed(2)}',
+                              FilaValor('Total cobrado', dinero(_resumen.totalCobrado),
+                                  destacado: true),
+                              FilaValor('Efectivo', dinero(_resumen.efectivo)),
+                              FilaValor('Yape', dinero(_resumen.yape), color: AppTheme.info),
+                              if (_resumen.otros > 0)
+                                FilaValor('Otros', dinero(_resumen.otros)),
+                              FilaValor('Deudas', dinero(_resumen.deudas),
+                                  color: _resumen.deudas > 0 ? AppTheme.danger : null),
+                              FilaValor('Gastos', dinero(_resumen.gastos), color: AppTheme.danger),
+                              const Divider(height: 20),
+                              FilaValor('Fondo inicial',
+                                  dinero(_resumen.fondoInicial)),
+                              FilaValor('Ingresos', dinero(_resumen.ingresos),
                                   color: AppTheme.success),
-                              _FilaResumen('Egresos', 'S/ ${_egresos.toStringAsFixed(2)}',
+                              FilaValor('Egresos', dinero(_resumen.egresos),
                                   color: AppTheme.danger),
                               const Divider(height: 20),
-                              _FilaResumen('Debería haber',
-                                  'S/ ${_esperado.toStringAsFixed(2)}',
-                                  destacado: true),
+                              FilaValor('Saldo', dinero(_resumen.saldo), destacado: true),
                             ],
                           ),
                         ),
@@ -313,7 +307,7 @@ class _CajaPageState extends ConsumerState<CajaPage> {
                                   _labelOrigen(m['origen'] as String? ?? '')),
                               subtitle: Text(_labelOrigen(m['origen'] as String? ?? '')),
                               trailing: Text(
-                                '${m['tipo'] == 'INGRESO' ? '+' : '-'}S/ ${(m['monto'] as num).toStringAsFixed(2)}',
+                                '${m['tipo'] == 'INGRESO' ? '+' : '-'}S/ ${(m['monto'] as num? ?? 0).toStringAsFixed(2)}',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: m['tipo'] == 'INGRESO'
@@ -327,34 +321,6 @@ class _CajaPageState extends ConsumerState<CajaPage> {
                     ],
                   ),
                 ),
-    );
-  }
-}
-
-class _FilaResumen extends StatelessWidget {
-  final String label;
-  final String valor;
-  final Color? color;
-  final bool destacado;
-
-  const _FilaResumen(this.label, this.valor, {this.color, this.destacado = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: TextStyle(
-              color: destacado ? Colors.black : Colors.black54,
-              fontWeight: destacado ? FontWeight.bold : FontWeight.normal)),
-          Text(valor, style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: destacado ? 20 : 15,
-              color: color ?? (destacado ? AppTheme.primary : Colors.black87))),
-        ],
-      ),
     );
   }
 }
@@ -373,8 +339,7 @@ class _CajaCerrada extends StatelessWidget {
         const SizedBox(height: 16),
         const Center(
           child: Text('La caja está cerrada.\nÁbrela para registrar el dinero del día.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black54)),
+              textAlign: TextAlign.center, style: TextStyle(color: Colors.black54)),
         ),
         const SizedBox(height: 24),
         FilledButton.icon(

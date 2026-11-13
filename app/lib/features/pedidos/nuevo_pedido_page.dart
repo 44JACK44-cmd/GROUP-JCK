@@ -1,70 +1,99 @@
+/// Registro rápido de pedido.
+///
+/// Formulario corto: cliente → producto y cantidad → precio → forma de pago.
+/// El precio sale del precio habitual del cliente y se puede modificar.
+/// La prioridad NO se pregunta: se calcula por antigüedad.
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../app/theme.dart';
+import '../../core/data/clientes_repo.dart';
+import '../../core/data/pedidos_repo.dart';
+import '../../core/data/sb.dart';
+import '../../core/domain/formato.dart';
 import '../../core/offline/outbox.dart';
 import '../auth/auth_controller.dart';
 import '../clientes/cliente_form_page.dart';
 
-class _LineaPedido {
+/// Una línea del pedido: producto + cantidad + precio.
+class LineaPedidoUI {
   final String productoId;
   final String nombre;
-  int cantidad = 0;
-  double precio;
-  _LineaPedido({required this.productoId, required this.nombre, required this.precio});
+  final int cantidad;
+  final double precio;
+
+  const LineaPedidoUI({
+    required this.productoId,
+    required this.nombre,
+    required this.cantidad,
+    required this.precio,
+  });
+
+  LineaPedidoUI copyWith({int? cantidad, double? precio}) => LineaPedidoUI(
+        productoId: productoId,
+        nombre: nombre,
+        cantidad: cantidad ?? this.cantidad,
+        precio: precio ?? this.precio,
+      );
 }
 
-/// Registro rápido de pedido: buscar cliente → tocar productos → guardar.
-/// Si no hay internet, el pedido queda en cola y se sincroniza solo.
 class NuevoPedidoPage extends ConsumerStatefulWidget {
-  const NuevoPedidoPage({super.key});
+  /// Cliente preseleccionado (viene de la ficha del cliente).
+  final Map<String, dynamic>? clienteInicial;
+
+  const NuevoPedidoPage({super.key, this.clienteInicial});
 
   @override
   ConsumerState<NuevoPedidoPage> createState() => _NuevoPedidoPageState();
 }
 
 class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
-  final _busquedaClienteCtrl = TextEditingController();
+  final _busquedaCtrl = TextEditingController();
   final _observacionesCtrl = TextEditingController();
-
-  SupabaseClient get _sb => Supabase.instance.client;
 
   Map<String, dynamic>? _cliente;
   List<Map<String, dynamic>> _sugerencias = [];
   List<Map<String, dynamic>> _productos = [];
-  List<_LineaPedido> _lineas = [];
+  Map<String, double> _preciosCliente = {};
+  List<LineaPedidoUI> _lineas = [];
   String? _formaPago;
   bool _cargandoProductos = true;
   bool _guardando = false;
   bool _buscandoCliente = false;
 
+  /// Formas de pago que el administrador puede dejar anotadas al crear el pedido.
   static const _formasPago = {
-    'EFECTIVO': 'Efectivo',
-    'YAPE': 'Yape',
-    'PLIN': 'Plin',
-    'TRANSFERENCIA': 'Transferencia',
-    'OTRO': 'Otro',
+    'EFECTIVO': '💵 Efectivo',
+    'YAPE': '📱 Yape',
+    'DEUDA': '🟠 Quedó debiendo',
+    'OTRO': '💳 Otro',
   };
 
   @override
   void initState() {
     super.initState();
     _cargarProductos();
+    final inicial = widget.clienteInicial;
+    if (inicial != null) {
+      // Cliente ya elegido: se muestran sus productos con su precio.
+      _seleccionarCliente(inicial);
+    }
   }
 
   @override
   void dispose() {
-    _busquedaClienteCtrl.dispose();
+    _busquedaCtrl.dispose();
     _observacionesCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _cargarProductos() async {
     try {
-      final data = await _sb
+      final data = await sb
           .from('productos')
           .select('id, nombre, capacidad_kg, precio_base')
           .eq('activo', true)
@@ -74,7 +103,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
         _productos = List<Map<String, dynamic>>.from(data);
         _cargandoProductos = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _cargandoProductos = false);
       _error('No pudimos cargar los productos. Revisa tu conexión.');
@@ -89,16 +118,10 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
     }
     setState(() => _buscandoCliente = true);
     try {
-      final data = await _sb
-          .from('clientes')
-          .select('id, nombre, telefono, direccion')
-          .eq('activo', true)
-          .or('nombre.ilike.%$q%,telefono.ilike.%$q%')
-          .order('nombre')
-          .limit(8);
+      final data = await clientesRepo.buscar(q);
       if (!mounted) return;
       setState(() {
-        _sugerencias = List<Map<String, dynamic>>.from(data);
+        _sugerencias = data;
         _buscandoCliente = false;
       });
     } catch (_) {
@@ -111,60 +134,51 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
     setState(() {
       _cliente = cliente;
       _sugerencias = [];
-      _busquedaClienteCtrl.clear();
+      _busquedaCtrl.clear();
       _lineas = [];
     });
-    await _cargarPreciosCliente(cliente['id'] as String);
-  }
-
-  /// Aplica precios especiales del cliente sobre el precio base.
-  Future<void> _cargarPreciosCliente(String clienteId) async {
     try {
-      final data = await _sb
-          .from('precios_cliente')
-          .select('producto_id, precio')
-          .eq('cliente_id', clienteId);
-      final especiales = {
-        for (final p in data) p['producto_id'] as String: (p['precio'] as num).toDouble(),
-      };
-      if (!mounted) return;
-      setState(() {
-        _lineas = _productos.map((p) {
-          final id = p['id'] as String;
-          return _LineaPedido(
-            productoId: id,
-            nombre: _nombreProducto(p),
-            precio: especiales[id] ?? (p['precio_base'] as num).toDouble(),
-          );
-        }).toList();
-      });
+      _preciosCliente = await clientesRepo.preciosDe(cliente['id'] as String);
     } catch (_) {
-      // Si falla la carga de precios especiales, usar precio base.
-      if (!mounted) return;
-      setState(() {
-        _lineas = _productos.map((p) => _LineaPedido(
-              productoId: p['id'] as String,
-              nombre: _nombreProducto(p),
-              precio: (p['precio_base'] as num).toDouble(),
-            )).toList();
-      });
+      _preciosCliente = {};
     }
+    if (!mounted) return;
+    setState(() {
+      _lineas = _productos
+          .map((p) => LineaPedidoUI(
+                productoId: p['id'] as String,
+                nombre: _nombreProducto(p),
+                cantidad: 0,
+                precio: _preciosCliente[p['id'] as String] ??
+                    (p['precio_base'] as num? ?? 0).toDouble(),
+              ))
+          .toList();
+    });
   }
 
   String _nombreProducto(Map<String, dynamic> p) {
     final kg = p['capacidad_kg'];
-    return kg == null ? p['nombre'] as String : '${p['nombre']} (${kg}kg)';
+    final nombre = p['nombre'] as String? ?? 'Producto';
+    return kg == null ? nombre : '$nombre (${kg}kg)';
   }
 
   double get _total => _lineas.fold(0, (s, l) => s + l.cantidad * l.precio);
 
-  Future<void> _nuevoClienteRapido() async {
+  int get _cantidadTotal => _lineas.fold(0, (s, l) => s + l.cantidad);
+
+  Future<void> _nuevoCliente() async {
     final cambio = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const ClienteFormPage()),
     );
-    if (cambio == true && _busquedaClienteCtrl.text.trim().isNotEmpty) {
-      await _buscarClientes(_busquedaClienteCtrl.text);
+    if (cambio == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cliente creado. Búscalo para hacer el pedido.')),
+      );
     }
+  }
+
+  void _actualizarLinea(int indice, LineaPedidoUI linea) {
+    setState(() => _lineas[indice] = linea);
   }
 
   Future<void> _guardar() async {
@@ -175,7 +189,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
     }
     final items = _lineas.where((l) => l.cantidad > 0).toList();
     if (items.isEmpty) {
-      _error('Agrega al menos un producto al pedido.');
+      _error('Agrega al menos una cantidad de producto.');
       return;
     }
     if (items.any((l) => l.precio <= 0)) {
@@ -186,6 +200,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
     setState(() => _guardando = true);
     final auth = ref.read(authProvider);
     final total = items.fold<double>(0, (s, l) => s + l.cantidad * l.precio);
+    final uuid = const Uuid().v4();
 
     final pedido = {
       'empresa_id': auth.empresaId,
@@ -196,10 +211,11 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
           ? null
           : _observacionesCtrl.text.trim(),
       'total': total,
-      'uuid_offline': const Uuid().v4(),
+      'uuid_offline': uuid,
     };
     final detalles = items
         .map((l) => {
+              'empresa_id': auth.empresaId,
               'producto_id': l.productoId,
               'cantidad': l.cantidad,
               'precio_unitario': l.precio,
@@ -207,21 +223,44 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
         .toList();
 
     try {
-      final insertado = await _sb.from('pedidos').insert(pedido).select('id').single();
-      final pedidoId = insertado['id'] as String;
-      for (final d in detalles) {
-        await _sb.from('detalle_pedido').insert({...d, 'pedido_id': pedidoId});
-      }
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-    } catch (_) {
-      // Sin internet: encolar para sincronizar después.
-      await Outbox.encolarPedido(pedido: pedido, detalles: detalles);
+      await pedidosRepo.crear(
+        empresaId: auth.empresaId!,
+        clienteId: cliente['id'] as String,
+        usuarioId: auth.usuarioId!,
+        lineas: items
+            .map((l) => LineaPedido(
+                  productoId: l.productoId,
+                  nombre: l.nombre,
+                  cantidad: l.cantidad,
+                  precioUnitario: l.precio,
+                ))
+            .toList(),
+        total: total,
+        formaPago: _formaPago,
+        observaciones: _observacionesCtrl.text.trim(),
+        uuidOffline: uuid,
+      );
       if (!mounted) return;
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sin conexión: pedido guardado y se enviará automáticamente.')),
+        const SnackBar(content: Text('Pedido registrado.')),
       );
+    } catch (e) {
+      if (esErrorDeRed(e)) {
+        // Sin conexión: se encola para enviarse sola.
+        await Outbox.encolarPedido(pedido: pedido, detalles: detalles);
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sin conexión: el pedido quedó guardado y se enviará solo.'),
+          ),
+        );
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _guardando = false);
+      _error(traducirError(e, contexto: 'No pudimos registrar el pedido').mensaje);
     }
   }
 
@@ -239,31 +278,26 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
               children: [
                 Expanded(
                   child: ListView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                     children: [
                       _seccionCliente(),
-                      const SizedBox(height: 16),
-                      _seccionProductos(),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _observacionesCtrl,
-                        maxLines: 2,
-                        decoration: const InputDecoration(
-                          labelText: 'Observaciones',
-                          hintText: 'Ej. Dejar con el portero',
+                      const SizedBox(height: 14),
+                      if (_cliente != null) _seccionProductos(),
+                      if (_cliente != null) ...[
+                        const SizedBox(height: 14),
+                        _seccionPago(),
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _observacionesCtrl,
+                          maxLines: 2,
+                          decoration: const InputDecoration(
+                            labelText: 'Observaciones (opcional)',
+                            hintText: 'Ej. Dejar con el portero',
+                            prefixIcon: Icon(Icons.notes_outlined),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        initialValue: _formaPago,
-                        decoration: const InputDecoration(labelText: 'Forma de pago (opcional)'),
-                        items: [
-                          for (final e in _formasPago.entries)
-                            DropdownMenuItem(value: e.key, child: Text(e.value)),
-                        ],
-                        onChanged: (v) => setState(() => _formaPago = v),
-                      ),
-                      const SizedBox(height: 90),
+                      ],
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),
@@ -282,10 +316,11 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Cliente', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             if (c == null) ...[
               TextField(
-                controller: _busquedaClienteCtrl,
+                controller: _busquedaCtrl,
+                textCapitalization: TextCapitalization.words,
                 onChanged: _buscarClientes,
                 decoration: InputDecoration(
                   hintText: 'Nombre o teléfono',
@@ -293,7 +328,11 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
                   suffixIcon: _buscandoCliente
                       ? const Padding(
                           padding: EdgeInsets.all(12),
-                          child: SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2)),
+                          child: SizedBox(
+                            height: 18,
+                            width: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
                         )
                       : null,
                 ),
@@ -302,6 +341,13 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
                 ..._sugerencias.map((s) => ListTile(
                       dense: true,
                       contentPadding: EdgeInsets.zero,
+                      leading: CircleAvatar(
+                        backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
+                        child: Text(
+                          (s['nombre'] as String? ?? '?')[0].toUpperCase(),
+                          style: const TextStyle(color: AppTheme.primary),
+                        ),
+                      ),
                       title: Text(s['nombre'] as String? ?? ''),
                       subtitle: Text([
                         if (s['telefono'] != null) s['telefono'],
@@ -312,12 +358,12 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
-                  onPressed: _nuevoClienteRapido,
+                  onPressed: _nuevoCliente,
                   icon: const Icon(Icons.person_add_alt_1, size: 18),
                   label: const Text('Cliente nuevo'),
                 ),
               ),
-            ] else ...[
+            ] else
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
@@ -338,7 +384,6 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
                   child: const Text('Cambiar'),
                 ),
               ),
-            ],
           ],
         ),
       ),
@@ -346,27 +391,68 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
   }
 
   Widget _seccionProductos() {
-    if (_lineas.isEmpty) {
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Center(
-            child: Text('Selecciona primero al cliente.',
-                style: TextStyle(color: Colors.black54)),
-          ),
-        ),
-      );
-    }
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Productos', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
-            for (final l in _lineas)
-              _FilaProducto(linea: l, onCambio: () => setState(() {})),
+            Row(
+              children: [
+                Text('Producto y cantidad', style: Theme.of(context).textTheme.titleMedium),
+                const Spacer(),
+                if (_preciosCliente.isNotEmpty)
+                  const Text('Precio del cliente',
+                      style: TextStyle(color: Colors.black45, fontSize: 12)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            for (var i = 0; i < _lineas.length; i++)
+              _FilaProducto(
+                linea: _lineas[i],
+                esPrecioCliente: _preciosCliente.containsKey(_lineas[i].productoId),
+                onCambio: (nueva) => _actualizarLinea(i, nueva),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _seccionPago() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Forma de pago esperada', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final e in _formasPago.entries)
+                  ChoiceChip(
+                    label: Text(e.value),
+                    selected: _formaPago == e.key,
+                    selectedColor: AppTheme.primary.withValues(alpha: 0.15),
+                    labelStyle: TextStyle(
+                      color: _formaPago == e.key ? AppTheme.primary : Colors.black87,
+                      fontWeight: _formaPago == e.key ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                    onSelected: (v) => setState(() => _formaPago = v ? e.key : null),
+                  ),
+              ],
+            ),
+            if (_formaPago == 'DEUDA')
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'Quedará registrado como deuda. Podrás cobrarla luego.',
+                  style: TextStyle(color: Colors.black54, fontSize: 12),
+                ),
+              ),
           ],
         ),
       ),
@@ -375,7 +461,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
 
   Widget _barraInferior() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Color(0xFFE6E8E5))),
@@ -387,19 +473,28 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Total', style: TextStyle(color: Colors.black54, fontSize: 13)),
-                Text('S/ ${_total.toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primary)),
+                Text(
+                  '$_cantidadTotal balón(es)',
+                  style: const TextStyle(color: Colors.black54, fontSize: 13),
+                ),
+                Text(
+                  dinero(_total),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primary,
+                  ),
+                ),
               ],
             ),
             const Spacer(),
             FilledButton.icon(
-              onPressed: _guardando ? null : _guardar,
+              onPressed: _guardando || _cliente == null ? null : _guardar,
               icon: const Icon(Icons.check),
               label: Text(_guardando ? 'Guardando…' : 'Guardar pedido'),
               style: FilledButton.styleFrom(
                 minimumSize: const Size(0, 50),
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.symmetric(horizontal: 22),
               ),
             ),
           ],
@@ -409,48 +504,22 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
   }
 }
 
-class _FilaProducto extends StatefulWidget {
-  final _LineaPedido linea;
-  final VoidCallback onCambio;
-  const _FilaProducto({required this.linea, required this.onCambio});
+/// Fila de producto: cantidad con +/- y precio editable.
+class _FilaProducto extends StatelessWidget {
+  final LineaPedidoUI linea;
+  final bool esPrecioCliente;
+  final ValueChanged<LineaPedidoUI> onCambio;
 
-  @override
-  State<_FilaProducto> createState() => _FilaProductoState();
-}
-
-class _FilaProductoState extends State<_FilaProducto> {
-  late final TextEditingController _precioCtrl;
-  late int _cantidad;
-
-  @override
-  void initState() {
-    super.initState();
-    _cantidad = widget.linea.cantidad;
-    _precioCtrl = TextEditingController(text: widget.linea.precio.toStringAsFixed(2));
-  }
-
-  @override
-  void dispose() {
-    _precioCtrl.dispose();
-    super.dispose();
-  }
-
-  void _actualizarPrecio() {
-    widget.linea.precio = double.tryParse(_precioCtrl.text) ?? 0;
-    widget.onCambio();
-  }
-
-  void _cambiarCantidad(int delta) {
-    setState(() => _cantidad = (_cantidad + delta).clamp(0, 999));
-    widget.linea.cantidad = _cantidad;
-    widget.onCambio();
-  }
+  const _FilaProducto({
+    required this.linea,
+    required this.esPrecioCliente,
+    required this.onCambio,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final l = widget.linea;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
           Expanded(
@@ -458,47 +527,92 @@ class _FilaProductoState extends State<_FilaProducto> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(l.nombre, style: const TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 6),
-                SizedBox(
-                  width: 110,
-                  child: TextField(
-                    controller: _precioCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                    decoration: const InputDecoration(
-                      isDense: true,
-                      prefixText: 'S/ ',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                Text(linea.nombre, style: const TextStyle(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    SizedBox(
+                      width: 96,
+                      child: _PrecioCampo(
+                        valor: linea.precio,
+                        onChanged: (v) => onCambio(linea.copyWith(precio: v)),
+                      ),
                     ),
-                    onChanged: (_) => _actualizarPrecio(),
-                  ),
+                    if (esPrecioCliente)
+                      const Padding(
+                        padding: EdgeInsets.only(left: 6),
+                        child: Icon(Icons.bookmark, size: 14, color: AppTheme.info),
+                      ),
+                  ],
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
           Row(
             children: [
               IconButton(
                 visualDensity: VisualDensity.compact,
-                onPressed: _cantidad > 0 ? () => _cambiarCantidad(-1) : null,
+                onPressed: linea.cantidad > 0
+                    ? () => onCambio(linea.copyWith(cantidad: linea.cantidad - 1))
+                    : null,
                 icon: const Icon(Icons.remove_circle_outline),
               ),
               SizedBox(
-                width: 28,
-                child: Text('$_cantidad', textAlign: TextAlign.center,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                width: 26,
+                child: Text(
+                  '${linea.cantidad}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,
-                onPressed: () => _cambiarCantidad(1),
+                onPressed: () => onCambio(linea.copyWith(cantidad: linea.cantidad + 1)),
                 icon: const Icon(Icons.add_circle_outline),
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Campo de precio con su propio controlador.
+class _PrecioCampo extends StatefulWidget {
+  final double valor;
+  final ValueChanged<double> onChanged;
+
+  const _PrecioCampo({required this.valor, required this.onChanged});
+
+  @override
+  State<_PrecioCampo> createState() => _PrecioCampoState();
+}
+
+class _PrecioCampoState extends State<_PrecioCampo> {
+  late final TextEditingController _ctrl = TextEditingController(
+    text: widget.valor.toStringAsFixed(2),
+  );
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _ctrl,
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+      decoration: const InputDecoration(
+        isDense: true,
+        prefixText: 'S/ ',
+        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      ),
+      onChanged: (t) => widget.onChanged(double.tryParse(t) ?? 0),
     );
   }
 }

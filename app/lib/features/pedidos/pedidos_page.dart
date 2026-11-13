@@ -1,65 +1,87 @@
+/// Pedidos del administrador.
+///
+/// Cuatro grupos claros: Pendientes · En camino · Completados · Cancelados.
+/// Los pendientes van de más antiguos a más recientes: lo que más lleva
+/// esperando se atiende primero.
+library;
+
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
+import '../../core/data/pedidos_repo.dart';
+import '../../core/data/sb.dart';
+import '../../core/domain/estado_pedido.dart';
+import '../../core/domain/formato.dart';
+import '../../core/ui/widgets.dart';
 import 'nuevo_pedido_page.dart';
 import 'pedido_detalle_page.dart';
 
-/// Lista de pedidos de la empresa con filtro por estado.
-class PedidosPage extends StatefulWidget {
+class PedidosPage extends ConsumerStatefulWidget {
   const PedidosPage({super.key});
 
   @override
-  State<PedidosPage> createState() => _PedidosPageState();
+  ConsumerState<PedidosPage> createState() => _PedidosPageState();
 }
 
-class _PedidosPageState extends State<PedidosPage> {
-  final _filtros = ['TODOS', 'NUEVO', 'ASIGNADO', 'EN_CAMINO', 'ENTREGADO'];
-  String _filtro = 'TODOS';
+class _PedidosPageState extends ConsumerState<PedidosPage> {
+  GrupoPedido _grupo = GrupoPedido.pendientes;
   List<Map<String, dynamic>> _pedidos = [];
   bool _cargando = true;
-
-  SupabaseClient get _sb => Supabase.instance.client;
-
-  static const _labels = {
-    'NUEVO': 'Nuevo',
-    'ASIGNADO': 'Asignado',
-    'EN_CAMINO': 'En camino',
-    'ENTREGADO': 'Entregado',
-    'CANCELADO': 'Cancelado',
-  };
-
-  static const _colores = {
-    'NUEVO': AppTheme.info,
-    'ASIGNADO': AppTheme.warning,
-    'EN_CAMINO': AppTheme.warning,
-    'ENTREGADO': AppTheme.success,
-    'CANCELADO': AppTheme.danger,
-  };
+  RealtimeChannel? _canal;
 
   @override
   void initState() {
     super.initState();
     _cargar();
+    _escucharRealtime();
+  }
+
+  @override
+  void dispose() {
+    _canal?.unsubscribe();
+    super.dispose();
+  }
+
+  /// Actualiza la lista cuando el motorizado entrega o asigna un pedido.
+  void _escucharRealtime() {
+    try {
+      _canal = sb
+          .channel('pedidos-admin')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'pedidos',
+            callback: (_) {
+              if (mounted) _cargar();
+            },
+          )
+          .subscribe();
+    } catch (_) {
+      // Si Realtime no está disponible, la lista se actualiza al tirar hacia abajo.
+    }
   }
 
   Future<void> _cargar() async {
     try {
-      var query = _sb
-          .from('pedidos')
-          .select('id, numero, fecha, total, estado, forma_pago, clientes(nombre, telefono)');
-      if (_filtro != 'TODOS') query = query.eq('estado', _filtro);
-      final data = await query.order('fecha', ascending: false).limit(200);
+      final data = await pedidosRepo.listar(
+        estados: _grupo.estados,
+        masAntigosPrimero: _grupo == GrupoPedido.pendientes,
+        limite: 200,
+      );
       if (!mounted) return;
       setState(() {
-        _pedidos = List<Map<String, dynamic>>.from(data);
+        _pedidos = data;
         _cargando = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No pudimos cargar los pedidos. Revisa tu conexión.')),
+        SnackBar(content: Text(traducirError(e, contexto: 'No pudimos cargar los pedidos').mensaje)),
       );
     }
   }
@@ -68,7 +90,14 @@ class _PedidosPageState extends State<PedidosPage> {
     final creado = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const NuevoPedidoPage()),
     );
-    if (creado == true) _cargar();
+    if (creado == true) {
+      _cargar();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pedido registrado.')),
+        );
+      }
+    }
   }
 
   Future<void> _abrirDetalle(Map<String, dynamic> pedido) async {
@@ -81,125 +110,85 @@ class _PedidosPageState extends State<PedidosPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pedidos')),
+      appBar: AppBar(
+        title: const Text('Pedidos'),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(56),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final g in GrupoPedido.values)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(g.label),
+                        avatar: Icon(g.icono, size: 16),
+                        selected: _grupo == g,
+                        selectedColor: AppTheme.primary.withValues(alpha: 0.15),
+                        labelStyle: TextStyle(
+                          color: _grupo == g ? AppTheme.primary : Colors.black87,
+                          fontWeight: _grupo == g ? FontWeight.w600 : FontWeight.normal,
+                        ),
+                        onSelected: (_) {
+                          setState(() {
+                            _grupo = g;
+                            _cargando = true;
+                          });
+                          _cargar();
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _nuevoPedido,
         backgroundColor: AppTheme.primary,
         icon: const Icon(Icons.add),
-        label: const Text('Nuevo'),
+        label: const Text('Nuevo pedido'),
       ),
-      body: Column(
-        children: [
-          SizedBox(
-            height: 52,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              children: [
-                for (final f in _filtros)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(_labels[f] ?? f),
-                      selected: _filtro == f,
-                      selectedColor: AppTheme.primary.withValues(alpha: 0.15),
-                      labelStyle: TextStyle(
-                        color: _filtro == f ? AppTheme.primary : Colors.black87,
-                        fontWeight: _filtro == f ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                      onSelected: (_) {
-                        setState(() {
-                          _filtro = f;
-                          _cargando = true;
-                        });
-                        _cargar();
-                      },
-                    ),
+      body: _cargando
+          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          : _pedidos.isEmpty
+              ? EstadoVacio(
+                  icono: Icons.receipt_long_outlined,
+                  titulo: 'No hay pedidos en "${_grupo.label}"',
+                  mensaje: _grupo == GrupoPedido.pendientes
+                      ? 'Toca "Nuevo pedido" para registrar el primero.'
+                      : null,
+                )
+              : RefreshIndicator(
+                  onRefresh: _cargar,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                    itemCount: _pedidos.length,
+                    separatorBuilder: (_, i) => const SizedBox(height: 10),
+                    itemBuilder: (context, i) {
+                      final p = _pedidos[i];
+                      return TarjetaPedido(
+                        pedido: p,
+                        onTap: () => _abrirDetalle(p),
+                        mostrarPrioridad: _grupo == GrupoPedido.pendientes,
+                        trailer: _grupo == GrupoPedido.pendientes
+                            ? Text(
+                                antiguedad(parseFecha(p['fecha'])),
+                                style: const TextStyle(
+                                  color: Colors.black54,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              )
+                            : null,
+                      );
+                    },
                   ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: _cargando
-                ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-                : _pedidos.isEmpty
-                    ? const _Vacio()
-                    : RefreshIndicator(
-                        onRefresh: _cargar,
-                        child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
-                          itemCount: _pedidos.length,
-                          separatorBuilder: (_, i) => const SizedBox(height: 10),
-                          itemBuilder: (context, i) {
-                            final p = _pedidos[i];
-                            final cliente = p['clientes'] as Map<String, dynamic>?;
-                            final estado = p['estado'] as String? ?? '';
-                            final color = _colores[estado] ?? Colors.black54;
-                            final fecha = DateTime.tryParse(p['fecha'] as String? ?? '');
-                            return Card(
-                              child: ListTile(
-                                title: Text(
-                                  cliente?['nombre'] as String? ?? 'Cliente',
-                                  style: const TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                subtitle: Text(
-                                  [
-                                    '#${p['numero']}',
-                                    if (fecha != null)
-                                      '${fecha.day}/${fecha.month} ${fecha.hour.toString().padLeft(2, '0')}:${fecha.minute.toString().padLeft(2, '0')}',
-                                    if (cliente?['telefono'] != null) cliente!['telefono'],
-                                  ].join('  ·  '),
-                                ),
-                                trailing: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text('S/ ${(p['total'] as num? ?? 0).toStringAsFixed(2)}',
-                                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: color.withValues(alpha: 0.12),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: Text(_labels[estado] ?? estado,
-                                          style: TextStyle(
-                                              color: color, fontSize: 11, fontWeight: FontWeight.w600)),
-                                    ),
-                                  ],
-                                ),
-                                onTap: () => _abrirDetalle(p),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _Vacio extends StatelessWidget {
-  const _Vacio();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      children: const [
-        SizedBox(height: 120),
-        Icon(Icons.receipt_long_outlined, size: 56, color: Colors.black26),
-        SizedBox(height: 12),
-        Center(
-          child: Text(
-            'No hay pedidos en esta categoría.\nToca "Nuevo" para registrar el primero.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.black54),
-          ),
-        ),
-      ],
+                ),
     );
   }
 }
