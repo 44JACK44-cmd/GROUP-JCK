@@ -30,6 +30,7 @@ class _ClienteFormPageState extends ConsumerState<ClienteFormPage> {
   late final TextEditingController _telefono;
   late final TextEditingController _direccion;
   late final TextEditingController _referencia;
+  late final TextEditingController _zona;
   late final TextEditingController _observaciones;
 
   double? _latitud;
@@ -56,6 +57,7 @@ class _ClienteFormPageState extends ConsumerState<ClienteFormPage> {
     _telefono = TextEditingController(text: c?['telefono'] as String? ?? '');
     _direccion = TextEditingController(text: c?['direccion'] as String? ?? '');
     _referencia = TextEditingController(text: c?['referencia'] as String? ?? '');
+    _zona = TextEditingController(text: c?['zona'] as String? ?? '');
     _observaciones = TextEditingController(text: c?['observaciones'] as String? ?? '');
     _latitud = (c?['latitud'] as num?)?.toDouble();
     _longitud = (c?['longitud'] as num?)?.toDouble();
@@ -65,7 +67,7 @@ class _ClienteFormPageState extends ConsumerState<ClienteFormPage> {
 
   @override
   void dispose() {
-    for (final c in [_nombre, _telefono, _direccion, _referencia, _observaciones]) {
+    for (final c in [_nombre, _telefono, _direccion, _referencia, _zona, _observaciones]) {
       c.dispose();
     }
     super.dispose();
@@ -147,6 +149,7 @@ class _ClienteFormPageState extends ConsumerState<ClienteFormPage> {
           tipo: _tipo,
           direccion: _direccion.text.trim().isEmpty ? null : _direccion.text.trim(),
           referencia: _referencia.text.trim().isEmpty ? null : _referencia.text.trim(),
+          zona: _zona.text.trim().isEmpty ? null : _zona.text.trim(),
           latitud: _latitud,
           longitud: _longitud,
           observaciones: _observaciones.text.trim().isEmpty ? null : _observaciones.text.trim(),
@@ -160,6 +163,7 @@ class _ClienteFormPageState extends ConsumerState<ClienteFormPage> {
           tipo: _tipo,
           direccion: _direccion.text.trim().isEmpty ? null : _direccion.text.trim(),
           referencia: _referencia.text.trim().isEmpty ? null : _referencia.text.trim(),
+          zona: _zona.text.trim().isEmpty ? null : _zona.text.trim(),
           latitud: _latitud,
           longitud: _longitud,
           observaciones: _observaciones.text.trim().isEmpty ? null : _observaciones.text.trim(),
@@ -228,6 +232,16 @@ class _ClienteFormPageState extends ConsumerState<ClienteFormPage> {
                 labelText: 'Referencia',
                 hintText: 'Ej. A dos cuadras del parque',
                 prefixIcon: Icon(Icons.signpost_outlined),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _zona,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Zona de reparto',
+                hintText: 'Ej. Centro, Yanahuara, Cayma',
+                prefixIcon: Icon(Icons.map_outlined),
               ),
             ),
             const SizedBox(height: 14),

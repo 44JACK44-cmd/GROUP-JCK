@@ -64,6 +64,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
   bool _cargandoProductos = true;
   bool _guardando = false;
   bool _buscandoCliente = false;
+  bool _asignarPorZona = false;
 
   /// Formas de pago que el administrador puede dejar anotadas al crear el pedido.
   static const _formasPago = {
@@ -223,7 +224,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
         .toList();
 
     try {
-      await pedidosRepo.crear(
+      final pedidoId = await pedidosRepo.crear(
         empresaId: auth.empresaId!,
         clienteId: cliente['id'] as String,
         usuarioId: auth.usuarioId!,
@@ -240,6 +241,12 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
         observaciones: _observacionesCtrl.text.trim(),
         uuidOffline: uuid,
       );
+
+      // Asignación automática por zona si está activada
+      if (_asignarPorZona) {
+        await pedidosRepo.asignarPorZona(pedidoId: pedidoId);
+      }
+
       if (!mounted) return;
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -453,6 +460,14 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
                   style: TextStyle(color: Colors.black54, fontSize: 12),
                 ),
               ),
+            const SizedBox(height: 12),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Asignar automáticamente por zona'),
+              subtitle: const Text('El sistema elegirá el motorizado de la zona del cliente'),
+              value: _asignarPorZona,
+              onChanged: (v) => setState(() => _asignarPorZona = v),
+            ),
           ],
         ),
       ),

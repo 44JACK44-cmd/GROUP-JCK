@@ -215,6 +215,16 @@ class PedidosRepo {
     }
   }
 
+  /// Asigna automáticamente por zona usando la función RPC de Supabase.
+  Future<String?> asignarPorZona({required String pedidoId}) async {
+    try {
+      final res = await sb.rpc('asignar_por_zona', params: {'p_pedido_id': pedidoId});
+      return res as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Asigna un motorizado. `repartidorId == null` desasigna.
   Future<void> asignar({
     required String pedidoId,
