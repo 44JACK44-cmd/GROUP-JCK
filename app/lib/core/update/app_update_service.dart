@@ -48,11 +48,31 @@ class AppUpdateService {
     }
   }
 
+  /// Los APK compilados con `--split-per-abi` llevan un offset de
+  /// `1000 × ABI` en el versionCode (p. ej. 6 → 2006 en arm64-v8a).
+  /// Normalizamos a la versión lógica para poder compararlas.
+  static int _versionLogica(int versionCode) {
+    final normal = versionCode % 1000;
+    return normal == 0 ? versionCode : normal;
+  }
+
   /// true si la versión instalada es menor que la publicada.
   static Future<bool> hayNuevaVersion(VersionInfo remota) async {
     final info = await PackageInfo.fromPlatform();
     final local = int.tryParse(info.buildNumber) ?? 0;
-    return remota.versionCode > local;
+    return _versionLogica(remota.versionCode) > _versionLogica(local);
+  }
+
+  /// Versión lógica instalada en el equipo (sin el offset de ABI).
+  static Future<int> versionLocal() async {
+    final info = await PackageInfo.fromPlatform();
+    return _versionLogica(int.tryParse(info.buildNumber) ?? 0);
+  }
+
+  /// Nombre de versión instalado, p. ej. "1.0.6".
+  static Future<String> versionLocalName() async {
+    final info = await PackageInfo.fromPlatform();
+    return info.version;
   }
 
   /// Descarga el APK. [onProgress] recibe 0.0–1.0.

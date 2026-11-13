@@ -91,27 +91,31 @@ class _GasAppState extends ConsumerState<GasApp> {
     showDialog(
       context: context,
       barrierDismissible: !remota.obligatoria,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Nueva versión disponible'),
-        content: Text(
-          'Hay una nueva versión (v${remota.versionName}) de la app.'
-          '${remota.notas != null && remota.notas!.isNotEmpty ? '\n\n${remota.notas}' : ''}\n\n'
-          'Se descargará e instalará automáticamente.',
-        ),
-        actions: [
-          if (!remota.obligatoria)
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Luego'),
-            ),
-          FilledButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              _descargarEInstalar(remota);
-            },
-            child: const Text('Actualizar'),
+      builder: (ctx) => FutureBuilder<String>(
+        future: AppUpdateService.versionLocalName(),
+        builder: (ctx, snap) => AlertDialog(
+          title: const Text('Nueva versión disponible'),
+          content: Text(
+            'Tu versión: v${snap.data ?? '?'}\n'
+            'Nueva versión: v${remota.versionName}\n'
+            '${remota.notas != null && remota.notas!.isNotEmpty ? '\n${remota.notas}\n' : ''}'
+            'Se descargará e instalará automáticamente.',
           ),
-        ],
+          actions: [
+            if (!remota.obligatoria)
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Luego'),
+              ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _descargarEInstalar(remota);
+              },
+              child: const Text('Actualizar'),
+            ),
+          ],
+        ),
       ),
     );
   }

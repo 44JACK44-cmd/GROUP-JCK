@@ -57,11 +57,24 @@ curl.exe -s -X POST "$env:SUPABASE_URL/storage/v1/object/$bucket/$apkName" `
   --data-binary "@$apkPath"
 Write-Host ""
 
+# --split-per-abi suma 1000*ABI al versionCode (arm64-v8a = 2000).
+# La BD debe guardar ese versionCode REAL, o los teléfonos con una app
+# antigua (que comparan versionCode directo) nunca verían la actualización.
+$realCode = $VersionCode
+$aapt = Get-ChildItem -Path "$env:LOCALAPPDATA\Android\Sdk\build-tools" -Recurse -Filter "aapt2.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+if ($aapt) {
+  $badging = & $aapt.FullName dump badging $apkPath 2>$null | Select-String "package:"
+  if ($badging -match "versionCode='(\d+)'") {
+    $realCode = [int]$Matches[1]
+    Write-Host "   versionCode real del APK: $realCode (publicado en la BD)" -ForegroundColor Yellow
+  }
+}
+
 Write-Host "== 4/4 Actualizando app_versiones ==" -ForegroundColor Cyan
 $apkUrl = "$env:SUPABASE_URL/storage/v1/object/public/$bucket/$apkName"
 $body = @{
   id = 1
-  version_code = $VersionCode
+  version_code = $realCode
   version_name = $newVer
   apk_url = $apkUrl
   notas = $Notas
