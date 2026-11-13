@@ -10,9 +10,16 @@ import 'features/auth/auth_controller.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/register_empresa_page.dart';
 import 'features/auth/welcome_page.dart';
+import 'features/balones/balones_page.dart';
 import 'features/clientes/clientes_page.dart';
+import 'features/finanzas/caja_page.dart';
+import 'features/finanzas/cobros_page.dart';
+import 'features/finanzas/combustible_page.dart';
 import 'features/home/home_page.dart';
+import 'features/mas/mas_page.dart';
 import 'features/motorizados/motorizados_page.dart';
+import 'features/pedidos/pedidos_page.dart';
+import 'features/reportes/reportes_page.dart';
 import 'features/reparto/reparto_page.dart';
 
 Future<void> main() async {
@@ -163,6 +170,13 @@ class _GasAppState extends ConsumerState<GasApp> {
         GoRoute(path: '/home', builder: (_, state) => const HomePage()),
         GoRoute(path: '/motorizados', builder: (_, state) => const MotorizadosPage()),
         GoRoute(path: '/clientes', builder: (_, state) => const ClientesPage()),
+        GoRoute(path: '/pedidos', builder: (_, state) => const PedidosPage()),
+        GoRoute(path: '/mas', builder: (_, state) => const MasPage()),
+        GoRoute(path: '/balones', builder: (_, state) => const BalonesPage()),
+        GoRoute(path: '/caja', builder: (_, state) => const CajaPage()),
+        GoRoute(path: '/cobros', builder: (_, state) => const CobrosPage()),
+        GoRoute(path: '/combustible', builder: (_, state) => const CombustiblePage()),
+        GoRoute(path: '/reportes', builder: (_, state) => const ReportesPage()),
         GoRoute(path: '/reparto', builder: (_, state) => const RepartoPage()),
       ],
     );
