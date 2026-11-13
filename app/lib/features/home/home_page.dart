@@ -86,7 +86,7 @@ class HomePage extends ConsumerWidget {
                   _Acceso(icono: Icons.inventory_2_outlined, titulo: 'Pedidos',
                       onTap: () => _proximamente(context, 'Pedidos')),
                   _Acceso(icono: Icons.people_outline, titulo: 'Clientes',
-                      onTap: () => _proximamente(context, 'Clientes')),
+                      onTap: () => context.push('/clientes')),
                   _Acceso(icono: Icons.payments_outlined, titulo: 'Cobros',
                       onTap: () => _proximamente(context, 'Cobros')),
                   _Acceso(icono: Icons.delivery_dining_outlined, titulo: 'Motorizados',

@@ -10,6 +10,7 @@ import 'features/auth/auth_controller.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/register_empresa_page.dart';
 import 'features/auth/welcome_page.dart';
+import 'features/clientes/clientes_page.dart';
 import 'features/home/home_page.dart';
 import 'features/motorizados/motorizados_page.dart';
 import 'features/reparto/reparto_page.dart';
@@ -161,6 +162,7 @@ class _GasAppState extends ConsumerState<GasApp> {
         GoRoute(path: '/registro-empresa', builder: (_, state) => const RegisterEmpresaPage()),
         GoRoute(path: '/home', builder: (_, state) => const HomePage()),
         GoRoute(path: '/motorizados', builder: (_, state) => const MotorizadosPage()),
+        GoRoute(path: '/clientes', builder: (_, state) => const ClientesPage()),
         GoRoute(path: '/reparto', builder: (_, state) => const RepartoPage()),
       ],
     );

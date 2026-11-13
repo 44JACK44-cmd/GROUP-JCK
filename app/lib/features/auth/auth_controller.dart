@@ -81,14 +81,25 @@ class AuthNotifier extends Notifier<AuthState> {
     try {
       // Si no escribe un correo, se asume teléfono → usuario@grupojck.app
       final input = usuario.trim();
-      final email = input.contains('@') ? input : '$input@$emailDomain';
+      var email = input.contains('@') ? input : '$input@$emailDomain';
 
-      final response = await _sb.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
+      try {
+        await _sb.auth.signInWithPassword(email: email, password: password);
+      } on AuthException {
+        // El correo convencional falló: puede ser un admin cuyo acceso
+        // es su correo real. Se pide al servidor que resuelva el teléfono.
+        if (input.contains('@')) rethrow;
+        final res = await _sb.functions.invoke(
+          'resolver-login',
+          body: {'input': input},
+        );
+        final resuelto = (res.data as Map?)?['email'] as String?;
+        if (resuelto == null || resuelto == email) rethrow;
+        email = resuelto;
+        await _sb.auth.signInWithPassword(email: email, password: password);
+      }
 
-      final userId = response.user?.id;
+      final userId = _sb.auth.currentUser?.id;
       if (userId == null) {
         return 'No pudimos iniciar sesión. Inténtalo de nuevo.';
       }

@@ -75,7 +75,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               const SizedBox(height: 40),
               TextField(
                 controller: _telefonoCtrl,
-                keyboardType: TextInputType.phone,
+                keyboardType: TextInputType.emailAddress,
                 decoration: const InputDecoration(
                   labelText: 'Usuario o teléfono',
                   prefixIcon: Icon(Icons.person_outline),
