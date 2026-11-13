@@ -28,7 +28,10 @@ import 'features/pedidos/historial_page.dart';
 import 'features/pedidos/mis_pedidos_page.dart';
 import 'features/pedidos/nuevo_pedido_page.dart';
 import 'features/pedidos/pedidos_page.dart';
+import 'features/rendicion/aprobacion_rendiciones_page.dart';
+import 'features/rendicion/cierre_diario_page.dart';
 import 'features/rendicion/conciliacion_page.dart';
+import 'features/rendicion/declarar_rendicion_page.dart';
 import 'features/rendicion/rendicion_page.dart';
 import 'features/reportes/reportes_page.dart';
 import 'features/shell/app_shell.dart';
@@ -219,6 +222,9 @@ class _GasAppState extends ConsumerState<GasApp> {
         GoRoute(path: '/caja', builder: (_, state) => const CajaPage()),
         GoRoute(path: '/rendicion', builder: (_, state) => const RendicionPage()),
         GoRoute(path: '/conciliacion', builder: (_, state) => const ConciliacionPage()),
+        GoRoute(path: '/declarar-rendicion', builder: (_, state) => const DeclararRendicionPage()),
+        GoRoute(path: '/aprobacion-rendiciones', builder: (_, state) => const AprobacionRendicionesPage()),
+        GoRoute(path: '/cierre-diario', builder: (_, state) => const CierreDiarioPage()),
         GoRoute(path: '/reportes', builder: (_, state) => const ReportesPage()),
         GoRoute(path: '/motorizados', builder: (_, state) => const MotorizadosPage()),
         GoRoute(path: '/combustible', builder: (_, state) => const CombustiblePage()),
