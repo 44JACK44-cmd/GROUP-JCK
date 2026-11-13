@@ -56,6 +56,13 @@ class MasPage extends StatelessWidget {
             onTap: () => context.push('/rendicion'),
           ),
           _Tile(
+            icono: Icons.compare_arrows_outlined,
+            titulo: 'Conciliación',
+            subtitulo: 'Comparar recepción vs motorizado',
+            color: AppTheme.warning,
+            onTap: () => context.push('/conciliacion'),
+          ),
+          _Tile(
             icono: Icons.bar_chart_outlined,
             titulo: 'Informes',
             subtitulo: 'Pedidos, ventas, pagos, deudas y balones',

@@ -249,6 +249,17 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                               if (r.combustible > 0)
                                 FilaValor('Combustible', dinero(r.combustible),
                                     color: AppTheme.danger),
+                              const Divider(height: 22),
+                              FilaValor('Gastos en efectivo', dinero(r.gastosEfectivo),
+                                  color: r.gastosEfectivo > 0 ? AppTheme.danger : null),
+                              FilaValor('Gastos en Yape', dinero(r.gastosYape),
+                                  color: r.gastosYape > 0 ? AppTheme.danger : null),
+                              if (r.gastosOtros > 0)
+                                FilaValor('Gastos en otros', dinero(r.gastosOtros),
+                                    color: AppTheme.danger),
+                              FilaValor('Total gastos', dinero(r.gastosTotal),
+                                  destacado: true,
+                                  color: r.gastosTotal > 0 ? AppTheme.danger : null),
                             ],
                           ),
                         ),

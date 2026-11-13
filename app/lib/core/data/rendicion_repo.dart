@@ -31,6 +31,12 @@ class Rendicion {
 
   final double combustible;
 
+  // Gastos por medio de pago
+  final double gastosEfectivo;
+  final double gastosYape;
+  final double gastosOtros;
+  final double gastosTotal;
+
   const Rendicion({
     this.pedidosRealizados = 0,
     this.entregados = 0,
@@ -48,6 +54,10 @@ class Rendicion {
     this.balonesVaciosPendientes = 0,
     this.fierrosPendientes = 0,
     this.combustible = 0,
+    this.gastosEfectivo = 0,
+    this.gastosYape = 0,
+    this.gastosOtros = 0,
+    this.gastosTotal = 0,
   });
 
   bool get vacio => pedidosRealizados == 0;
@@ -103,6 +113,19 @@ class RendicionRepo {
           .inFilter('pedido_id', pedidosIds)
           .limit(10000),
     ]);
+
+    // Gastos del motorizado en el periodo (con medio de pago)
+    List<Map<String, dynamic>> gastosData = [];
+    if (motorizadoId != null) {
+      final g = await sb
+          .from('gastos')
+          .select('monto, medio_pago, categoria')
+          .eq('usuario_id', motorizadoId)
+          .gte('fecha', desde.toIso8601String())
+          .lte('fecha', hastaIso)
+          .limit(500);
+      gastosData = List<Map<String, dynamic>>.from(g);
+    }
 
     final entregas = List<Map<String, dynamic>>.from(res[0] as List);
     final pagos = List<Map<String, dynamic>>.from(res[1] as List);
@@ -192,6 +215,23 @@ class RendicionRepo {
 
     final pendiente = (totalACobrar - cobrado) > 0 ? totalACobrar - cobrado : 0.0;
 
+    // Gastos por medio de pago
+    var gastosEfectivo = 0.0, gastosYape = 0.0, gastosOtros = 0.0;
+    for (final g in gastosData) {
+      final monto = (g['monto'] as num? ?? 0).toDouble();
+      switch (g['medio_pago'] as String? ?? 'EFECTIVO') {
+        case 'YAPE':
+          gastosYape += monto;
+          break;
+        case 'OTRO':
+          gastosOtros += monto;
+          break;
+        default:
+          gastosEfectivo += monto;
+      }
+    }
+    final gastosTotal = gastosEfectivo + gastosYape + gastosOtros;
+
     return Rendicion(
       pedidosRealizados: pedidos.length,
       entregados: entregados,
@@ -209,6 +249,10 @@ class RendicionRepo {
       balonesVaciosPendientes: clientesConPendiente.length,
       fierrosPendientes: fierrosPendientes,
       combustible: combustible,
+      gastosEfectivo: gastosEfectivo,
+      gastosYape: gastosYape,
+      gastosOtros: gastosOtros,
+      gastosTotal: gastosTotal,
     );
   }
 }
