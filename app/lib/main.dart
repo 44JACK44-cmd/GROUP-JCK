@@ -57,6 +57,13 @@ class _GasAppState extends ConsumerState<GasApp> {
     if (remota == null || !mounted) return;
     if (!await AppUpdateService.hayNuevaVersion(remota) || !mounted) return;
 
+    // Esperar a que el navigator exista (puede tardar tras el splash).
+    for (var i = 0; i < 20 && _rootNavigatorKey.currentContext == null; i++) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+    }
+    if (!mounted) return;
+
     _mostrarDialogoUpdate(remota);
   }
 
