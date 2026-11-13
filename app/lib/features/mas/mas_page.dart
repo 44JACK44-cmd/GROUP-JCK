@@ -102,6 +102,13 @@ class MasMotoPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _Tile(
+            icono: Icons.edit_note_outlined,
+            titulo: 'Mi registro',
+            subtitulo: 'Pedidos, gastos y fallas del día',
+            color: AppTheme.primary,
+            onTap: () => context.push('/mi-registro'),
+          ),
+          _Tile(
             icono: Icons.local_fire_department_outlined,
             titulo: 'Balones',
             subtitulo: 'Vacíos pendientes y devoluciones',

@@ -19,6 +19,10 @@ import 'features/finanzas/combustible_page.dart';
 import 'features/home/home_moto_page.dart';
 import 'features/home/home_page.dart';
 import 'features/mas/mas_page.dart';
+import 'features/mi_registro/mi_registro_page.dart';
+import 'features/mi_registro/registro_gasto_page.dart';
+import 'features/mi_registro/registro_incidencia_page.dart';
+import 'features/mi_registro/registro_pedido_page.dart';
 import 'features/motorizados/motorizados_page.dart';
 import 'features/pedidos/historial_page.dart';
 import 'features/pedidos/mis_pedidos_page.dart';
@@ -216,6 +220,10 @@ class _GasAppState extends ConsumerState<GasApp> {
         GoRoute(path: '/reportes', builder: (_, state) => const ReportesPage()),
         GoRoute(path: '/motorizados', builder: (_, state) => const MotorizadosPage()),
         GoRoute(path: '/combustible', builder: (_, state) => const CombustiblePage()),
+        GoRoute(path: '/mi-registro', builder: (_, state) => const MiRegistroPage()),
+        GoRoute(path: '/mi-registro/pedido', builder: (_, state) => const RegistroPedidoPage()),
+        GoRoute(path: '/mi-registro/gasto', builder: (_, state) => const RegistroGastoPage()),
+        GoRoute(path: '/mi-registro/incidencia', builder: (_, state) => const RegistroIncidenciaPage()),
       ],
     );
 
