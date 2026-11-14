@@ -263,13 +263,12 @@ class PedidosRepo {
     final actual = await obtener(pedidoId);
     if (actual == null) throw Exception('El pedido ya no existe.');
     final estadoActual = EstadoPedido.desdeDb(actual['estado']);
-    if (!estadoActual.puedeTransicionarA(
-      repartidorId == null ? EstadoPedido.nuevo : EstadoPedido.asignado,
-      esAdmin: true,
-    )) {
-      throw Exception(estadoActual.mensajeTransicionInvalida(
-        repartidorId == null ? EstadoPedido.nuevo : EstadoPedido.asignado,
-      ));
+    final destino = repartidorId == null ? EstadoPedido.nuevo : EstadoPedido.asignado;
+    // Reasignar (mismo estado ASIGNADO) es una operación administrativa
+    // válida: no es una transición, es un cambio de responsable.
+    if (destino != estadoActual &&
+        !estadoActual.puedeTransicionarA(destino, esAdmin: true)) {
+      throw Exception(estadoActual.mensajeTransicionInvalida(destino));
     }
 
     final filas = await sb.from('pedidos').update({

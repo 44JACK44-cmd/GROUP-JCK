@@ -37,6 +37,7 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
   String? _motorizadoNombre;
   bool _cargando = true;
   bool _trabajando = false;
+  bool _huboCambios = false;
 
   SupabaseClient get _sb => Supabase.instance.client;
 
@@ -145,6 +146,7 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
       );
       widget.pedido['repartidor_id'] = elegido['id'];
       widget.pedido['estado'] = 'ASIGNADO';
+      _huboCambios = true;
       setState(() => _motorizadoNombre = elegido['nombre'] as String?);
       _mensaje('Pedido asignado a ${elegido['nombre']}.');
     } catch (e) {
@@ -161,10 +163,61 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
       );
       widget.pedido['repartidor_id'] = auth.usuarioId;
       widget.pedido['estado'] = 'ASIGNADO';
+      _huboCambios = true;
       setState(() => _motorizadoNombre = auth.nombre);
       _mensaje('Tomaste el pedido.');
     } catch (e) {
       _error(e is Exception ? e.toString().replaceFirst('Exception: ', '') : 'No se pudo tomar.');
+    }
+  }
+
+  Future<void> _liberar() async {
+    final auth = ref.read(authProvider);
+    try {
+      await pedidosRepo.liberar(
+        pedidoId: _pedidoId,
+        empresaId: auth.empresaId!,
+        usuarioId: auth.usuarioId!,
+      );
+      widget.pedido['repartidor_id'] = null;
+      widget.pedido['estado'] = 'NUEVO';
+      _huboCambios = true;
+      setState(() => _motorizadoNombre = null);
+      _mensaje('Pedido liberado: cualquier motorizado puede tomarlo.');
+    } catch (e) {
+      _error(e is Exception ? e.toString().replaceFirst('Exception: ', '') : 'No se pudo liberar.');
+    }
+  }
+
+  Future<void> _noEntregado() async {
+    final motivo = await _pedirMotivo(
+      'No se pudo entregar',
+      'Motivo (cliente ausente, dirección errada, etc.)',
+    );
+    if (motivo == null) return;
+
+    final auth = ref.read(authProvider);
+    setState(() => _trabajando = true);
+    try {
+      await entregasRepo.registrarNoEntregado(
+        empresaId: auth.empresaId!,
+        usuarioId: auth.usuarioId!,
+        pedidoId: _pedidoId,
+        motivo: motivo,
+      );
+      widget.pedido['estado'] = 'NO_ENTREGADO';
+      _huboCambios = true;
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pedido marcado como no entregado.')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _trabajando = false);
+      _error(e is Exception
+          ? e.toString().replaceFirst('Exception: ', '')
+          : 'No se pudo actualizar el pedido.');
     }
   }
 
@@ -179,6 +232,7 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
         esAdmin: auth.esAdmin,
       );
       widget.pedido['estado'] = 'EN_CAMINO';
+      _huboCambios = true;
       setState(() {});
       _mensaje('Pedido en camino.');
     } catch (e) {
@@ -280,6 +334,7 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
         motivo: motivo,
       );
       widget.pedido['estado'] = 'CANCELADO';
+      _huboCambios = true;
       if (!mounted) return;
       Navigator.of(context).pop(true);
       _mensaje('Pedido cancelado.');
@@ -299,6 +354,7 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
         usuarioId: auth.usuarioId!,
       );
       widget.pedido['estado'] = 'NUEVO';
+      _huboCambios = true;
       await _cargar();
       _mensaje('Pedido reactivado.');
     } catch (e) {
@@ -357,9 +413,16 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
     final lat = (cliente?['latitud'] as num?)?.toDouble();
     final lng = (cliente?['longitud'] as num?)?.toDouble();
 
-    return Scaffold(
-      appBar: AppBar(title: Text('Pedido #${p['numero']}')),
-      body: _cargando
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        // Al volver, la lista se refresca si algo cambió en este pedido.
+        Navigator.of(context).pop(_huboCambios);
+      },
+      child: Scaffold(
+        appBar: AppBar(title: Text('Pedido #${p['numero']}')),
+        body: _cargando
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : ListView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
@@ -552,47 +615,76 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                 const SizedBox(height: 20),
 
                 // ---- Acciones ----
-                if (puedeOperar && !estado.esFinalizado) ...[
-                  if (estado == EstadoPedido.nuevo && auth.esAdmin) ...[
-                    FilledButton.icon(
-                      onPressed: _tomarPedido,
-                      icon: const Icon(Icons.pan_tool_alt_outlined),
-                      label: const Text('Tomar el pedido'),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(50),
-                        backgroundColor: AppTheme.primary,
-                      ),
+                // Motorizado: tomar un pedido libre.
+                if (soyMotorizado &&
+                    estado == EstadoPedido.nuevo &&
+                    p['repartidor_id'] == null) ...[
+                  FilledButton.icon(
+                    onPressed: _tomarPedido,
+                    icon: const Icon(Icons.pan_tool_alt_outlined),
+                    label: const Text('Tomar el pedido'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      backgroundColor: AppTheme.primary,
                     ),
-                    const SizedBox(height: 10),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                // ADMIN: asignar o cambiar de motorizado, y liberar.
+                if (auth.esAdmin &&
+                    !estado.esFinalizado &&
+                    (estado == EstadoPedido.nuevo || estado == EstadoPedido.asignado)) ...[
+                  OutlinedButton.icon(
+                    onPressed: _asignarMotorizado,
+                    icon: const Icon(Icons.delivery_dining_outlined),
+                    label: Text(estado == EstadoPedido.asignado
+                        ? 'Cambiar de motorizado'
+                        : 'Asignar motorizado'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                  ),
+                  const SizedBox(height: 10),
+                  if (estado == EstadoPedido.asignado)
                     OutlinedButton.icon(
-                      onPressed: _asignarMotorizado,
-                      icon: const Icon(Icons.delivery_dining_outlined),
-                      label: const Text('Asignar motorizado'),
+                      onPressed: _liberar,
+                      icon: const Icon(Icons.person_off_outlined),
+                      label: const Text('Liberar pedido'),
                       style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
                     ),
-                    const SizedBox(height: 10),
-                  ],
-                  if (estado == EstadoPedido.asignado) ...[
-                    OutlinedButton.icon(
-                      onPressed: _iniciarRuta,
-                      icon: const Icon(Icons.route_outlined),
-                      label: const Text('Iniciar ruta'),
-                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                  if (estado == EstadoPedido.asignado) const SizedBox(height: 10),
+                ],
+                if (puedeOperar && estado == EstadoPedido.asignado) ...[
+                  OutlinedButton.icon(
+                    onPressed: _iniciarRuta,
+                    icon: const Icon(Icons.route_outlined),
+                    label: const Text('Iniciar ruta'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                if (puedeOperar &&
+                    (estado == EstadoPedido.asignado || estado == EstadoPedido.enCamino)) ...[
+                  FilledButton.icon(
+                    onPressed: _trabajando ? null : _entregar,
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Entregar pedido'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                      backgroundColor: AppTheme.success,
                     ),
-                    const SizedBox(height: 10),
-                  ],
-                  if (estado == EstadoPedido.asignado || estado == EstadoPedido.enCamino) ...[
-                    FilledButton.icon(
-                      onPressed: _trabajando ? null : _entregar,
-                      icon: const Icon(Icons.check_circle_outline),
-                      label: const Text('Entregar pedido'),
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
-                        backgroundColor: AppTheme.success,
-                      ),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _trabajando ? null : _noEntregado,
+                    icon: const Icon(Icons.report_gmailerrorred_outlined,
+                        color: AppTheme.warning),
+                    label: const Text('No se pudo entregar',
+                        style: TextStyle(color: AppTheme.warning)),
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(50),
+                      side: const BorderSide(color: AppTheme.warning),
                     ),
-                    const SizedBox(height: 10),
-                  ],
+                  ),
+                  const SizedBox(height: 10),
                 ],
                 if (auth.esAdmin && !estado.esFinalizado) ...[
                   OutlinedButton.icon(
@@ -629,6 +721,7 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                   ),
               ],
             ),
+      ),
     );
   }
 

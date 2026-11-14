@@ -237,31 +237,37 @@ class EntregasRepo {
       estado == EstadoPagoEntrega.pagado ? 'PAGADO' : 'PENDIENTE';
 
   /// Registra el pedido como "no entregado" (el cliente no estaba, etc.).
+  ///
+  /// No crea una fila en `entregas`: esa tabla significa "entrega realizada"
+  /// y además tiene `pedido_id` único. El pedido queda en `NO_ENTREGADO` y el
+  /// motivo va a auditoría; un administrador puede reabrirlo después.
   Future<void> registrarNoEntregado({
     required String empresaId,
     required String usuarioId,
     required String pedidoId,
     required String motivo,
   }) async {
-    final existente = await sb
-        .from('entregas')
-        .select('id')
-        .eq('pedido_id', pedidoId)
+    final pedido = await sb
+        .from('pedidos')
+        .select('id, estado')
+        .eq('id', pedidoId)
         .maybeSingle();
-    if (existente != null) {
-      throw Exception('Este pedido ya fue entregado.');
+    if (pedido == null) throw Exception('El pedido ya no existe.');
+
+    final estado = pedido['estado'] as String?;
+    if (estado == 'ENTREGADO') throw Exception('Este pedido ya fue entregado.');
+    if (estado == 'CANCELADO') throw Exception('Este pedido está cancelado.');
+    if (estado == 'NO_ENTREGADO') return;
+
+    final filas = await sb
+        .from('pedidos')
+        .update({'estado': 'NO_ENTREGADO'})
+        .eq('id', pedidoId)
+        .select('id');
+
+    if (List<Map<String, dynamic>>.from(filas).isEmpty) {
+      throw Exception('No se pudo actualizar el pedido: no tienes permiso o ya no existe.');
     }
-
-    await sb.from('entregas').insert({
-      'empresa_id': empresaId,
-      'pedido_id': pedidoId,
-      'estado_bal_on_vacio': 'NO_APLICA',
-      'estado_pago': 'PENDIENTE',
-      'registrado_por': usuarioId,
-      'uuid_offline': const Uuid().v4(),
-    });
-
-    await sb.from('pedidos').update({'estado': 'NO_ENTREGADO'}).eq('id', pedidoId);
 
     await auditoriaRepo.registrar(
       empresaId: empresaId,
