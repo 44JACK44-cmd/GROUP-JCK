@@ -7,6 +7,8 @@
 library;
 
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'sb.dart';
 
 /// Resumen de caja de un periodo.
@@ -73,23 +75,40 @@ class CajaRepo {
     required String usuarioId,
     required double fondoInicial,
   }) async {
-    await sb.from('cajas').insert({
-      'empresa_id': empresaId,
-      'fondo_inicial': fondoInicial,
-      'estado': 'ABIERTA',
-    });
+    final yaAbierta = await cajaAbierta();
+    if (yaAbierta != null) {
+      throw Exception('Ya hay una caja abierta. Ciérrala antes de abrir otra.');
+    }
+    try {
+      await sb.from('cajas').insert({
+        'empresa_id': empresaId,
+        'fondo_inicial': fondoInicial,
+        'estado': 'ABIERTA',
+      });
+    } on PostgrestException catch (e) {
+      if (e.code == '23505') {
+        throw Exception('Ya hay una caja abierta. Ciérrala antes de abrir otra.');
+      }
+      rethrow;
+    }
   }
 
+  /// Cierra la caja. Una caja cerrada es inmutable: no se puede volver a cerrar
+  /// ni modificar (la base y la app lo impiden).
   Future<void> cerrar({
     required String cajaId,
     required String usuarioId,
     required double montoDeclarado,
   }) async {
-    await sb.from('cajas').update({
+    final filas = await sb.from('cajas').update({
       'estado': 'CERRADA',
       'fecha_cierre': DateTime.now().toIso8601String(),
       'monto_declarado': montoDeclarado,
-    }).eq('id', cajaId);
+    }).eq('id', cajaId).eq('estado', 'ABIERTA').select('id');
+
+    if (List<Map<String, dynamic>>.from(filas).isEmpty) {
+      throw Exception('Esta caja ya está cerrada.');
+    }
   }
 
   /// Ingreso manual (dinero que entra sin ser un cobro de pedido).
@@ -112,6 +131,9 @@ class CajaRepo {
   }
 
   /// Egreso (gasto) que también queda registrado en `gastos`.
+  ///
+  /// [medioPago] indica con qué se pagó (EFECTIVO/YAPE/OTRO): así el cuadre
+  /// descuenta el gasto del bolsillo correcto y no descuadra el efectivo.
   Future<void> registrarGasto({
     required String empresaId,
     required String usuarioId,
@@ -119,6 +141,7 @@ class CajaRepo {
     required double monto,
     required String descripcion,
     String categoria = 'GENERAL',
+    String medioPago = 'EFECTIVO',
   }) async {
     final mov = await sb
         .from('movimiento_caja')
@@ -141,27 +164,47 @@ class CajaRepo {
       'categoria': categoria,
       'usuario_id': usuarioId,
       'movimiento_caja_id': mov['id'],
+      'medio_pago': medioPago,
     });
   }
 
-  /// Resumen global del periodo (no solo de la caja abierta).
+  /// Resumen de caja.
+  ///
+  /// Si se pasa [caja], el resumen es **de esa caja**: sus movimientos y el
+  /// periodo entre su apertura y su cierre (o ahora). Así el cuadre no mezcla
+  /// días anteriores ni cajas ya cerradas.
   Future<ResumenCaja> resumen({
     DateTime? desde,
     DateTime? hasta,
     Map<String, dynamic>? caja,
   }) async {
-    final desdeIso = (desde ?? DateTime(2000)).toIso8601String();
-    final hastaIso = (hasta ?? DateTime(2100)).toIso8601String();
+    final cajaId = caja?['id'] as String?;
+    final apertura = DateTime.tryParse(caja?['fecha_apertura']?.toString() ?? '');
+    final cierre = DateTime.tryParse(caja?['fecha_cierre']?.toString() ?? '');
+
+    final inicio = apertura ?? desde ?? DateTime(2000);
+    final fin = cierre ?? hasta ?? DateTime(2100);
+    final desdeIso = inicio.toIso8601String();
+    final hastaIso = fin.toIso8601String();
+
+    var qMov = sb.from('movimiento_caja').select('tipo, monto');
+    if (cajaId != null) {
+      qMov = qMov.eq('caja_id', cajaId);
+    } else {
+      qMov = qMov.gte('fecha', desdeIso).lte('fecha', hastaIso);
+    }
 
     final res = await Future.wait([
-      sb.from('movimiento_caja')
-          .select('tipo, monto')
+      qMov.limit(5000),
+      sb.from('pagos').select('monto, metodo').gte('fecha', desdeIso).lte('fecha', hastaIso).limit(5000),
+      sb.from('gastos').select('monto').gte('fecha', desdeIso).lte('fecha', hastaIso).limit(5000),
+      sb
+          .from('pedidos')
+          .select('id, total')
+          .eq('estado', 'ENTREGADO')
           .gte('fecha', desdeIso)
           .lte('fecha', hastaIso)
           .limit(5000),
-      sb.from('pagos').select('monto, metodo').gte('fecha', desdeIso).lte('fecha', hastaIso).limit(5000),
-      sb.from('gastos').select('monto').gte('fecha', desdeIso).lte('fecha', hastaIso).limit(5000),
-      sb.from('pedidos').select('id, total').eq('estado', 'ENTREGADO').limit(5000),
     ]);
 
     var ingresos = 0.0, egresos = 0.0;

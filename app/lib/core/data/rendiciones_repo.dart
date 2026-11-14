@@ -100,6 +100,18 @@ class RendicionesRepo {
     String? justificacion,
     double? diferencia,
   }) async {
+    // Una rendición aprobada es definitiva: no se puede reabrir ni corregir,
+    // para que el dinero ya entregado no cambie de valor después.
+    final actual = await sb
+        .from('rendiciones')
+        .select('estado')
+        .eq('id', rendicionId)
+        .maybeSingle();
+    if (actual == null) throw Exception('La rendición ya no existe.');
+    if (actual['estado'] == EstadoRendicion.aprobada) {
+      throw Exception('Esta rendición ya fue aprobada y no se puede modificar.');
+    }
+
     final updates = <String, dynamic>{
       'estado': estado,
       'recibido_por': adminId,
@@ -115,7 +127,15 @@ class RendicionesRepo {
       updates['fecha_aprobacion'] = DateTime.now().toIso8601String();
     }
 
-    await sb.from('rendiciones').update(updates).eq('id', rendicionId);
+    final filas = await sb
+        .from('rendiciones')
+        .update(updates)
+        .eq('id', rendicionId)
+        .select('id');
+
+    if (List<Map<String, dynamic>>.from(filas).isEmpty) {
+      throw Exception('La rendición ya no existe o no tienes permiso para revisarla.');
+    }
 
     await auditoriaRepo.registrar(
       empresaId: empresaId,
@@ -153,23 +173,29 @@ class RendicionesRepo {
       throw Exception('Esta jornada ya fue cerrada.');
     }
 
-    // Calcular totales
-    final inicio = DateTime(fecha.year, fecha.month, fecha.day);
-    final fin = inicio.add(const Duration(days: 1));
+    // Calcular totales del día. El "día" es local (Perú) y se convierte a UTC
+    // para no correr la ventana 5 horas.
+    final inicioLocal = DateTime(fecha.year, fecha.month, fecha.day);
+    final finLocal = inicioLocal.add(const Duration(days: 1));
+    final inicioIso = inicioLocal.toUtc().toIso8601String();
+    final finIso = finLocal.toUtc().toIso8601String();
 
     final res = await Future.wait([
-      sb.from('pedidos').select('id, total, estado').eq('empresa_id', empresaId).gte('fecha', inicio.toIso8601String()).lt('fecha', fin.toIso8601String()).limit(5000),
-      sb.from('pagos').select('monto, metodo').eq('empresa_id', empresaId).gte('fecha', inicio.toIso8601String()).lt('fecha', fin.toIso8601String()).limit(5000),
-      sb.from('gastos').select('monto').eq('empresa_id', empresaId).gte('fecha', inicio.toIso8601String()).lt('fecha', fin.toIso8601String()).limit(5000),
-      sb.from('rendiciones').select('id').eq('empresa_id', empresaId).eq('fecha', fechaStr).eq('estado', 'PENDIENTE').limit(100),
+      sb.from('pedidos').select('id, total, estado').eq('empresa_id', empresaId).gte('fecha', inicioIso).lt('fecha', finIso).limit(5000),
+      sb.from('pagos').select('monto, metodo').eq('empresa_id', empresaId).gte('fecha', inicioIso).lt('fecha', finIso).limit(5000),
+      sb.from('gastos').select('monto, medio_pago').eq('empresa_id', empresaId).gte('fecha', inicioIso).lt('fecha', finIso).limit(5000),
+      sb.from('rendiciones').select('id, efectivo_declarado, estado').eq('empresa_id', empresaId).eq('fecha', fechaStr).limit(100),
     ]);
 
     final pedidos = List<Map<String, dynamic>>.from(res[0] as List);
     final pagos = List<Map<String, dynamic>>.from(res[1] as List);
     final gastos = List<Map<String, dynamic>>.from(res[2] as List);
-    final rendicionesPendientes = (res[3] as List).length;
+    final rendiciones = List<Map<String, dynamic>>.from(res[3] as List);
+    final rendicionesPendientes =
+        rendiciones.where((r) => r['estado'] == 'PENDIENTE').length;
 
-    var totalVentas = 0.0, efectivoEsperado = 0.0, yapeTotal = 0.0, gastosTotal = 0.0;
+    var totalVentas = 0.0, efectivoEsperado = 0.0, yapeTotal = 0.0;
+    var gastosTotal = 0.0, gastosEfectivo = 0.0;
     var pedidosPendientes = 0;
     for (final p in pedidos) {
       final estado = p['estado'] as String? ?? '';
@@ -183,11 +209,26 @@ class RendicionesRepo {
       if (metodo == 'EFECTIVO') efectivoEsperado += monto;
       if (metodo == 'YAPE') yapeTotal += monto;
     }
+    // Solo los gastos pagados en efectivo descuentan del efectivo.
     for (final g in gastos) {
-      gastosTotal += (g['monto'] as num? ?? 0).toDouble();
+      final monto = (g['monto'] as num? ?? 0).toDouble();
+      gastosTotal += monto;
+      if ((g['medio_pago'] as String? ?? 'EFECTIVO') == 'EFECTIVO') {
+        gastosEfectivo += monto;
+      }
     }
 
-    final efectivoRecibido = efectivoEsperado - gastosTotal;
+    var efectivoDeclarado = 0.0;
+    for (final r in rendiciones) {
+      efectivoDeclarado += (r['efectivo_declarado'] as num? ?? 0).toDouble();
+    }
+
+    // Lo que debería quedar en efectivo después de los gastos de efectivo.
+    final efectivoNeto = efectivoEsperado - gastosEfectivo;
+    final hayRendiciones = rendiciones.isNotEmpty;
+    final efectivoRecibido = hayRendiciones ? efectivoDeclarado : efectivoNeto;
+    final diferencias = hayRendiciones ? efectivoDeclarado - efectivoNeto : 0.0;
+
     final deudasTotal = (totalVentas - (efectivoEsperado + yapeTotal)) > 0
         ? totalVentas - (efectivoEsperado + yapeTotal)
         : 0.0;
@@ -202,10 +243,10 @@ class RendicionesRepo {
       'deudas_total': deudasTotal,
       'gastos_total': gastosTotal,
       'rendiciones_pendientes': rendicionesPendientes,
-      'diferencias': 0.0,
+      'diferencias': diferencias,
       'pedidos_pendientes': pedidosPendientes,
       'cerrado_por': adminId,
-      'fecha_cierre': DateTime.now().toIso8601String(),
+      'fecha_cierre': DateTime.now().toUtc().toIso8601String(),
       'estado': 'CERRADO',
       if (observaciones != null && observaciones.trim().isNotEmpty) 'justificacion': observaciones.trim(),
     };

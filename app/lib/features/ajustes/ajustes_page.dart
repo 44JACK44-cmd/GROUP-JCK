@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/theme.dart';
 import '../../core/config.dart';
+import '../../core/offline/sync_service.dart';
 import '../../core/update/app_update_service.dart';
 
 /// Preferencias locales (se guardan en el dispositivo, nunca en la nube).
@@ -64,6 +65,10 @@ class _AjustesPageState extends State<AjustesPage> {
   bool _diagnosticando = false;
   final List<String> _diagnostico = [];
 
+  // Sincronización offline
+  int? _pendientes;
+  bool _sincronizando = false;
+
   // Dispositivo
   bool _serviciosUbicacion = false;
   String _permisoUbicacion = 'Comprobando…';
@@ -92,7 +97,28 @@ class _AjustesPageState extends State<AjustesPage> {
 
   Future<void> _cargar() async {
     await Future.wait([_cargarVersion(), _cargarUbicacion(), _cargarPreferencias()]);
+    await _cargarPendientes();
     if (mounted) await _probarConexion(silencioso: true);
+  }
+
+  Future<void> _cargarPendientes() async {
+    final n = await SyncService.instance.pendientes();
+    if (mounted) setState(() => _pendientes = n);
+  }
+
+  Future<void> _sincronizar() async {
+    setState(() => _sincronizando = true);
+    final enviadas = await SyncService.instance.sincronizar();
+    await _cargarPendientes();
+    if (!mounted) return;
+    setState(() => _sincronizando = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(enviadas > 0
+            ? 'Se sincronizaron $enviadas operaciones.'
+            : 'No había nada pendiente por enviar.'),
+      ),
+    );
   }
 
   Future<void> _cargarVersion() async {
@@ -339,6 +365,35 @@ class _AjustesPageState extends State<AjustesPage> {
                     'Última respuesta: $_latencia ms',
                     style: const TextStyle(fontSize: 12, color: Colors.black45),
                   ),
+              ],
+            ),
+          ),
+          _seccion(
+            context,
+            titulo: 'Sincronización',
+            icono: Icons.sync_outlined,
+            hijo: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _fila('Pendientes de enviar', _pendientes == null ? '…' : '$_pendientes'),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _sincronizando ? null : _sincronizar,
+                  icon: _sincronizando
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.cloud_upload_outlined, size: 18),
+                  label: Text(_sincronizando ? 'Sincronizando…' : 'Sincronizar ahora'),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Los pedidos, entregas y cobros hechos sin internet se envían solos '
+                  'al volver la conexión. Nada se borra si el envío falla.',
+                  style: TextStyle(fontSize: 12, color: Colors.black45),
+                ),
               ],
             ),
           ),

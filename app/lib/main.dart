@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/theme.dart';
 import 'core/config.dart';
+import 'core/offline/sync_service.dart';
 import 'core/update/app_update_service.dart';
 import 'features/ajustes/ajustes_page.dart';
 import 'features/auth/auth_controller.dart';
@@ -63,7 +64,14 @@ class _GasAppState extends ConsumerState<GasApp> {
   @override
   void initState() {
     super.initState();
+    SyncService.instance.start();
     WidgetsBinding.instance.addPostFrameCallback((_) => _verificarActualizacion());
+  }
+
+  @override
+  void dispose() {
+    SyncService.instance.stop();
+    super.dispose();
   }
 
   // ---------- Actualización OTA ----------

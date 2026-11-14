@@ -191,12 +191,15 @@ class RendicionRepo {
       }
     }
 
-    var fierrosPendientes = 0;
+    var fierrosEntregados = 0;
+    var fierrosDevueltos = 0;
     for (final m in movFierros) {
       final cant = (m['cantidad'] as num? ?? 0).toInt();
-      if (m['tipo'] == 'DEVOLUCION') fierrosPendientes += cant;
+      if (m['tipo'] == 'ENTREGA') fierrosEntregados += cant;
+      if (m['tipo'] == 'DEVOLUCION') fierrosDevueltos += cant;
     }
-    fierrosPendientes = fierrosPendientes < 0 ? 0 : fierrosPendientes;
+    final fierrosPendientes =
+        (fierrosEntregados - fierrosDevueltos) > 0 ? fierrosEntregados - fierrosDevueltos : 0;
 
     // 6. Combustible del motorizado en el periodo.
     var combustible = 0.0;
