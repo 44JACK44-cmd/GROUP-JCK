@@ -62,6 +62,10 @@ select 'funcion asignar_por_zona',
        case when to_regprocedure('public.asignar_por_zona(uuid)') is not null
             then 'OK' else 'FALTA' end
 union all
+select 'funcion registrar_ingreso_caja',
+       case when to_regprocedure('public.registrar_ingreso_caja(uuid)') is not null
+            then 'OK' else 'FALTA' end
+union all
 select 'realtime pedidos',
        case when exists (select 1 from pg_publication_tables
                           where pubname = 'supabase_realtime'

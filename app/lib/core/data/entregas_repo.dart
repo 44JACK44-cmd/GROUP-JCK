@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 
 import '../domain/estado_pedido.dart';
 import 'auditoria_repo.dart';
+import 'caja_ingreso.dart';
 import 'sb.dart';
 
 /// Estado del balón vacío en la entrega.
@@ -146,6 +147,13 @@ class EntregasRepo {
           .select('id')
           .single();
       pagoId = pago['id'] as String;
+      await asegurarIngresoCaja(
+        pagoId,
+        empresaId: empresaId,
+        monto: datos.montoCobrado,
+        usuarioId: usuarioId,
+        metodo: datos.metodo,
+      );
     }
 
     // 3. Balones: sale el lleno y, si el cliente devolvió el vacío, entra.

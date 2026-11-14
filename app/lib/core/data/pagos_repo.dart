@@ -8,6 +8,7 @@ library;
 import 'package:uuid/uuid.dart';
 
 import 'auditoria_repo.dart';
+import 'caja_ingreso.dart';
 import 'sb.dart';
 
 class PagosRepo {
@@ -43,10 +44,21 @@ class PagosRepo {
         .select('id')
         .single();
 
+    final pagoId = data['id'] as String;
+
+    // Red de seguridad: el ingreso en caja no puede perderse.
+    await asegurarIngresoCaja(
+      pagoId,
+      empresaId: empresaId,
+      monto: monto,
+      usuarioId: usuarioId,
+      metodo: metodo,
+    );
+
     await auditoriaRepo.registrar(
       empresaId: empresaId,
       entidad: 'pago',
-      entidadId: data['id'] as String,
+      entidadId: pagoId,
       accion: 'REGISTRAR_PAGO',
       usuarioId: usuarioId,
       detalle: {
@@ -57,7 +69,7 @@ class PagosRepo {
       },
     );
 
-    return data['id'] as String;
+    return pagoId;
   }
 
   /// Historial de pagos (opcionalmente filtrado por cliente o método).

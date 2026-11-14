@@ -14,6 +14,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../data/caja_ingreso.dart';
+
 class Outbox {
   static const _key = 'gasapp_outbox_v1';
   static const _uuid = Uuid();
@@ -229,7 +231,18 @@ class Outbox {
           .select('id')
           .eq('uuid_offline', pago['uuid_offline'])
           .maybeSingle();
-      if (yaHay == null) await _sb.from('pagos').insert(pago);
+      var pagoId = yaHay?['id'] as String?;
+      if (pagoId == null) {
+        final insertado = await _sb.from('pagos').insert(pago).select('id').single();
+        pagoId = insertado['id'] as String;
+      }
+      await asegurarIngresoCaja(
+        pagoId,
+        empresaId: pago['empresa_id'] as String?,
+        monto: (pago['monto'] as num?)?.toDouble(),
+        usuarioId: pago['registrado_por'] as String?,
+        metodo: pago['metodo'] as String?,
+      );
     }
 
     if (balon != null) {
@@ -272,7 +285,18 @@ class Outbox {
         .select('id')
         .eq('uuid_offline', pago['uuid_offline'])
         .maybeSingle();
-    if (yaHay == null) await _sb.from('pagos').insert(pago);
+    var pagoId = yaHay?['id'] as String?;
+    if (pagoId == null) {
+      final insertado = await _sb.from('pagos').insert(pago).select('id').single();
+      pagoId = insertado['id'] as String;
+    }
+    await asegurarIngresoCaja(
+      pagoId,
+      empresaId: pago['empresa_id'] as String?,
+      monto: (pago['monto'] as num?)?.toDouble(),
+      usuarioId: pago['registrado_por'] as String?,
+      metodo: pago['metodo'] as String?,
+    );
   }
 
   static Future<void> _insertarDevolucion(Map<String, dynamic> op) async {

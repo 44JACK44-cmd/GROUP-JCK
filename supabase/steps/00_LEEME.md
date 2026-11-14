@@ -15,7 +15,7 @@ Repetir en orden, uno por uno, esperando `Success` antes de pasar al siguiente.
 |---|---------|----------|
 | 1 | `v7_01_checks.sql` | Permite forma de pago `DEUDA`, estados `NO_ENTREGADO` y pago `PARCIAL` |
 | 2 | `v7_02_trigger_entrega.sql` | Al registrar entrega el pedido pasa a `ENTREGADO` |
-| 3 | `v7_03_trigger_pago.sql` | Cada cobro entra a la caja abierta (sin duplicar) |
+| 3 | `v7_03_trigger_pago.sql` | Cada cobro entra a la caja abierta (sin duplicar) + función `registrar_ingreso_caja` |
 | 4 | `v7_04_guard_reactivar.sql` | Bloquea reabrir pedidos cerrados + `reactivar_pedido` (solo ADMIN) |
 | 5 | `v7_05_cuaderno.sql` | `pedidos.origen` + tabla `incidencias` con RLS |
 | 6 | `v7_06_rendicion.sql` | `gastos.medio_pago` + `rendiciones` + `cierre_diario` con RLS |
