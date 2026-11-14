@@ -1,22 +1,12 @@
 -- ============================================================
--- MIGRACIÓN v7 — Correcciones pendientes de la base de datos
--- (v3, v4, v5 y v6 nunca se aplicaron + endurecimiento detectado
---  durante la auditoría ETAPA A de FASE 6)
+-- MIGRACIÓN v7 — Flujo operativo, cuaderno digital y rendición
+-- (Agrupa v3 + v4 + v5 + v6, que nunca se aplicaron en la BD)
 --
--- Contiene, en orden:
---   1. v3: flujo operativo (checks, triggers, guard, reactivar, realtime)
---   2. v4: cuaderno digital (origen, incidencias)
---   3. v5: rendición y cierre (medio_pago, rendiciones, cierre_diario)
---   4. v6: zonas y asignación por zona (asignar_por_zona)
---   5. Endurecimiento de integridad (detectado en auditoría)
---
--- Es REEJECUTABLE: no borra datos históricos.
--- NO destructivo respecto a los registros existentes.
+-- Se ejecuta como UN SOLO BLOQUE LÓGICO por secciones.
+-- Es REEJECUTABLE y NO destructivo.
 -- ============================================================
 
--- ================= 1. V3 · FLUJO OPERATIVO =================
-
--- 1.1 Forma de pago "DEUDA"
+-- ---------- V3 · FLUJO OPERATIVO DE PEDIDOS ----------
 do $$ begin
   if exists (select 1 from pg_constraint where conname = 'pedidos_forma_pago_check') then
     alter table public.pedidos drop constraint pedidos_forma_pago_check;
@@ -26,7 +16,6 @@ alter table public.pedidos
   add constraint pedidos_forma_pago_check
   check (forma_pago in ('EFECTIVO', 'YAPE', 'PLIN', 'TRANSFERENCIA', 'OTRO', 'DEUDA'));
 
--- 1.2 Estado "NO_ENTREGADO"
 do $$ begin
   if exists (select 1 from pg_constraint where conname = 'pedidos_estado_check') then
     alter table public.pedidos drop constraint pedidos_estado_check;
@@ -36,7 +25,6 @@ alter table public.pedidos
   add constraint pedidos_estado_check
   check (estado in ('NUEVO', 'ASIGNADO', 'EN_CAMINO', 'ENTREGADO', 'CANCELADO', 'NO_ENTREGADO'));
 
--- 1.3 Pago parcial en entregas
 do $$ begin
   if exists (select 1 from pg_constraint where conname = 'entregas_estado_pago_check') then
     alter table public.entregas drop constraint entregas_estado_pago_check;
@@ -46,7 +34,6 @@ alter table public.entregas
   add constraint entregas_estado_pago_check
   check (estado_pago in ('PAGADO', 'PARCIAL', 'PENDIENTE'));
 
--- 1.4 Trigger: entrega ⇒ pedido ENTREGADO
 create or replace function public.trg_entrega_pedido_estado()
 returns trigger
 language plpgsql
@@ -66,7 +53,6 @@ create trigger trg_entrega_pedido_estado
   after insert on public.entregas
   for each row execute function public.trg_entrega_pedido_estado();
 
--- 1.5 Trigger: cobro ⇒ ingreso en caja
 create or replace function public.trg_pago_ingreso_caja()
 returns trigger
 language plpgsql
@@ -97,7 +83,6 @@ create trigger trg_pago_ingreso_caja
   after insert on public.pagos
   for each row execute function public.trg_pago_ingreso_caja();
 
--- 1.6 Guard de transiciones de estado
 create or replace function public.trg_pedidos_guarda_estado()
 returns trigger
 language plpgsql
@@ -116,7 +101,6 @@ create trigger trg_pedidos_guarda_estado
   before update on public.pedidos
   for each row execute function public.trg_pedidos_guarda_estado();
 
--- 1.7 Función de reactivación (ADMIN)
 create or replace function public.reactivar_pedido(p_pedido_id uuid, p_motivo text default null)
 returns boolean
 language plpgsql
@@ -134,33 +118,27 @@ begin
   if v_rol <> 'ADMIN' then
     raise exception 'Solo un administrador puede reactivar un pedido' using errcode = '42501';
   end if;
-
   select estado into v_estado
     from public.pedidos
    where id = p_pedido_id and empresa_id = v_empresa;
-
   if v_estado is null then
     raise exception 'El pedido no existe' using errcode = 'P0001';
   end if;
   if v_estado not in ('CANCELADO', 'ENTREGADO', 'NO_ENTREGADO') then
     raise exception 'Este pedido no se puede reactivar' using errcode = 'P0001';
   end if;
-
   perform set_config('app.allow_reopen', '1', true);
   update public.pedidos
      set estado = 'NUEVO'
    where id = p_pedido_id and empresa_id = v_empresa;
   perform set_config('app.allow_reopen', '0', true);
-
   insert into public.auditoria (empresa_id, entidad, entidad_id, accion, usuario_id, detalle)
   values (v_empresa, 'pedido', p_pedido_id::text, 'REACTIVAR', auth.uid(),
           jsonb_build_object('desde', v_estado, 'motivo', p_motivo));
-
   return true;
 end $$;
 grant execute on function public.reactivar_pedido(uuid, text) to authenticated;
 
--- 1.8 Realtime
 do $$
 begin
   if not exists (
@@ -173,8 +151,7 @@ begin
   end if;
 end $$;
 
--- ================= 2. V4 · CUADERNO DIGITAL =================
-
+-- ---------- V4 · CUADERNO DIGITAL ----------
 alter table public.pedidos
   add column if not exists origen text not null default 'ADMIN'
   check (origen in ('ADMIN', 'MOTORIZADO'));
@@ -191,23 +168,19 @@ create table if not exists public.incidencias (
   fecha       timestamptz not null default now(),
   uuid_offline text unique
 );
-
 alter table public.incidencias enable row level security;
-
 drop policy if exists "incidencias_select" on public.incidencias;
 create policy "incidencias_select" on public.incidencias
   for select to authenticated
   using (empresa_id = public.mi_empresa()
          and (public.es_admin() or usuario_id = auth.uid()));
-
 drop policy if exists "incidencias_insert" on public.incidencias;
 create policy "incidencias_insert" on public.incidencias
   for insert to authenticated
   with check (empresa_id = public.mi_empresa()
               and (public.es_admin() or usuario_id = auth.uid()));
 
--- ================= 3. V5 · RENDICIÓN Y CIERRE =================
-
+-- ---------- V5 · RENDICIÓN Y CIERRE ----------
 alter table public.gastos
   add column if not exists medio_pago text not null default 'EFECTIVO'
   check (medio_pago in ('EFECTIVO', 'YAPE', 'OTRO'));
@@ -232,21 +205,17 @@ create table if not exists public.rendiciones (
   uuid_offline     text unique,
   unique (empresa_id, motorizado_id, fecha)
 );
-
 alter table public.rendiciones enable row level security;
-
 drop policy if exists "rendiciones_select" on public.rendiciones;
 create policy "rendiciones_select" on public.rendiciones
   for select to authenticated
   using (empresa_id = public.mi_empresa()
          and (public.es_admin() or motorizado_id = auth.uid()));
-
 drop policy if exists "rendiciones_insert" on public.rendiciones;
 create policy "rendiciones_insert" on public.rendiciones
   for insert to authenticated
   with check (empresa_id = public.mi_empresa()
               and (public.es_admin() or motorizado_id = auth.uid()));
-
 drop policy if exists "rendiciones_update" on public.rendiciones;
 create policy "rendiciones_update" on public.rendiciones
   for update to authenticated
@@ -275,27 +244,22 @@ create table if not exists public.cierre_diario (
                    check (estado in ('ABIERTO', 'CERRADO')),
   unique (empresa_id, fecha)
 );
-
 alter table public.cierre_diario enable row level security;
-
 drop policy if exists "cierre_select" on public.cierre_diario;
 create policy "cierre_select" on public.cierre_diario
   for select to authenticated
   using (empresa_id = public.mi_empresa() and public.es_admin());
-
 drop policy if exists "cierre_insert" on public.cierre_diario;
 create policy "cierre_insert" on public.cierre_diario
   for insert to authenticated
   with check (empresa_id = public.mi_empresa() and public.es_admin());
-
 drop policy if exists "cierre_update" on public.cierre_diario;
 create policy "cierre_update" on public.cierre_diario
   for update to authenticated
   using (empresa_id = public.mi_empresa() and public.es_admin())
   with check (empresa_id = public.mi_empresa() and public.es_admin());
 
--- ================= 4. V6 · ZONAS Y ASIGNACIÓN =================
-
+-- ---------- V6 · ZONAS Y ASIGNACIÓN ----------
 alter table public.clientes
   add column if not exists zona text;
 
@@ -345,26 +309,4 @@ begin
 
   return v_motorizado;
 end $$;
-
 grant execute on function public.asignar_por_zona(uuid) to authenticated;
-
--- ================= 5. ENDURECIMIENTO (auditoría ETAPA A) =================
-
--- 5.1 Una sola rendición por motorizado por día.
-alter table public.rendiciones
-  add constraint rendiciones_empresa_motorizado_fecha_key
-  unique (empresa_id, motorizado_id, fecha);
-
--- 5.2 Solo una caja ABIERTA por empresa.
-create unique index if not exists idx_cajas_unica_abierta
-  on public.cajas (empresa_id)
-  where estado = 'ABIERTA';
-
--- 5.3 Idempotencia de movimientos (origen + referencia).
-create unique index if not exists idx_movimiento_caja_origen_ref
-  on public.movimiento_caja (origen, referencia_id);
-
--- 5.4 Saneamiento de montos (no negativo).
-alter table public.pedidos
-  add constraint pedidos_total_no_negativo_check
-  check (total >= 0);
