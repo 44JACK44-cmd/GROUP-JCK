@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme.dart';
 import '../../core/data/clientes_repo.dart';
 import '../../core/data/pagos_repo.dart';
+import '../../core/data/productos_repo.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/estado_pedido.dart';
 import '../../core/domain/formato.dart';
@@ -81,11 +82,7 @@ class _ClienteDetallePageState extends ConsumerState<ClienteDetallePage> {
       if (especiales.isNotEmpty) {
         return especiales.values.reduce((a, b) => a > b ? a : b);
       }
-      final productos = await sb
-          .from('productos')
-          .select('precio_base')
-          .eq('activo', true)
-          .limit(1);
+      final productos = await const ProductosRepo().vendibles();
       if (productos.isEmpty) return 0;
       return (productos.first['precio_base'] as num? ?? 0).toDouble();
     } catch (_) {

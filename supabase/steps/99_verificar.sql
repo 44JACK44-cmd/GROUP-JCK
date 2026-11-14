@@ -1,5 +1,5 @@
 -- Verificación posterior a la migración (solo lectura)
--- Ejecutar después de los 9 pasos. Debe devolver todo en "OK".
+-- Ejecutar después de los 10 pasos. Debe devolver todo en "OK".
 
 select 'tabla rendiciones' as control,
        case when to_regclass('public.rendiciones') is not null then 'OK' else 'FALTA' end as resultado
@@ -70,4 +70,21 @@ select 'realtime pedidos',
        case when exists (select 1 from pg_publication_tables
                           where pubname = 'supabase_realtime'
                             and schemaname = 'public' and tablename = 'pedidos')
+            then 'OK' else 'FALTA' end
+union all
+select 'columna productos.tipo',
+       case when exists (select 1 from information_schema.columns
+                          where table_schema = 'public' and table_name = 'productos'
+                            and column_name = 'tipo') then 'OK' else 'FALTA' end
+union all
+select 'indice unico producto activo',
+       case when exists (select 1 from pg_indexes
+                          where schemaname = 'public'
+                            and indexname = 'ux_productos_empresa_nombre_activo')
+            then 'OK' else 'FALTA' end
+union all
+select 'concepto fierro/balon vacio',
+       case when exists (select 1 from public.productos
+                          where activo and tipo = 'RETORNABLE'
+                            and lower(btrim(nombre)) = lower('Fierro / Balón vacío'))
             then 'OK' else 'FALTA' end;

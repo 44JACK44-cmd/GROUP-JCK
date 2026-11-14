@@ -11,6 +11,7 @@ import 'package:uuid/uuid.dart';
 import '../../app/theme.dart';
 import '../../core/data/clientes_repo.dart';
 import '../../core/data/pedidos_repo.dart';
+import '../../core/data/productos_repo.dart';
 import '../../core/data/sb.dart';
 import '../../core/offline/outbox.dart';
 import '../auth/auth_controller.dart';
@@ -54,14 +55,9 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
 
   Future<void> _cargarProductos() async {
     try {
-      final data = await sb
-          .from('productos')
-          .select('id, nombre, capacidad_kg, precio_base')
-          .eq('activo', true)
-          .order('nombre');
+      final lista = await const ProductosRepo().vendibles();
       if (!mounted) return;
       final mapa = <String, String>{};
-      final lista = List<Map<String, dynamic>>.from(data);
       for (final p in lista) {
         final kg = p['capacidad_kg'];
         final nombre = p['nombre'] as String? ?? 'Producto';

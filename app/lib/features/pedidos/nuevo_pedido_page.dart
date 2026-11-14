@@ -13,6 +13,7 @@ import 'package:uuid/uuid.dart';
 import '../../app/theme.dart';
 import '../../core/data/clientes_repo.dart';
 import '../../core/data/pedidos_repo.dart';
+import '../../core/data/productos_repo.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
 import '../../core/offline/outbox.dart';
@@ -94,14 +95,10 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
 
   Future<void> _cargarProductos() async {
     try {
-      final data = await sb
-          .from('productos')
-          .select('id, nombre, capacidad_kg, precio_base')
-          .eq('activo', true)
-          .order('nombre');
+      final data = await const ProductosRepo().vendibles();
       if (!mounted) return;
       setState(() {
-        _productos = List<Map<String, dynamic>>.from(data);
+        _productos = data;
         _cargandoProductos = false;
       });
     } catch (e) {
