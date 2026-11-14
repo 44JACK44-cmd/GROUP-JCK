@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app/theme.dart';
 import 'core/config.dart';
 import 'core/update/app_update_service.dart';
+import 'features/ajustes/ajustes_page.dart';
 import 'features/auth/auth_controller.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/register_empresa_page.dart';
@@ -47,7 +48,7 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 class GasApp extends ConsumerStatefulWidget {
   const GasApp({super.key});
 
-  static const _rutasPublicas = {'/welcome', '/login', '/registro-empresa'};
+  static const _rutasPublicas = {'/welcome', '/login', '/registro-empresa', '/ajustes'};
 
   /// Pestañas que solo puede usar el administrador.
   static const _rutasAdmin = {'/pedidos', '/clientes', '/cobros', '/mas'};
@@ -180,7 +181,9 @@ class _GasAppState extends ConsumerState<GasApp> {
           case AuthStatus.noAutenticado:
             return GasApp._rutasPublicas.contains(loc) ? null : '/welcome';
           case AuthStatus.autenticado:
-            if (GasApp._rutasPublicas.contains(loc) || loc == '/splash') {
+            // /ajustes es de dispositivo: se puede abrir con o sin sesión.
+            if ((GasApp._rutasPublicas.contains(loc) && loc != '/ajustes') ||
+                loc == '/splash') {
               return '/inicio';
             }
             // El motorizado no entra a las pestañas de administración.
@@ -198,6 +201,7 @@ class _GasAppState extends ConsumerState<GasApp> {
         GoRoute(path: '/welcome', builder: (_, state) => const WelcomePage()),
         GoRoute(path: '/login', builder: (_, state) => const LoginPage()),
         GoRoute(path: '/registro-empresa', builder: (_, state) => const RegisterEmpresaPage()),
+        GoRoute(path: '/ajustes', builder: (_, state) => const AjustesPage()),
 
         // ------- Barra inferior (pestañas) -------
         ShellRoute(

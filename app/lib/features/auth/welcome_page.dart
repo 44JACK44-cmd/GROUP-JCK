@@ -10,6 +10,18 @@ class WelcomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        // Configuración disponible antes de iniciar sesión.
+        actions: [
+          IconButton(
+            tooltip: 'Configuración',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => context.push('/ajustes'),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),

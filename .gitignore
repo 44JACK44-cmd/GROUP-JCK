@@ -17,6 +17,9 @@ backend/target/
 # MySQL local
 mysql/data/
 
+# Script temporales de auditoría / diagnóstico
+supabase/.temp/
+
 # SO / editor
 .DS_Store
 Thumbs.db
