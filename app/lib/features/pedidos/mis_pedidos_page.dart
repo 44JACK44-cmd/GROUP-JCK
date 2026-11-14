@@ -117,11 +117,8 @@ class _MisPedidosPageState extends ConsumerState<MisPedidosPage> {
   Future<void> _tomarPedido(Map<String, dynamic> pedido) async {
     final auth = ref.read(authProvider);
     try {
-      await pedidosRepo.asignar(
+      await pedidosRepo.tomarPedido(
         pedidoId: pedido['id'] as String,
-        empresaId: auth.empresaId!,
-        usuarioId: auth.usuarioId!,
-        repartidorId: auth.usuarioId,
         nombreRepartidor: auth.nombre,
       );
       _cargar();

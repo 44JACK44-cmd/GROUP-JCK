@@ -65,6 +65,42 @@ ErrorApp traducirError(Object e, {String? contexto}) {
   return ErrorApp('${prefijo}no pudimos completar la operación. Inténtalo de nuevo.');
 }
 
+/// True si el error indica que la función RPC todavía no existe en la base
+/// de datos (migración pendiente). Permite degradar a la ruta antigua sin
+/// romper la pantalla.
+bool esFuncionAusente(Object e) {
+  if (e is PostgrestException) {
+    return e.code == '42883' ||
+        e.code == 'PGRST202' ||
+        e.message.contains('Could not find the function');
+  }
+  if (e is FunctionException) {
+    return (e.details?.toString() ?? '').contains('Could not find the function');
+  }
+  return false;
+}
+
+/// True si el error indica que una columna todavía no existe en la base
+/// (migración pendiente). PostgREST usa PGRST204 al insertar y PostgreSQL 42703.
+bool esColumnaAusente(Object e) {
+  if (e is PostgrestException) {
+    return e.code == '42703' ||
+        e.code == 'PGRST204' ||
+        e.message.contains("Could not find the '");
+  }
+  return false;
+}
+
+/// True si un CHECK de la base rechazó el valor (p. ej. forma de pago no
+/// permitida porque la migración no está aplicada).
+bool esValorInvalido(Object e) {
+  if (e is PostgrestException) {
+    return e.code == '23514' ||
+        e.message.toLowerCase().contains('check constraint');
+  }
+  return false;
+}
+
 /// True si el error parece ser de red (para Offers: cola offline).
 bool esErrorDeRed(Object e) {
   if (e is PostgrestException) {

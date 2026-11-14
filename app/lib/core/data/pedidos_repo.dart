@@ -40,9 +40,21 @@ class LineaPedido {
 class PedidosRepo {
   const PedidosRepo();
 
-  // ------------------------------------------------------------------
-  // Consultas
-  // ------------------------------------------------------------------
+  /// Ejecuta una consulta sobre `pedidos` incluyendo la columna `origen`.
+  ///
+  /// La columna llega con la migración v7. Si el servidor todavía no la tiene
+  /// (error 42703) se reintenta con el conjunto base y se memoriza para no
+  /// repetir el viaje fallido. Así la app funciona antes y después de migrar.
+  Future<T> _conOrigen<T>(Future<T> Function(String select) ejecutar) async {
+    if (!_origenDisponible) return ejecutar(_columnasBase);
+    try {
+      return await ejecutar(_columnasConOrigen);
+    } on PostgrestException catch (e) {
+      if (e.code != '42703') rethrow;
+      _origenDisponible = false;
+      return ejecutar(_columnasBase);
+    }
+  }
 
   /// Lista pedidos de la empresa.
   ///
@@ -59,22 +71,24 @@ class PedidosRepo {
     int limite = 200,
     bool masAntigosPrimero = false,
   }) async {
-    var q = sb.from('pedidos').select(_selectPedido);
-    if (repartidorId != null) q = q.eq('repartidor_id', repartidorId);
-    if (estados.isNotEmpty) q = q.inFilter('estado', estados);
-    if (desde != null) q = q.gte('fecha', desde.toIso8601String());
-    if (hasta != null) q = q.lte('fecha', hasta.toIso8601String());
-    final data = await q.order('fecha', ascending: masAntigosPrimero).limit(limite);
+    final data = await _conOrigen(
+      (select) async {
+        var q = sb.from('pedidos').select(select);
+        if (repartidorId != null) q = q.eq('repartidor_id', repartidorId);
+        if (estados.isNotEmpty) q = q.inFilter('estado', estados);
+        if (desde != null) q = q.gte('fecha', desde.toIso8601String());
+        if (hasta != null) q = q.lte('fecha', hasta.toIso8601String());
+        return q.order('fecha', ascending: masAntigosPrimero).limit(limite);
+      },
+    );
     return List<Map<String, dynamic>>.from(data);
   }
 
   /// Un pedido con sus datos de cliente.
   Future<Map<String, dynamic>?> obtener(String pedidoId) async {
-    final data = await sb
-        .from('pedidos')
-        .select(_selectPedido)
-        .eq('id', pedidoId)
-        .maybeSingle();
+    final data = await _conOrigen(
+      (select) => sb.from('pedidos').select(select).eq('id', pedidoId).maybeSingle(),
+    );
     return data == null ? null : Map<String, dynamic>.from(data);
   }
 
@@ -195,23 +209,32 @@ class PedidosRepo {
 
   /// Inserta la cabecera del pedido.
   ///
-  /// Si la base de datos todavía no admite la forma de pago "DEUDA"
-  /// (migración v3 no aplicada), se reintenta sin ella para no perder el
-  /// pedido: la deuda se registra igual al entregar.
+  /// Tolera bases de datos sin la migración aplicada:
+  /// - sin forma de pago "DEUDA" (reintenta sin ella),
+  /// - sin la columna `origen` (reintenta sin ella).
   static Future<String> _insertarCabecera(Map<String, dynamic> cabecera) async {
     try {
       final res = await sb.from('pedidos').insert(cabecera).select('id').single();
       return res['id'] as String;
     } catch (e) {
-      final esCheck = e is PostgrestException &&
-          (e.code == '23514' ||
-              e.message.toLowerCase().contains('check constraint'));
-      if (esCheck && cabecera['forma_pago'] == 'DEUDA') {
-        final reintento = Map<String, dynamic>.from(cabecera)..remove('forma_pago');
-        final res = await sb.from('pedidos').insert(reintento).select('id').single();
-        return res['id'] as String;
+      if (!esColumnaAusente(e) && !esValorInvalido(e)) rethrow;
+      final reintento = Map<String, dynamic>.from(cabecera);
+      var cambio = false;
+
+      if (esColumnaAusente(e) || (esValorInvalido(e) && reintento['origen'] != null)) {
+        if (reintento.remove('origen') != null) {
+          cambio = true;
+          _origenDisponible = false;
+        }
       }
-      rethrow;
+      if (esValorInvalido(e) && reintento['forma_pago'] == 'DEUDA') {
+        reintento.remove('forma_pago');
+        cambio = true;
+      }
+      if (!cambio) rethrow;
+
+      final res = await sb.from('pedidos').insert(reintento).select('id').single();
+      return res['id'] as String;
     }
   }
 
@@ -226,6 +249,10 @@ class PedidosRepo {
   }
 
   /// Asigna un motorizado. `repartidorId == null` desasigna.
+  ///
+  /// La escritura se verifica: si la base de datos no devuelve la fila
+  /// actualizada (RLS o pedido inexistente) se lanza un error visible en vez
+  /// de dar por hecho una asignación que no ocurrió.
   Future<void> asignar({
     required String pedidoId,
     required String empresaId,
@@ -245,10 +272,14 @@ class PedidosRepo {
       ));
     }
 
-    await sb.from('pedidos').update({
-      if (repartidorId != null) 'repartidor_id': repartidorId,
+    final filas = await sb.from('pedidos').update({
+      'repartidor_id': repartidorId,
       'estado': repartidorId == null ? 'NUEVO' : 'ASIGNADO',
-    }).eq('id', pedidoId);
+    }).eq('id', pedidoId).select('id');
+
+    if (List<Map<String, dynamic>>.from(filas).isEmpty) {
+      throw Exception('No se pudo actualizar el pedido: ya no existe o no tienes permiso.');
+    }
 
     await auditoriaRepo.registrar(
       empresaId: empresaId,
@@ -257,6 +288,63 @@ class PedidosRepo {
       accion: repartidorId == null ? 'DESASIGNAR' : 'ASIGNAR',
       usuarioId: usuarioId,
       detalle: {'motorizado': nombreRepartidor ?? repartidorId},
+    );
+  }
+
+  /// El motorizado toma un pedido libre (sin asignar).
+  ///
+  /// La validación real ocurre en el servidor (función `tomar_pedido`): rol,
+  /// empresa, estado y que nadie lo haya tomado antes. Si la migración aún no
+  /// está aplicada se usa la ruta directa verificando filas afectadas.
+  Future<void> tomarPedido({required String pedidoId, String? nombreRepartidor}) async {
+    try {
+      await sb.rpc('tomar_pedido', params: {'p_pedido_id': pedidoId});
+      return;
+    } catch (e) {
+      if (!esFuncionAusente(e)) rethrow;
+    }
+
+    final uid = sb.auth.currentUser?.id;
+    if (uid == null) throw Exception('Tu sesión expiró. Vuelve a iniciar sesión.');
+
+    final filas = await sb
+        .from('pedidos')
+        .update({'repartidor_id': uid, 'estado': 'ASIGNADO'})
+        .eq('id', pedidoId)
+        .eq('estado', 'NUEVO')
+        .filter('repartidor_id', 'is', null)
+        .select('id');
+
+    if (List<Map<String, dynamic>>.from(filas).isEmpty) {
+      throw Exception('Ese pedido ya no está disponible. Actualiza la lista.');
+    }
+  }
+
+  /// Libera el pedido: queda sin motorizado y vuelve a `NUEVO`.
+  Future<void> liberar({
+    required String pedidoId,
+    required String empresaId,
+    required String usuarioId,
+  }) async {
+    try {
+      await sb.rpc('liberar_pedido', params: {'p_pedido_id': pedidoId});
+    } catch (e) {
+      if (!esFuncionAusente(e)) rethrow;
+      await asignar(
+        pedidoId: pedidoId,
+        empresaId: empresaId,
+        usuarioId: usuarioId,
+      );
+      return;
+    }
+
+    await auditoriaRepo.registrar(
+      empresaId: empresaId,
+      entidad: 'pedido',
+      entidadId: pedidoId,
+      accion: 'DESASIGNAR',
+      usuarioId: usuarioId,
+      detalle: const {'motorizado': null},
     );
   }
 
@@ -326,23 +414,55 @@ class PedidosRepo {
     );
   }
 
-  /// Reactive un pedido cancelado.
+  /// Reactiva un pedido cerrado (entregado, cancelado o no entregado).
+  ///
+  /// Lo hace la función `reactivar_pedido` en el servidor: valida rol ADMIN,
+  /// empresa y estado, y deja rastro en auditoría.
   Future<void> reactivar({
     required String pedidoId,
     required String empresaId,
     required String usuarioId,
   }) async {
-    await cambiarEstado(
-      pedidoId: pedidoId,
+    try {
+      await sb.rpc('reactivar_pedido', params: {
+        'p_pedido_id': pedidoId,
+        'p_motivo': 'Reactivado por el administrador',
+      });
+      return;
+    } catch (e) {
+      if (!esFuncionAusente(e)) rethrow;
+    }
+
+    // Respaldo para bases de datos sin la migración aplicada.
+    final filas = await sb.from('pedidos').update({
+      'estado': 'NUEVO',
+      'repartidor_id': null,
+    }).eq('id', pedidoId).select('id');
+
+    if (List<Map<String, dynamic>>.from(filas).isEmpty) {
+      throw Exception('No se pudo reactivar el pedido: ya no existe o no tienes permiso.');
+    }
+
+    await auditoriaRepo.registrar(
       empresaId: empresaId,
+      entidad: 'pedido',
+      entidadId: pedidoId,
+      accion: 'REACTIVAR',
       usuarioId: usuarioId,
-      destino: EstadoPedido.nuevo,
-      esAdmin: true,
-      motivo: 'Reactivado por el administrador',
+      detalle: const {'motivo': 'Reactivado por el administrador'},
     );
   }
 
-  static const _selectPedido = 'id, numero, fecha, total, estado, forma_pago, observaciones, '
+  /// ¿El servidor ya tiene `pedidos.origen`? (migración v7)
+  static bool _origenDisponible = true;
+
+  static const _columnasBase =
+      'id, numero, fecha, total, estado, forma_pago, observaciones, '
+      'cliente_id, repartidor_id, creado_por, empresa_id, '
+      'clientes(nombre, telefono, direccion, referencia, latitud, longitud)';
+
+  static const _columnasConOrigen =
+      'id, numero, fecha, total, estado, forma_pago, origen, observaciones, '
       'cliente_id, repartidor_id, creado_por, empresa_id, '
       'clientes(nombre, telefono, direccion, referencia, latitud, longitud)';
 }

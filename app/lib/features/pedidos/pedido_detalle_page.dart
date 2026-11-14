@@ -155,11 +155,8 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
   Future<void> _tomarPedido() async {
     final auth = ref.read(authProvider);
     try {
-      await pedidosRepo.asignar(
+      await pedidosRepo.tomarPedido(
         pedidoId: _pedidoId,
-        empresaId: auth.empresaId!,
-        usuarioId: auth.usuarioId!,
-        repartidorId: auth.usuarioId,
         nombreRepartidor: auth.nombre,
       );
       widget.pedido['repartidor_id'] = auth.usuarioId;
