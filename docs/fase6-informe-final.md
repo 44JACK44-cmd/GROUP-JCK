@@ -127,11 +127,36 @@ El resto del flujo (pedidos, entregas, cobros, caja, rendición, cierre, roles,
 aislamiento multiempresa) se probó con pruebas automáticas y contra la base real
 según el detalle de `docs/fase6-pruebas.md`.
 
-## 5. Siguiente paso recomendado
+## 5. Publicación OTA — hecha
 
-1. Aplicar los pasos 10 y 11 de la migración y ejecutar `99_verificar.sql`.
-2. Configurar la clave de Google Maps (`docs/fase6-mapa-y-voz.md`) y compilar
-   con ella.
+| Dato | Valor |
+|---|---|
+| Fecha | 2026-11-15 |
+| Archivo subido | `releases/app-v8.apk` |
+| Tamaño | 21 405 496 bytes (20.4 MB) |
+| SHA-256 | `22A5DF41D3FBEE290E37D5E0B693DC3DD047143C8AB73B5407CBCACDF4BA1D45` |
+| `app_versiones` | `version_code 2008`, `version_name 1.0.8`, `obligatoria false` |
+
+Comprobaciones hechas antes y después de publicar:
+
+- El APK subido se descargó de la URL pública y su SHA-256 coincide **byte por
+  byte** con el compilado en local.
+- `aapt dump badging`: `com.grupojck.gas_app`, `versionCode='2008'`,
+  `versionName='1.0.8'`, `minSdk 24`, `targetSdk 36`, solo `arm64-v8a`.
+- El APK universal (61 MB) **no cabe** en el almacenamiento del proyecto
+  (límite de 50 MB por archivo): se publica la variante arm64, igual que la
+  1.0.7 que ya tienen instalada los usuarios.
+- Cálculo de actualización verificado: `2008 % 1000 = 8`; un teléfono con
+  1.0.7 (`2007 → 7`) recibe el aviso, y uno con 1.0.8 instalada (`8`) **no**
+  vuelve a pedir la misma versión.
+
+## 6. Lo que falta del lado del usuario
+
+1. **Aplicar los pasos 10 y 11** de la migración y ejecutar
+   `99_verificar.sql` (guía: `docs/fase6-aplicar-migraciones.md`).
+2. Configurar la clave de Google Maps (`docs/fase6-mapa-y-voz.md`) y recompilar
+   con ella: el APK publicado funciona, pero sin clave usa el mapa alternativo.
 3. Probar en un teléfono: login de ambos roles, una entrega con pago parcial,
    caja, rendición, cierre y una ruta con voz.
-4. Solo después, publicar el APK por el mecanismo de actualización.
+4. Antes de distribuir por Play Store: crear un keystore de producción y
+   `key.properties` (hoy el APK va firmado con la clave de depuración).

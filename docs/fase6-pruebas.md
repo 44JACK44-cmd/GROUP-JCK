@@ -16,6 +16,10 @@ Leyenda de la columna **Cómo**:
 |---|---|---|
 | 2026-11-15 | 0 errores · 0 advertencias (18 avisos de estilo preexistentes) | **99 pruebas en verde** |
 
+Publicación OTA de esta versión: `releases/app-v8.apk` (arm64, 20.4 MB,
+`version_code 2008`), descarga pública verificada por SHA-256 contra el APK
+compilado. Detalle en `docs/fase6-informe-final.md`.
+
 ## Las 27 pruebas obligatorias
 
 | # | Qué se comprueba | Cómo | Dónde |
