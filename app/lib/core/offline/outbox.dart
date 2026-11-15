@@ -46,9 +46,14 @@ class Outbox {
   static Future<int> pendientes() async => (await _leer()).length;
 
   /// Encola un pedido completo (cabecera + detalles).
+  ///
+  /// [clienteNuevo] permite registrar sin internet un pedido de un cliente que
+  /// todavía no existe: al sincronizar se crea (o se reutiliza si ya está) y
+  /// después se guarda el pedido. Nunca se pierde el pedido.
   static Future<void> encolarPedido({
     required Map<String, dynamic> pedido,
     required List<Map<String, dynamic>> detalles,
+    Map<String, dynamic>? clienteNuevo,
   }) async {
     pedido['uuid_offline'] ??= _uuid.v4();
     final ops = await _leer();
@@ -57,6 +62,7 @@ class Outbox {
       'uuid_offline': pedido['uuid_offline'],
       'pedido': pedido,
       'detalles': detalles,
+      if (clienteNuevo != null) 'cliente_nuevo': clienteNuevo,
       'fecha': DateTime.now().toIso8601String(),
     });
     await _escribir(ops);
@@ -168,7 +174,15 @@ class Outbox {
   static Future<void> _insertarPedido(Map<String, dynamic> op) async {
     final pedido = Map<String, dynamic>.from(op['pedido'] as Map);
     final detalles = (op['detalles'] as List).cast<Map<String, dynamic>>();
+    final clienteNuevo = op['cliente_nuevo'] == null
+        ? null
+        : Map<String, dynamic>.from(op['cliente_nuevo'] as Map);
     final uuid = op['uuid_offline'] as String?;
+
+    // Pedido de un cliente que se creó sin internet: primero el cliente.
+    if (pedido['cliente_id'] == null && clienteNuevo != null) {
+      pedido['cliente_id'] = await _clienteDelPedido(clienteNuevo, pedido);
+    }
 
     String? pedidoId;
     if (uuid != null) {
@@ -199,6 +213,41 @@ class Outbox {
       if (yaExiste != null) continue;
       await _sb.from('detalle_pedido').insert(fila);
     }
+  }
+
+  /// Cliente creado sin conexión: se reutiliza si ya existe (mismo nombre y
+  /// empresa) para no duplicar fichas al sincronizar varios pedidos.
+  static Future<String> _clienteDelPedido(
+    Map<String, dynamic> cliente,
+    Map<String, dynamic> pedido,
+  ) async {
+    final empresaId = pedido['empresa_id'] as String;
+    final nombre = (cliente['nombre'] as String? ?? '').trim();
+
+    final existentes = await _sb
+        .from('clientes')
+        .select('id')
+        .eq('empresa_id', empresaId)
+        .eq('nombre', nombre)
+        .limit(1);
+    final lista = List<Map<String, dynamic>>.from(existentes as List);
+    if (lista.isNotEmpty) return lista.first['id'] as String;
+
+    final creado = await _sb
+        .from('clientes')
+        .insert({
+          'empresa_id': empresaId,
+          'nombre': nombre,
+          if (cliente['telefono'] != null) 'telefono': cliente['telefono'],
+          if (cliente['direccion'] != null) 'direccion': cliente['direccion'],
+          if (cliente['referencia'] != null) 'referencia': cliente['referencia'],
+          if (cliente['latitud'] != null) 'latitud': cliente['latitud'],
+          if (cliente['longitud'] != null) 'longitud': cliente['longitud'],
+          'observaciones': 'Registrado sin conexión',
+        })
+        .select('id')
+        .single();
+    return creado['id'] as String;
   }
 
   /// Inserta la entrega con su pago y movimientos.

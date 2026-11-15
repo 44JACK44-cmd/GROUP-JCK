@@ -14,10 +14,16 @@ import '../../app/theme.dart';
 import '../../core/data/motorizados_repo.dart';
 import '../../core/data/pedidos_repo.dart';
 import '../../core/data/sb.dart';
+import '../../core/domain/estado_pedido.dart';
+import '../../core/domain/navegacion.dart';
+import '../../core/domain/resumen_pedido.dart';
 import '../../core/domain/formato.dart';
 import '../../core/ui/widgets.dart';
-import '../auth/auth_controller.dart';
 import 'pedido_detalle_page.dart';
+import '../../core/prefs/ajustes_prefs.dart';
+import '../auth/auth_controller.dart';
+import '../rutas/ruta_page.dart';
+import 'flujo_entrega.dart';
 
 class MisPedidosPage extends ConsumerStatefulWidget {
   const MisPedidosPage({super.key});
@@ -132,6 +138,64 @@ class _MisPedidosPageState extends ConsumerState<MisPedidosPage> {
         SnackBar(content: Text(traducirError(e, contexto: 'No pudimos tomar el pedido').mensaje)),
       );
     }
+  }
+
+  Future<void> _navegar(Map<String, dynamic> pedido) async {
+    final auth = ref.read(authProvider);
+    final cliente = pedido['clientes'] as Map<String, dynamic>?;
+    final lat = (cliente?['latitud'] as num?)?.toDouble();
+    final lng = (cliente?['longitud'] as num?)?.toDouble();
+    final direccion = cliente?['direccion'] as String? ?? '';
+
+    // Lo ponemos en camino apenas se empieza a navegar.
+    try {
+      await pedidosRepo.cambiarEstado(
+        pedidoId: pedido['id'] as String,
+        empresaId: auth.empresaId!,
+        usuarioId: auth.usuarioId!,
+        destino: EstadoPedido.enCamino,
+        esAdmin: auth.esAdmin,
+      );
+      pedido['estado'] = 'EN_CAMINO';
+      if (mounted) setState(() {});
+    } catch (_) {
+      // Puede que ya estuviera en camino: no bloqueamos la navegación.
+    }
+
+    if (!mounted) return;
+    if (lat == null || lng == null) {
+      final abierto = await navegarACliente(direccion: direccion);
+      if (!abierto && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('El cliente no tiene ubicación guardada. Edita su ficha para marcarla.'),
+          ),
+        );
+      }
+      return;
+    }
+
+    final dentro = await AjustesPrefs.mapaDentroDeApp();
+    if (!mounted) return;
+    if (!dentro) {
+      await navegarACliente(latitud: lat, longitud: lng, direccion: direccion);
+      return;
+    }
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RutaPage(
+          latitud: lat,
+          longitud: lng,
+          clienteNombre: cliente?['nombre'] as String?,
+          direccion: direccion.isEmpty ? null : direccion,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _entregar(Map<String, dynamic> pedido) async {
+    final ok = await ejecutarEntrega(context, ref, pedido);
+    if (ok) _cargar();
   }
 
   Future<void> _abrirDetalle(Map<String, dynamic> pedido) async {
@@ -252,6 +316,24 @@ class _MisPedidosPageState extends ConsumerState<MisPedidosPage> {
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
+                                productoResumen: resumenProductos(p),
+                                acciones: [
+                                  OutlinedButton.icon(
+                                    onPressed: () => _navegar(p),
+                                    icon: const Icon(Icons.navigation_outlined, size: 18),
+                                    label: const Text('NAVEGAR'),
+                                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+                                  ),
+                                  FilledButton.icon(
+                                    onPressed: () => _entregar(p),
+                                    icon: const Icon(Icons.check_circle_outline, size: 18),
+                                    label: const Text('ENTREGADO'),
+                                    style: FilledButton.styleFrom(
+                                      minimumSize: const Size.fromHeight(44),
+                                      backgroundColor: AppTheme.success,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                         ],

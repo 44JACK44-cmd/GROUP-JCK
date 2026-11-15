@@ -131,6 +131,28 @@ class ClientesRepo {
     }).eq('id', clienteId);
   }
 
+  /// Guarda solo la ubicación (y el teléfono si vino) de un cliente existente.
+  ///
+  /// Se usa al registrar un pedido: no reescribe tipo, zona ni observaciones,
+  /// así no se pisa lo que el administrador ya había configurado.
+  Future<void> guardarUbicacion({
+    required String clienteId,
+    String? telefono,
+    String? direccion,
+    String? referencia,
+    double? latitud,
+    double? longitud,
+  }) async {
+    await sb.from('clientes').update({
+      if (telefono != null && telefono.trim().isNotEmpty) 'telefono': telefono.trim(),
+      'direccion': direccion,
+      'referencia': referencia,
+      'latitud': latitud,
+      'longitud': longitud,
+      'actualizado_en': DateTime.now().toIso8601String(),
+    }).eq('id', clienteId);
+  }
+
   /// Precios especiales del cliente (si tiene) indexados por producto.
   Future<Map<String, double>> preciosDe(String clienteId) async {
     final data = await sb

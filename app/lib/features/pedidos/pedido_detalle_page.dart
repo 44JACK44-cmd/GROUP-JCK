@@ -22,6 +22,7 @@ import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 import '../rutas/ruta_page.dart';
 import 'entrega_sheet.dart';
+import 'flujo_entrega.dart';
 
 class PedidoDetallePage extends ConsumerStatefulWidget {
   final Map<String, dynamic> pedido;
@@ -282,77 +283,17 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
   }
 
   Future<void> _entregar() async {
-    final auth = ref.read(authProvider);
-
-    final datos = await mostrarFormularioEntrega(
+    final ok = await ejecutarEntrega(
       context,
+      ref,
+      widget.pedido,
       total: _total,
       cantidadBalones: _cantidadBalones,
     );
-    if (datos == null) return;
-
-    setState(() => _trabajando = true);
-    try {
-      await entregasRepo.registrarEntrega(
-        empresaId: auth.empresaId!,
-        usuarioId: auth.usuarioId!,
-        pedidoId: _pedidoId,
-        clienteId: widget.pedido['cliente_id'] as String,
-        total: _total,
-        datos: datos,
-      );
-      widget.pedido['estado'] = 'ENTREGADO';
-      await _cargar();
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_mensajeEntrega(datos, _total))),
-      );
-    } catch (e) {
-      if (esErrorDeRed(e)) {
-        // Sin conexión: se encola y se sincroniza luego.
-        await Outbox.encolarEntrega(
-          entrega: {
-            'empresa_id': auth.empresaId,
-            'pedido_id': _pedidoId,
-            'estado_bal_on_vacio': datos.balonVacio.db,
-            'estado_pago': datos.montoCobrado + 0.009 >= _total ? 'PAGADO' : 'PENDIENTE',
-            'registrado_por': auth.usuarioId,
-          },
-          pago: datos.montoCobrado > 0
-              ? {
-                  'empresa_id': auth.empresaId,
-                  'pedido_id': _pedidoId,
-                  'cliente_id': widget.pedido['cliente_id'],
-                  'monto': datos.montoCobrado,
-                  'metodo': datos.metodo,
-                  'registrado_por': auth.usuarioId,
-                }
-              : null,
-          movimientoBalon: _cantidadBalones > 0
-              ? {
-                  'empresa_id': auth.empresaId,
-                  'cliente_id': widget.pedido['cliente_id'],
-                  'tipo': 'ENTREGA_LLENO',
-                  'pedido_id': _pedidoId,
-                  'cantidad': _cantidadBalones,
-                  'usuario_id': auth.usuarioId,
-                }
-              : null,
-        );
-        if (!mounted) return;
-        Navigator.of(context).pop(true);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sin conexión: la entrega quedó guardada y se enviará sola.'),
-          ),
-        );
-        return;
-      }
-      if (!mounted) return;
-      setState(() => _trabajando = false);
-      _error(e is Exception ? e.toString().replaceFirst('Exception: ', '') : 'No se pudo entregar.');
-    }
+    if (!ok || !mounted) return;
+    _huboCambios = true;
+    await _cargar();
+    if (mounted) Navigator.of(context).pop(true);
   }
 
   String _mensajeEntrega(datos, double total) {

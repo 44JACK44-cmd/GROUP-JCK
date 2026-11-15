@@ -18,6 +18,7 @@ import '../../core/config.dart';
 import '../../core/offline/sync_service.dart';
 import '../../core/prefs/ajustes_prefs.dart';
 import '../../core/update/app_update_service.dart';
+import '../clientes/mapa_selector_page.dart';
 
 enum EstadoPrueba { pendiente, probando, ok, fallido }
 
@@ -56,6 +57,7 @@ class _AjustesPageState extends State<AjustesPage> {
   String _build = '';
   String? _versionServidor;
   bool? _hayActualizacion;
+  bool _actualizando = false;
 
   String get _host {
     final u = Uri.tryParse(supabaseUrl);
@@ -139,6 +141,98 @@ class _AjustesPageState extends State<AjustesPage> {
     } catch (_) {
       if (mounted) setState(() => _hayActualizacion = null);
     }
+  }
+
+  /// Búsqueda manual de actualización desde Configuración (funciona sin
+  /// iniciar sesión: solo descarga e instala un APK).
+  Future<void> _buscarActualizacion() async {
+    if (_actualizando) return;
+    setState(() => _actualizando = true);
+    try {
+      final remota = await AppUpdateService.fetchLatestVersion();
+      if (!mounted) return;
+      if (remota == null) {
+        _aviso('No se pudo leer la versión publicada. Revisa tu conexión.');
+        return;
+      }
+      final hay = await AppUpdateService.hayNuevaVersion(remota);
+      if (!mounted) return;
+      if (!hay) {
+        _aviso('Tu app ya está actualizada (${_versionLocal}).');
+        return;
+      }
+      final quiere = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Nueva versión disponible'),
+          content: Text(
+            'Tu versión: $_versionLocal\n'
+            'Nueva versión: v${remota.versionName}\n'
+            '${remota.notas != null && remota.notas!.isNotEmpty ? '\n${remota.notas}\n' : ''}'
+            'Se descargará e instalará automáticamente.',
+          ),
+          actions: [
+            if (!remota.obligatoria)
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Luego'),
+              ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Actualizar'),
+            ),
+          ],
+        ),
+      );
+      if (quiere != true || !mounted) return;
+      await _descargarEInstalar(remota);
+    } finally {
+      if (mounted) setState(() => _actualizando = false);
+    }
+  }
+
+  Future<void> _descargarEInstalar(VersionInfo remota) async {
+    final progreso = ValueNotifier<double>(0);
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Descargando actualización'),
+        content: ValueListenableBuilder<double>(
+          valueListenable: progreso,
+          builder: (ctx, p, _) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Por favor espera, no cierres la app.'),
+              const SizedBox(height: 16),
+              LinearProgressIndicator(value: p > 0 ? p : null),
+              const SizedBox(height: 8),
+              Text('${(p * 100).toStringAsFixed(0)}%'),
+            ],
+          ),
+        ),
+      ),
+    );
+    try {
+      final apk = await AppUpdateService.descargarApk(remota.apkUrl, (p) {
+        progreso.value = p;
+      });
+      progreso.dispose();
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      await AppUpdateService.instalar(apk);
+    } catch (_) {
+      progreso.dispose();
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      _aviso('No se pudo descargar la actualización. Inténtalo más tarde.');
+    }
+  }
+
+  void _aviso(String msg) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   Future<void> _cargarUbicacion() async {
@@ -411,6 +505,20 @@ class _AjustesPageState extends State<AjustesPage> {
                 ),
                 const Divider(height: 1),
                 const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => MapaSelectorPage(
+                          titulo: 'Prueba de mapa',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.map_outlined, size: 18),
+                  label: const Text('Probar el mapa'),
+                ),
+                const SizedBox(height: 8),
                 Text(
                   hayClaveGoogleMaps
                       ? 'Google Maps activo: la ruta real y las indicaciones '
@@ -454,6 +562,20 @@ class _AjustesPageState extends State<AjustesPage> {
                   'Se usa para marcar la ubicación del cliente y calcular la ruta.',
                   style: TextStyle(fontSize: 12, color: Colors.black45),
                 ),
+              ],
+            ),
+          ),
+          _seccion(
+            context,
+            titulo: 'Otros permisos',
+            icono: Icons.security_outlined,
+            hijo: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _fila('Ubicación', 'Se usa para marcar el cliente y la ruta.'),
+                _fila('Micrófono', 'No se usa: la app no graba audio.'),
+                _fila('Notificaciones', 'No se usan en esta versión.'),
+                _fila('Almacenamiento', 'Solo la descarga de actualizaciones.'),
               ],
             ),
           ),
@@ -519,6 +641,19 @@ class _AjustesPageState extends State<AjustesPage> {
                       ],
                     ),
                   ),
+                const SizedBox(height: 10),
+                FilledButton.icon(
+                  onPressed: _actualizando ? null : _buscarActualizacion,
+                  icon: _actualizando
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.system_update_alt),
+                  label: Text(_actualizando ? 'Buscando…' : 'Buscar actualización'),
+                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                ),
               ],
             ),
           ),

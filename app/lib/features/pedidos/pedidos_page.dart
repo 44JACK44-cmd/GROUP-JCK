@@ -12,11 +12,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
+import '../../core/data/motorizados_repo.dart';
 import '../../core/data/pedidos_repo.dart';
 import '../../core/data/sb.dart';
+import '../../core/domain/resumen_pedido.dart';
 import '../../core/domain/estado_pedido.dart';
 import '../../core/domain/formato.dart';
 import '../../core/ui/widgets.dart';
+import '../auth/auth_controller.dart';
 import 'nuevo_pedido_page.dart';
 import 'pedido_detalle_page.dart';
 
@@ -32,6 +35,7 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
   List<Map<String, dynamic>> _pedidos = [];
   bool _cargando = true;
   RealtimeChannel? _canal;
+  Map<String, String> _motorizadoNombre = {};
 
   @override
   void initState() {
@@ -72,6 +76,16 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
         masAntigosPrimero: _grupo == GrupoPedido.pendientes,
         limite: 200,
       );
+      // Nombres de motorizados para las tarjetas.
+      final auth = ref.read(authProvider);
+      if (auth.esAdmin && _motorizadoNombre.isEmpty) {
+        try {
+          final motos = await motorizadosRepo.listar();
+          _motorizadoNombre = {
+            for (final m in motos) m['id'] as String: m['nombre'] as String? ?? '',
+          };
+        } catch (_) {}
+      }
       if (!mounted) return;
       setState(() {
         _pedidos = data;
@@ -175,6 +189,8 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
                         pedido: p,
                         onTap: () => _abrirDetalle(p),
                         mostrarPrioridad: _grupo == GrupoPedido.pendientes,
+                        productoResumen: resumenProductos(p),
+                        motorizadoNombre: _motorizadoNombre[p['repartidor_id'] as String?],
                         trailer: _grupo == GrupoPedido.pendientes
                             ? Text(
                                 antiguedad(parseFecha(p['fecha'])),

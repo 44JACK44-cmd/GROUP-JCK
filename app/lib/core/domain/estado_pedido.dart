@@ -95,6 +95,7 @@ enum EstadoPedido {
 
 /// Grupo de estados mostrado en la lista de pedidos del administrador.
 enum GrupoPedido {
+  todos('Todos', [], Icons.list_alt_outlined),
   pendientes('Pendientes', ['NUEVO', 'ASIGNADO'], Icons.pending_actions_outlined),
   enCamino('En camino', ['EN_CAMINO'], Icons.route_outlined),
   completados('Completados', ['ENTREGADO'], Icons.check_circle_outline),

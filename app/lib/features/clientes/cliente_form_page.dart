@@ -75,19 +75,24 @@ class _ClienteFormPageState extends ConsumerState<ClienteFormPage> {
 
   /// Abre el mapa para elegir el punto del cliente.
   Future<void> _elegirEnMapa() async {
-    final resultado = await Navigator.of(context).push<Map<String, dynamic>>(
-      MaterialPageRoute(
-        builder: (_) => MapaSelectorPage(
-          latitud: _latitud,
-          longitud: _longitud,
-          titulo: 'Ubicación de ${_nombre.text.trim().isEmpty ? 'el cliente' : _nombre.text.trim()}',
-        ),
-      ),
+    final elegida = await abrirMiniMapa(
+      context,
+      latitud: _latitud,
+      longitud: _longitud,
+      direccion: _direccion.text,
+      referencia: _referencia.text,
+      titulo: 'Ubicación de ${_nombre.text.trim().isEmpty ? 'el cliente' : _nombre.text.trim()}',
     );
-    if (resultado == null) return;
+    if (elegida == null) return;
     setState(() {
-      _latitud = resultado['latitud'] as double?;
-      _longitud = resultado['longitud'] as double?;
+      _latitud = elegida.latitud;
+      _longitud = elegida.longitud;
+      if ((elegida.direccion ?? '').isNotEmpty) {
+        _direccion.text = elegida.direccion!;
+      }
+      if ((elegida.referencia ?? '').isNotEmpty) {
+        _referencia.text = elegida.referencia!;
+      }
     });
   }
 

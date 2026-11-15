@@ -71,17 +71,32 @@ class PedidosRepo {
     int limite = 200,
     bool masAntigosPrimero = false,
   }) async {
-    final data = await _conOrigen(
-      (select) async {
-        var q = sb.from('pedidos').select(select);
-        if (repartidorId != null) q = q.eq('repartidor_id', repartidorId);
-        if (estados.isNotEmpty) q = q.inFilter('estado', estados);
-        if (desde != null) q = q.gte('fecha', desde.toIso8601String());
-        if (hasta != null) q = q.lte('fecha', hasta.toIso8601String());
-        return q.order('fecha', ascending: masAntigosPrimero).limit(limite);
-      },
-    );
-    return List<Map<String, dynamic>>.from(data);
+    // Intentamos traer las líneas del pedido (y su producto) para mostrar en
+    // la tarjeta qué se lleva y a quién se asignó. Si el servidor no lo
+    // soporta (versión antigua o migración pendiente) caemos al select base
+    // sin romper la lista.
+    Future<List<Map<String, dynamic>>> ejecutar(bool conDetalle) async {
+      return _conOrigen(
+        (select) async {
+          final s = conDetalle
+              ? '$select, detalle_pedido(cantidad, precio_unitario, productos(nombre, capacidad_kg, tipo))'
+              : select;
+          var q = sb.from('pedidos').select(s);
+          if (repartidorId != null) q = q.eq('repartidor_id', repartidorId);
+          if (estados.isNotEmpty) q = q.inFilter('estado', estados);
+          if (desde != null) q = q.gte('fecha', desde.toIso8601String());
+          if (hasta != null) q = q.lte('fecha', hasta.toIso8601String());
+          final data = await q.order('fecha', ascending: masAntigosPrimero).limit(limite);
+          return List<Map<String, dynamic>>.from(data);
+        },
+      );
+    }
+
+    try {
+      return await ejecutar(true);
+    } catch (_) {
+      return await ejecutar(false);
+    }
   }
 
   /// Un pedido con sus datos de cliente.

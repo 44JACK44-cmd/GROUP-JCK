@@ -1,8 +1,16 @@
-/// Registro rápido de pedido.
+/// Nuevo pedido: una sola pantalla, en el orden en que se atiende una llamada.
 ///
-/// Formulario corto: cliente → producto y cantidad → precio → forma de pago.
-/// El precio sale del precio habitual del cliente y se puede modificar.
-/// La prioridad NO se pregunta: se calcula por antigüedad.
+///   1. ¿Quién llama?            → nombre + teléfono
+///   2. ¿Dónde llevar?           → mini mapa (dirección + referencia + pin)
+///   3. ¿Qué lleva?              → producto y cantidad
+///   4. ¿Cuánto debe cobrar?     → precio LIBRE (el catálogo solo sugiere)
+///   5. ¿Cómo paga?              → efectivo / Yape / deuda
+///   6. ¿Quién lo lleva?         → motorizado
+///   7. Nota (opcional)
+///   8. CONFIRMAR PEDIDO
+///
+/// Nada de este flujo depende del precio base: si el negocio cobra S/ 55 por un
+/// balón de S/ 50, se escribe 55 y se guarda 55.
 library;
 
 import 'package:flutter/material.dart';
@@ -12,29 +20,33 @@ import 'package:uuid/uuid.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/clientes_repo.dart';
+import '../../core/data/motorizados_repo.dart';
 import '../../core/data/pedidos_repo.dart';
 import '../../core/data/productos_repo.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
+import '../../core/domain/precio.dart';
 import '../../core/offline/outbox.dart';
 import '../auth/auth_controller.dart';
-import '../clientes/cliente_form_page.dart';
+import '../clientes/mapa_selector_page.dart';
 
-/// Una línea del pedido: producto + cantidad + precio.
-class LineaPedidoUI {
+/// Una línea del pedido mientras se escribe.
+class LineaRapida {
   final String productoId;
   final String nombre;
   final int cantidad;
   final double precio;
 
-  const LineaPedidoUI({
+  const LineaRapida({
     required this.productoId,
     required this.nombre,
-    required this.cantidad,
+    this.cantidad = 1,
     required this.precio,
   });
 
-  LineaPedidoUI copyWith({int? cantidad, double? precio}) => LineaPedidoUI(
+  double get subtotal => cantidad * precio;
+
+  LineaRapida copyWith({int? cantidad, double? precio}) => LineaRapida(
         productoId: productoId,
         nombre: nombre,
         cantidad: cantidad ?? this.cantidad,
@@ -43,7 +55,7 @@ class LineaPedidoUI {
 }
 
 class NuevoPedidoPage extends ConsumerStatefulWidget {
-  /// Cliente preseleccionado (viene de la ficha del cliente).
+  /// Cliente ya elegido (viene de la ficha del cliente).
   final Map<String, dynamic>? clienteInicial;
 
   const NuevoPedidoPage({super.key, this.clienteInicial});
@@ -53,47 +65,64 @@ class NuevoPedidoPage extends ConsumerStatefulWidget {
 }
 
 class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
-  final _busquedaCtrl = TextEditingController();
-  final _observacionesCtrl = TextEditingController();
+  final _nombreCtrl = TextEditingController();
+  final _telefonoCtrl = TextEditingController();
+  final _notaCtrl = TextEditingController();
 
   Map<String, dynamic>? _cliente;
   List<Map<String, dynamic>> _sugerencias = [];
-  List<Map<String, dynamic>> _productos = [];
-  Map<String, double> _preciosCliente = {};
-  List<LineaPedidoUI> _lineas = [];
-  String? _formaPago;
-  bool _cargandoProductos = true;
-  bool _guardando = false;
   bool _buscandoCliente = false;
-  bool _asignarPorZona = false;
 
-  /// Formas de pago que el administrador puede dejar anotadas al crear el pedido.
-  static const _formasPago = {
-    'EFECTIVO': '💵 Efectivo',
-    'YAPE': '📱 Yape',
-    'DEUDA': '🟠 Quedó debiendo',
-    'OTRO': '💳 Otro',
-  };
+  List<Map<String, dynamic>> _productos = [];
+  bool _cargandoProductos = true;
+  String? _errorProductos;
+  Map<String, double> _preciosCliente = {};
+
+  List<LineaRapida> _lineas = [];
+  String _formaPago = 'EFECTIVO';
+
+  List<Map<String, dynamic>> _motorizados = [];
+  Map<String, int> _enRuta = {};
+  String? _motorizadoId;
+
+  String _direccion = '';
+  String _referencia = '';
+  double? _latitud;
+  double? _longitud;
+  bool _ubicacionCambiada = false;
+
+  bool _guardando = false;
+
+  static const _formasPago = [
+    ('EFECTIVO', '💵', 'Efectivo'),
+    ('YAPE', '📱', 'Yape'),
+    ('DEUDA', '🟠', 'Queda debiendo'),
+  ];
 
   @override
   void initState() {
     super.initState();
     _cargarProductos();
+    _cargarMotorizados();
     final inicial = widget.clienteInicial;
-    if (inicial != null) {
-      // Cliente ya elegido: se muestran sus productos con su precio.
-      _seleccionarCliente(inicial);
-    }
+    if (inicial != null) _usarCliente(inicial);
   }
 
   @override
   void dispose() {
-    _busquedaCtrl.dispose();
-    _observacionesCtrl.dispose();
+    _nombreCtrl.dispose();
+    _telefonoCtrl.dispose();
+    _notaCtrl.dispose();
     super.dispose();
   }
 
+  // ------------------------------------------------------------- carga
+
   Future<void> _cargarProductos() async {
+    setState(() {
+      _cargandoProductos = true;
+      _errorProductos = null;
+    });
     try {
       final data = await const ProductosRepo().vendibles();
       if (!mounted) return;
@@ -101,14 +130,45 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
         _productos = data;
         _cargandoProductos = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
-      setState(() => _cargandoProductos = false);
-      _error('No pudimos cargar los productos. Revisa tu conexión.');
+      setState(() {
+        _cargandoProductos = false;
+        _errorProductos = 'No pudimos cargar los productos.';
+      });
     }
   }
 
-  Future<void> _buscarClientes(String texto) async {
+  Future<void> _cargarMotorizados() async {
+    final auth = ref.read(authProvider);
+    if (!auth.esAdmin) return;
+    try {
+      final lista = await motorizadosRepo.listar();
+      // Cuántos pedidos lleva cada uno: sirve para ver quién está libre.
+      var enRuta = <String, int>{};
+      try {
+        final activos = await pedidosRepo.listar(
+          estados: const ['ASIGNADO', 'EN_CAMINO'],
+          limite: 200,
+        );
+        for (final p in activos) {
+          final id = p['repartidor_id'] as String?;
+          if (id != null) enRuta[id] = (enRuta[id] ?? 0) + 1;
+        }
+      } catch (_) {
+        enRuta = {};
+      }
+      if (!mounted) return;
+      setState(() {
+        _motorizados = lista;
+        _enRuta = enRuta;
+      });
+    } catch (_) {
+      // Sin lista de motorizados el pedido se puede guardar igual ("sin asignar").
+    }
+  }
+
+  Future<void> _buscarCliente(String texto) async {
     final q = texto.trim();
     if (q.length < 2) {
       setState(() => _sugerencias = []);
@@ -128,31 +188,40 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
     }
   }
 
-  Future<void> _seleccionarCliente(Map<String, dynamic> cliente) async {
-    setState(() {
-      _cliente = cliente;
-      _sugerencias = [];
-      _busquedaCtrl.clear();
-      _lineas = [];
-    });
-    try {
-      _preciosCliente = await clientesRepo.preciosDe(cliente['id'] as String);
-    } catch (_) {
-      _preciosCliente = {};
-    }
-    if (!mounted) return;
-    setState(() {
-      _lineas = _productos
-          .map((p) => LineaPedidoUI(
-                productoId: p['id'] as String,
-                nombre: _nombreProducto(p),
-                cantidad: 0,
-                precio: _preciosCliente[p['id'] as String] ??
-                    (p['precio_base'] as num? ?? 0).toDouble(),
-              ))
-          .toList();
-    });
+  void _usarCliente(Map<String, dynamic> cliente) {
+    _nombreCtrl.text = cliente['nombre'] as String? ?? '';
+    _telefonoCtrl.text = cliente['telefono'] as String? ?? '';
+    _direccion = cliente['direccion'] as String? ?? '';
+    _referencia = cliente['referencia'] as String? ?? '';
+    _latitud = (cliente['latitud'] as num?)?.toDouble();
+    _longitud = (cliente['longitud'] as num?)?.toDouble();
+    _sugerencias = [];
+    _cargarPreciosDe(cliente);
+    setState(() => _cliente = cliente);
   }
+
+  Future<void> _cargarPreciosDe(Map<String, dynamic> cliente) async {
+    try {
+      final precios = await clientesRepo.preciosDe(cliente['id'] as String);
+      if (!mounted) return;
+      setState(() {
+        _preciosCliente = precios;
+        // Si ya había un producto elegido, se actualiza al precio del cliente.
+        _lineas = _lineas
+            .map((l) => _preciosCliente.containsKey(l.productoId)
+                ? l.copyWith(precio: _preciosCliente[l.productoId]!)
+                : l)
+            .toList();
+      });
+    } catch (_) {
+      // Sin precios especiales: se usa el del catálogo como sugerencia.
+    }
+  }
+
+  // ------------------------------------------------------------- datos
+
+  double get _total => _lineas.fold(0, (s, l) => s + l.subtotal);
+  int get _cantidad => _lineas.fold(0, (s, l) => s + l.cantidad);
 
   String _nombreProducto(Map<String, dynamic> p) {
     final kg = p['capacidad_kg'];
@@ -160,99 +229,260 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
     return kg == null ? nombre : '$nombre (${kg}kg)';
   }
 
-  double get _total => _lineas.fold(0, (s, l) => s + l.cantidad * l.precio);
-
-  int get _cantidadTotal => _lineas.fold(0, (s, l) => s + l.cantidad);
-
-  Future<void> _nuevoCliente() async {
-    final cambio = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const ClienteFormPage()),
+  double? _sugeridoPara(Map<String, dynamic> p) {
+    final id = p['id'] as String;
+    return PrecioLibre.sugerido(
+      precioCliente: _preciosCliente[id],
+      precioBase: (p['precio_base'] as num?)?.toDouble(),
     );
-    if (cambio == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cliente creado. Búscalo para hacer el pedido.')),
-      );
-    }
   }
 
-  void _actualizarLinea(int indice, LineaPedidoUI linea) {
+  void _alternarProducto(Map<String, dynamic> p) {
+    final id = p['id'] as String;
+    final existe = _lineas.indexWhere((l) => l.productoId == id);
+    setState(() {
+      if (existe >= 0) {
+        _lineas.removeAt(existe);
+      } else {
+        _lineas.add(LineaRapida(
+          productoId: id,
+          nombre: _nombreProducto(p),
+          precio: _sugeridoPara(p) ?? 0,
+        ));
+      }
+    });
+  }
+
+  void _actualizar(int indice, LineaRapida linea) {
     setState(() => _lineas[indice] = linea);
   }
 
-  Future<void> _guardar() async {
-    final cliente = _cliente;
-    if (cliente == null) {
-      _error('Primero selecciona al cliente.');
+  Future<void> _marcarUbicacion() async {
+    final elegida = await abrirMiniMapa(
+      context,
+      latitud: _latitud,
+      longitud: _longitud,
+      direccion: _direccion,
+      referencia: _referencia,
+      titulo: _cliente == null ? 'Ubicación del pedido' : 'Ubicación de ${_nombreCtrl.text.trim()}',
+    );
+    if (elegida == null) return;
+    setState(() {
+      _latitud = elegida.latitud;
+      _longitud = elegida.longitud;
+      if ((elegida.direccion ?? '').isNotEmpty) _direccion = elegida.direccion!;
+      if ((elegida.referencia ?? '').isNotEmpty) _referencia = elegida.referencia!;
+      _ubicacionCambiada = true;
+    });
+  }
+
+  // ------------------------------------------------------------ guardar
+
+  Future<void> _confirmarPedido() async {
+    final nombre = _nombreCtrl.text.trim();
+    if (nombre.isEmpty) {
+      _aviso('Escribe el nombre del cliente.');
       return;
     }
     final items = _lineas.where((l) => l.cantidad > 0).toList();
     if (items.isEmpty) {
-      _error('Agrega al menos una cantidad de producto.');
+      _aviso('Elige el producto que se lleva.');
       return;
     }
-    if (items.any((l) => l.precio <= 0)) {
-      _error('Revisa los precios: deben ser mayores a cero.');
+    final sinPrecio = items.where((l) => l.precio <= 0).toList();
+    if (sinPrecio.isNotEmpty) {
+      _aviso('Escribe cuánto debe cobrar.');
       return;
     }
 
+    final confirmado = await _resumen(items);
+    if (confirmado != true) return;
+    await _guardar(nombre, items);
+  }
+
+  Future<bool?> _resumen(List<LineaRapida> items) {
+    final motorizado = _motorizados
+        .where((m) => m['id'] == _motorizadoId)
+        .map((m) => m['nombre'] as String? ?? '')
+        .firstOrNull;
+
+    return showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text('Revisa el pedido',
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+              _FilaResumen('Cliente', _nombreCtrl.text.trim()),
+              if (_telefonoCtrl.text.trim().isNotEmpty)
+                _FilaResumen('Teléfono', _telefonoCtrl.text.trim()),
+              _FilaResumen(
+                'Producto',
+                items.map((l) => '${l.nombre} × ${l.cantidad}').join('\n'),
+              ),
+              _FilaResumen(
+                'Cobrar',
+                dinero(_total),
+                destacado: true,
+                color: AppTheme.primary,
+              ),
+              _FilaResumen('Pago', _etiquetaPago(_formaPago)),
+              _FilaResumen(
+                'Ubicación',
+                _direccion.isEmpty ? 'Sin marcar' : _direccion,
+                color: _direccion.isEmpty ? AppTheme.warning : null,
+              ),
+              if (_referencia.isNotEmpty) _FilaResumen('Referencia', _referencia),
+              _FilaResumen('Motorizado', motorizado ?? 'Lo asigna después'),
+              if (_notaCtrl.text.trim().isNotEmpty)
+                _FilaResumen('Nota', _notaCtrl.text.trim()),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text('CONFIRMAR PEDIDO'),
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Volver a revisar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _guardar(String nombre, List<LineaRapida> items) async {
     setState(() => _guardando = true);
     final auth = ref.read(authProvider);
-    final total = items.fold<double>(0, (s, l) => s + l.cantidad * l.precio);
+    final total = items.fold<double>(0, (s, l) => s + l.subtotal);
     final uuid = const Uuid().v4();
+    final nota = _notaCtrl.text.trim();
+    final telefono = _telefonoCtrl.text.trim();
+    final empresaId = auth.empresaId!;
+    final usuarioId = auth.usuarioId!;
 
-    final pedido = {
-      'empresa_id': auth.empresaId,
-      'cliente_id': cliente['id'],
-      'creado_por': auth.usuarioId,
-      'forma_pago': _formaPago,
-      'observaciones': _observacionesCtrl.text.trim().isEmpty
-          ? null
-          : _observacionesCtrl.text.trim(),
-      'total': total,
-      'uuid_offline': uuid,
-    };
-    final detalles = items
-        .map((l) => {
-              'empresa_id': auth.empresaId,
-              'producto_id': l.productoId,
-              'cantidad': l.cantidad,
-              'precio_unitario': l.precio,
-            })
+    final lineas = items
+        .map((l) => LineaPedido(
+              productoId: l.productoId,
+              nombre: l.nombre,
+              cantidad: l.cantidad,
+              precioUnitario: l.precio,
+            ))
         .toList();
 
+    // Sin conexión y cliente nuevo: la cola crea el cliente al sincronizar.
+    final clienteNuevo = _cliente == null
+        ? {
+            'nombre': nombre,
+            'telefono': telefono.isEmpty ? null : telefono,
+            'direccion': _direccion.isEmpty ? null : _direccion,
+            'referencia': _referencia.isEmpty ? null : _referencia,
+            'latitud': _latitud,
+            'longitud': _longitud,
+          }
+        : null;
+
     try {
+      // 1) Cliente: se reutiliza el elegido o se crea con estos datos.
+      String clienteId;
+      if (_cliente != null) {
+        clienteId = _cliente!['id'] as String;
+        final telefonoCambio =
+            telefono.isNotEmpty && telefono != (_cliente!['telefono'] as String? ?? '');
+        if (_ubicacionCambiada || telefonoCambio) {
+          await clientesRepo.guardarUbicacion(
+            clienteId: clienteId,
+            telefono: telefono.isEmpty ? null : telefono,
+            direccion: _direccion.isEmpty ? null : _direccion,
+            referencia: _referencia.isEmpty ? null : _referencia,
+            latitud: _latitud,
+            longitud: _longitud,
+          );
+        }
+      } else {
+        clienteId = await clientesRepo.crear(
+          empresaId: empresaId,
+          nombre: nombre,
+          telefono: telefono.isEmpty ? null : telefono,
+          direccion: _direccion.isEmpty ? null : _direccion,
+          referencia: _referencia.isEmpty ? null : _referencia,
+          latitud: _latitud,
+          longitud: _longitud,
+        );
+      }
+
+      // 2) Pedido.
       final pedidoId = await pedidosRepo.crear(
-        empresaId: auth.empresaId!,
-        clienteId: cliente['id'] as String,
-        usuarioId: auth.usuarioId!,
-        lineas: items
-            .map((l) => LineaPedido(
-                  productoId: l.productoId,
-                  nombre: l.nombre,
-                  cantidad: l.cantidad,
-                  precioUnitario: l.precio,
-                ))
-            .toList(),
+        empresaId: empresaId,
+        clienteId: clienteId,
+        usuarioId: usuarioId,
+        lineas: lineas,
         total: total,
         formaPago: _formaPago,
-        observaciones: _observacionesCtrl.text.trim(),
+        observaciones: nota,
+        repartidorId: _motorizadoId,
         uuidOffline: uuid,
       );
 
-      // Asignación automática por zona si está activada
-      if (_asignarPorZona) {
-        await pedidosRepo.asignarPorZona(pedidoId: pedidoId);
+      // 3) Si se eligió motorizado, queda asignado de una vez.
+      if (_motorizadoId != null) {
+        final nombreMoto = _motorizados
+            .where((m) => m['id'] == _motorizadoId)
+            .map((m) => m['nombre'] as String?)
+            .firstOrNull;
+        await pedidosRepo.asignar(
+          pedidoId: pedidoId,
+          empresaId: empresaId,
+          usuarioId: usuarioId,
+          repartidorId: _motorizadoId,
+          nombreRepartidor: nombreMoto,
+        );
       }
 
       if (!mounted) return;
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pedido registrado.')),
+        SnackBar(
+          content: Text(_motorizadoId == null
+              ? 'Pedido creado.'
+              : 'Pedido creado y asignado.'),
+        ),
       );
     } catch (e) {
       if (esErrorDeRed(e)) {
-        // Sin conexión: se encola para enviarse sola.
-        await Outbox.encolarPedido(pedido: pedido, detalles: detalles);
+        await Outbox.encolarPedido(
+          pedido: {
+            'empresa_id': empresaId,
+            'cliente_id': _cliente?['id'],
+            'creado_por': usuarioId,
+            'forma_pago': _formaPago,
+            'observaciones': nota.isEmpty ? null : nota,
+            'total': total,
+            'uuid_offline': uuid,
+            if (_motorizadoId != null) 'repartidor_id': _motorizadoId,
+            if (_motorizadoId != null) 'estado': 'ASIGNADO',
+          },
+          detalles: items
+              .map((l) => {
+                    'empresa_id': empresaId,
+                    'producto_id': l.productoId,
+                    'cantidad': l.cantidad,
+                    'precio_unitario': l.precio,
+                  })
+              .toList(),
+          clienteNuevo: clienteNuevo,
+        );
         if (!mounted) return;
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -264,214 +494,339 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
       }
       if (!mounted) return;
       setState(() => _guardando = false);
-      _error(traducirError(e, contexto: 'No pudimos registrar el pedido').mensaje);
+      _aviso(traducirError(e, contexto: 'No pudimos crear el pedido').mensaje);
     }
   }
 
-  void _error(String msg) {
+  String _etiquetaPago(String v) => switch (v) {
+        'EFECTIVO' => '💵 Efectivo',
+        'YAPE' => '📱 Yape',
+        'DEUDA' => '🟠 Queda debiendo',
+        _ => '💳 Otro',
+      };
+
+  void _aviso(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
+
+  // ---------------------------------------------------------------- UI
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Nuevo pedido')),
-      body: _cargandoProductos
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : Column(
-              children: [
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                    children: [
-                      _seccionCliente(),
-                      const SizedBox(height: 14),
-                      if (_cliente != null) _seccionProductos(),
-                      if (_cliente != null) ...[
-                        const SizedBox(height: 14),
-                        _seccionPago(),
-                        const SizedBox(height: 14),
-                        TextFormField(
-                          controller: _observacionesCtrl,
-                          maxLines: 2,
-                          decoration: const InputDecoration(
-                            labelText: 'Observaciones (opcional)',
-                            hintText: 'Ej. Dejar con el portero',
-                            prefixIcon: Icon(Icons.notes_outlined),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 20),
-                    ],
-                  ),
-                ),
-                _barraInferior(),
-              ],
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+        children: [
+          _seccionCliente(),
+          const SizedBox(height: 12),
+          _seccionUbicacion(),
+          const SizedBox(height: 12),
+          _seccionProducto(),
+          const SizedBox(height: 12),
+          _seccionPago(),
+          if (_motorizados.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _seccionMotorizado(),
+          ],
+          const SizedBox(height: 12),
+          TextField(
+            controller: _notaCtrl,
+            maxLines: 2,
+            textCapitalization: TextCapitalization.sentences,
+            decoration: const InputDecoration(
+              labelText: 'Nota (opcional)',
+              hintText: 'Casa azul, dejar con el vecino…',
+              prefixIcon: Icon(Icons.notes_outlined),
             ),
+          ),
+        ],
+      ),
+      bottomSheet: _barraInferior(),
     );
   }
 
   Widget _seccionCliente() {
     final c = _cliente;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Cliente', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-            if (c == null) ...[
-              TextField(
-                controller: _busquedaCtrl,
-                textCapitalization: TextCapitalization.words,
-                onChanged: _buscarClientes,
-                decoration: InputDecoration(
-                  hintText: 'Nombre o teléfono',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _buscandoCliente
-                      ? const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          ),
-                        )
-                      : null,
-                ),
-              ),
-              if (_sugerencias.isNotEmpty)
-                ..._sugerencias.map((s) => ListTile(
-                      dense: true,
-                      contentPadding: EdgeInsets.zero,
-                      leading: CircleAvatar(
-                        backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
-                        child: Text(
-                          (s['nombre'] as String? ?? '?')[0].toUpperCase(),
-                          style: const TextStyle(color: AppTheme.primary),
-                        ),
+    return _seccion(
+      titulo: '¿Quién llama?',
+      icono: Icons.person_outline,
+      hijos: [
+        if (c == null) ...[
+          TextField(
+            controller: _nombreCtrl,
+            textCapitalization: TextCapitalization.words,
+            textInputAction: TextInputAction.next,
+            onChanged: _buscarCliente,
+            decoration: InputDecoration(
+              labelText: 'Nombre',
+              hintText: 'Juan Pérez',
+              prefixIcon: const Icon(Icons.badge_outlined),
+              suffixIcon: _buscandoCliente
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       ),
-                      title: Text(s['nombre'] as String? ?? ''),
-                      subtitle: Text([
-                        if (s['telefono'] != null) s['telefono'],
-                        if (s['direccion'] != null) s['direccion'],
-                      ].whereType<String>().join(' · ')),
-                      onTap: () => _seleccionarCliente(s),
-                    )),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _nuevoCliente,
-                  icon: const Icon(Icons.person_add_alt_1, size: 18),
-                  label: const Text('Cliente nuevo'),
-                ),
-              ),
-            ] else
+                    )
+                  : null,
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _telefonoCtrl,
+            keyboardType: TextInputType.phone,
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9 +*#-]'))],
+            decoration: const InputDecoration(
+              labelText: 'Teléfono',
+              hintText: '999 888 777',
+              prefixIcon: Icon(Icons.phone_outlined),
+            ),
+          ),
+          if (_sugerencias.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            for (final s in _sugerencias)
               ListTile(
+                dense: true,
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
                   backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
                   child: Text(
-                    (c['nombre'] as String? ?? '?')[0].toUpperCase(),
+                    (s['nombre'] as String? ?? '?')[0].toUpperCase(),
                     style: const TextStyle(color: AppTheme.primary),
                   ),
                 ),
-                title: Text(c['nombre'] as String? ?? '',
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                title: Text(s['nombre'] as String? ?? ''),
                 subtitle: Text([
-                  if (c['telefono'] != null) c['telefono'],
-                  if (c['direccion'] != null) c['direccion'],
+                  if (s['telefono'] != null) s['telefono'],
+                  if (s['direccion'] != null) s['direccion'],
                 ].whereType<String>().join(' · ')),
-                trailing: TextButton(
-                  onPressed: () => setState(() => _cliente = null),
-                  child: const Text('Cambiar'),
+                onTap: () => _usarCliente(s),
+              ),
+            if (_sugerencias.isNotEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 4),
+                child: Text(
+                  'Toca un cliente para usar su dirección guardada.',
+                  style: TextStyle(fontSize: 12, color: Colors.black45),
                 ),
               ),
           ],
-        ),
-      ),
+        ] else
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: CircleAvatar(
+              backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
+              child: Text(
+                (c['nombre'] as String? ?? '?')[0].toUpperCase(),
+                style: const TextStyle(color: AppTheme.primary),
+              ),
+            ),
+            title: Text(c['nombre'] as String? ?? '',
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            subtitle: Text([
+              if ((c['telefono'] as String? ?? '').isNotEmpty) c['telefono'],
+              if ((c['direccion'] as String? ?? '').isNotEmpty) c['direccion'],
+            ].whereType<String>().join(' · ')),
+            trailing: TextButton(
+              onPressed: () => setState(() {
+                _cliente = null;
+                _nombreCtrl.clear();
+                _telefonoCtrl.clear();
+                _lineas = [];
+                _preciosCliente = {};
+              }),
+              child: const Text('Cambiar'),
+            ),
+          ),
+      ],
     );
   }
 
-  Widget _seccionProductos() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+  Widget _seccionUbicacion() {
+    final marcada = _latitud != null && _longitud != null;
+    return _seccion(
+      titulo: '¿Dónde llevar?',
+      icono: Icons.place_outlined,
+      hijos: [
+        if (_direccion.isNotEmpty || marcada)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppTheme.success.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Producto y cantidad', style: Theme.of(context).textTheme.titleMedium),
-                const Spacer(),
-                if (_preciosCliente.isNotEmpty)
-                  const Text('Precio del cliente',
-                      style: TextStyle(color: Colors.black45, fontSize: 12)),
+                Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: AppTheme.success, size: 18),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _direccion.isEmpty ? 'Punto marcado en el mapa' : _direccion,
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_referencia.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2, left: 24),
+                    child: Text(_referencia,
+                        style: const TextStyle(fontSize: 12.5, color: Colors.black54)),
+                  ),
+                if (marcada)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2, left: 24),
+                    child: Text(
+                      '${_latitud!.toStringAsFixed(5)}, ${_longitud!.toStringAsFixed(5)}',
+                      style: const TextStyle(fontSize: 11, color: Colors.black38),
+                    ),
+                  ),
               ],
             ),
-            const SizedBox(height: 4),
-            for (var i = 0; i < _lineas.length; i++)
-              _FilaProducto(
-                linea: _lineas[i],
-                esPrecioCliente: _preciosCliente.containsKey(_lineas[i].productoId),
-                onCambio: (nueva) => _actualizarLinea(i, nueva),
-              ),
-          ],
+          ),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          onPressed: _marcarUbicacion,
+          icon: const Icon(Icons.map_outlined),
+          label: Text(
+            marcada || _direccion.isNotEmpty ? 'Cambiar ubicación' : '📍 Marcar ubicación',
+          ),
+          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
         ),
-      ),
+      ],
+    );
+  }
+
+  Widget _seccionProducto() {
+    return _seccion(
+      titulo: '¿Qué se lleva?',
+      icono: Icons.propane_tank_outlined,
+      hijos: [
+        if (_cargandoProductos)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          )
+        else if (_errorProductos != null)
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(_errorProductos!, style: const TextStyle(color: AppTheme.danger)),
+              TextButton(onPressed: _cargarProductos, child: const Text('Reintentar')),
+            ],
+          )
+        else if (_productos.isEmpty)
+          const Text('No hay productos cargados. Pide al administrador que los registre.')
+        else
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final p in _productos)
+                _ChipProducto(
+                  nombre: _nombreProducto(p),
+                  sugerido: _sugeridoPara(p),
+                  seleccionado: _lineas.any((l) => l.productoId == p['id']),
+                  onTap: () => _alternarProducto(p),
+                ),
+            ],
+          ),
+        for (var i = 0; i < _lineas.length; i++) ...[
+          const SizedBox(height: 10),
+          _LineaCard(
+            linea: _lineas[i],
+            puedeQuitar: _lineas.length > 1,
+            onCambio: (nueva) => _actualizar(i, nueva),
+            onQuitar: () => setState(() => _lineas.removeAt(i)),
+          ),
+        ],
+      ],
     );
   }
 
   Widget _seccionPago() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return _seccion(
+      titulo: '¿Cómo paga?',
+      icono: Icons.payments_outlined,
+      hijos: [
+        Row(
           children: [
-            Text('Forma de pago esperada', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final e in _formasPago.entries)
-                  ChoiceChip(
-                    label: Text(e.value),
-                    selected: _formaPago == e.key,
-                    selectedColor: AppTheme.primary.withValues(alpha: 0.15),
-                    labelStyle: TextStyle(
-                      color: _formaPago == e.key ? AppTheme.primary : Colors.black87,
-                      fontWeight: _formaPago == e.key ? FontWeight.w600 : FontWeight.normal,
-                    ),
-                    onSelected: (v) => setState(() => _formaPago = v ? e.key : null),
-                  ),
-              ],
-            ),
-            if (_formaPago == 'DEUDA')
-              const Padding(
-                padding: EdgeInsets.only(top: 8),
-                child: Text(
-                  'Quedará registrado como deuda. Podrás cobrarla luego.',
-                  style: TextStyle(color: Colors.black54, fontSize: 12),
+            for (final f in _formasPago) ...[
+              Expanded(
+                child: _BotonOpcion(
+                  emoji: f.$2,
+                  etiqueta: f.$3,
+                  seleccionado: _formaPago == f.$1,
+                  color: f.$1 == 'DEUDA' ? AppTheme.warning : AppTheme.primary,
+                  onTap: () => setState(() => _formaPago = f.$1),
                 ),
               ),
-            const SizedBox(height: 12),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Asignar automáticamente por zona'),
-              subtitle: const Text('El sistema elegirá el motorizado de la zona del cliente'),
-              value: _asignarPorZona,
-              onChanged: (v) => setState(() => _asignarPorZona = v),
-            ),
+              if (f != _formasPago.last) const SizedBox(width: 8),
+            ],
           ],
         ),
-      ),
+        if (_formaPago == 'DEUDA')
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text(
+              'Quedará como deuda del cliente.',
+              style: TextStyle(fontSize: 12.5, color: Colors.black54),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _seccionMotorizado() {
+    return _seccion(
+      titulo: '¿Quién lo lleva?',
+      icono: Icons.delivery_dining_outlined,
+      hijos: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ChoiceChip(
+              label: const Text('Sin asignar'),
+              selected: _motorizadoId == null,
+              selectedColor: AppTheme.primary.withValues(alpha: 0.15),
+              onSelected: (_) => setState(() => _motorizadoId = null),
+            ),
+            for (final m in _motorizados)
+              ChoiceChip(
+                avatar: Icon(
+                  Icons.circle,
+                  size: 10,
+                  color: (_enRuta[m['id']] ?? 0) > 0 ? AppTheme.warning : AppTheme.success,
+                ),
+                label: Text(m['nombre'] as String? ?? ''),
+                selected: _motorizadoId == m['id'],
+                selectedColor: AppTheme.primary.withValues(alpha: 0.15),
+                onSelected: (_) => setState(() => _motorizadoId = m['id'] as String),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _motorizadoId == null
+              ? 'El pedido queda libre para que lo tome un motorizado.'
+              : 'Queda asignado ahora mismo.',
+          style: const TextStyle(fontSize: 12, color: Colors.black45),
+        ),
+      ],
     );
   }
 
   Widget _barraInferior() {
+    final listo = _lineas.isNotEmpty &&
+        _lineas.every((l) => l.cantidad > 0 && l.precio > 0);
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
       decoration: const BoxDecoration(
@@ -484,10 +839,11 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '$_cantidadTotal balón(es)',
-                  style: const TextStyle(color: Colors.black54, fontSize: 13),
+                  _cantidad == 1 ? '1 unidad' : '$_cantidad unidades',
+                  style: const TextStyle(color: Colors.black54, fontSize: 12.5),
                 ),
                 Text(
                   dinero(_total),
@@ -499,14 +855,13 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
                 ),
               ],
             ),
-            const Spacer(),
-            FilledButton.icon(
-              onPressed: _guardando || _cliente == null ? null : _guardar,
-              icon: const Icon(Icons.check),
-              label: Text(_guardando ? 'Guardando…' : 'Guardar pedido'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(0, 50),
-                padding: const EdgeInsets.symmetric(horizontal: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: FilledButton.icon(
+                onPressed: _guardando || !listo ? null : _confirmarPedido,
+                icon: const Icon(Icons.check),
+                label: Text(_guardando ? 'Guardando…' : 'CONFIRMAR PEDIDO'),
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
               ),
             ),
           ],
@@ -514,74 +869,172 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
       ),
     );
   }
+
+  Widget _seccion({
+    required String titulo,
+    required IconData icono,
+    required List<Widget> hijos,
+  }) {
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(icono, size: 20, color: AppTheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  titulo,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...hijos,
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-/// Fila de producto: cantidad con +/- y precio editable.
-class _FilaProducto extends StatelessWidget {
-  final LineaPedidoUI linea;
-  final bool esPrecioCliente;
-  final ValueChanged<LineaPedidoUI> onCambio;
+/// Chip grande de producto: nombre + precio sugerido (solo referencia).
+class _ChipProducto extends StatelessWidget {
+  final String nombre;
+  final double? sugerido;
+  final bool seleccionado;
+  final VoidCallback onTap;
 
-  const _FilaProducto({
-    required this.linea,
-    required this.esPrecioCliente,
-    required this.onCambio,
+  const _ChipProducto({
+    required this.nombre,
+    required this.sugerido,
+    required this.seleccionado,
+    required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(linea.nombre, style: const TextStyle(fontWeight: FontWeight.w600)),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    SizedBox(
-                      width: 96,
-                      child: _PrecioCampo(
-                        valor: linea.precio,
-                        onChanged: (v) => onCambio(linea.copyWith(precio: v)),
-                      ),
-                    ),
-                    if (esPrecioCliente)
-                      const Padding(
-                        padding: EdgeInsets.only(left: 6),
-                        child: Icon(Icons.bookmark, size: 14, color: AppTheme.info),
-                      ),
-                  ],
-                ),
-              ],
-            ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: seleccionado ? AppTheme.primary.withValues(alpha: 0.12) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: seleccionado ? AppTheme.primary : const Color(0xFFDADDD9),
+            width: seleccionado ? 1.6 : 1,
           ),
-          const SizedBox(width: 8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              nombre,
+              style: TextStyle(
+                fontWeight: seleccionado ? FontWeight.w700 : FontWeight.w600,
+                color: seleccionado ? AppTheme.primary : Colors.black87,
+                fontSize: 14,
+              ),
+            ),
+            if (sugerido != null)
+              Text(
+                'Sugerido ${dinero(sugerido!)}',
+                style: const TextStyle(fontSize: 11, color: Colors.black45),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Línea elegida: cantidad y precio libre.
+class _LineaCard extends StatelessWidget {
+  final LineaRapida linea;
+  final bool puedeQuitar;
+  final ValueChanged<LineaRapida> onCambio;
+  final VoidCallback onQuitar;
+
+  const _LineaCard({
+    required this.linea,
+    required this.puedeQuitar,
+    required this.onCambio,
+    required this.onQuitar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7F8F6),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Row(
             children: [
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                onPressed: linea.cantidad > 0
+              Expanded(
+                child: Text(
+                  linea.nombre,
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                ),
+              ),
+              if (puedeQuitar)
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  tooltip: 'Quitar',
+                  onPressed: onQuitar,
+                  icon: const Icon(Icons.close, size: 18),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              IconButton.filledTonal(
+                onPressed: linea.cantidad > 1
                     ? () => onCambio(linea.copyWith(cantidad: linea.cantidad - 1))
                     : null,
-                icon: const Icon(Icons.remove_circle_outline),
+                icon: const Icon(Icons.remove, size: 18),
               ),
               SizedBox(
-                width: 26,
+                width: 34,
                 child: Text(
                   '${linea.cantidad}',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                 ),
               ),
-              IconButton(
-                visualDensity: VisualDensity.compact,
+              IconButton.filledTonal(
                 onPressed: () => onCambio(linea.copyWith(cantidad: linea.cantidad + 1)),
-                icon: const Icon(Icons.add_circle_outline),
+                icon: const Icon(Icons.add, size: 18),
+              ),
+              const Spacer(),
+              Expanded(
+                flex: 2,
+                child: TextFormField(
+                  key: ValueKey('precio-${linea.productoId}-${linea.cantidad}'),
+                  initialValue: linea.precio > 0 ? PrecioLibre.paraEditar(linea.precio) : '',
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
+                  onChanged: (t) =>
+                      onCambio(linea.copyWith(precio: PrecioLibre.parse(t) ?? 0)),
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    prefixText: 'S/ ',
+                    labelText: 'Cobrar',
+                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                  ),
+                ),
               ),
             ],
           ),
@@ -591,40 +1044,97 @@ class _FilaProducto extends StatelessWidget {
   }
 }
 
-/// Campo de precio con su propio controlador.
-class _PrecioCampo extends StatefulWidget {
-  final double valor;
-  final ValueChanged<double> onChanged;
+/// Botón grande de forma de pago.
+class _BotonOpcion extends StatelessWidget {
+  final String emoji;
+  final String etiqueta;
+  final bool seleccionado;
+  final Color color;
+  final VoidCallback onTap;
 
-  const _PrecioCampo({required this.valor, required this.onChanged});
-
-  @override
-  State<_PrecioCampo> createState() => _PrecioCampoState();
-}
-
-class _PrecioCampoState extends State<_PrecioCampo> {
-  late final TextEditingController _ctrl = TextEditingController(
-    text: widget.valor.toStringAsFixed(2),
-  );
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  const _BotonOpcion({
+    required this.emoji,
+    required this.etiqueta,
+    required this.seleccionado,
+    required this.color,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      controller: _ctrl,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-      decoration: const InputDecoration(
-        isDense: true,
-        prefixText: 'S/ ',
-        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        height: 62,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: seleccionado ? color.withValues(alpha: 0.14) : Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: seleccionado ? color : const Color(0xFFDADDD9),
+            width: seleccionado ? 1.6 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 16)),
+            const SizedBox(height: 2),
+            Text(
+              etiqueta,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12.5,
+                color: seleccionado ? color : Colors.black87,
+                fontWeight: seleccionado ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
-      onChanged: (t) => widget.onChanged(double.tryParse(t) ?? 0),
+    );
+  }
+}
+
+/// Fila del resumen previo a confirmar.
+class _FilaResumen extends StatelessWidget {
+  final String etiqueta;
+  final String valor;
+  final bool destacado;
+  final Color? color;
+
+  const _FilaResumen(
+    this.etiqueta,
+    this.valor, {
+    this.destacado = false,
+    this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 92,
+            child: Text(etiqueta,
+                style: const TextStyle(color: Colors.black54, fontSize: 13)),
+          ),
+          Expanded(
+            child: Text(
+              valor,
+              style: TextStyle(
+                fontWeight: destacado ? FontWeight.bold : FontWeight.w500,
+                fontSize: destacado ? 20 : 14,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

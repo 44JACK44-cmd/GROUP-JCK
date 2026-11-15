@@ -193,6 +193,9 @@ class TarjetaPedido extends StatelessWidget {
   final VoidCallback onTap;
   final bool mostrarPrioridad;
   final Widget? trailer;
+  final String? productoResumen;
+  final String? motorizadoNombre;
+  final List<Widget>? acciones;
 
   const TarjetaPedido({
     super.key,
@@ -200,6 +203,9 @@ class TarjetaPedido extends StatelessWidget {
     required this.onTap,
     this.mostrarPrioridad = true,
     this.trailer,
+    this.productoResumen,
+    this.motorizadoNombre,
+    this.acciones,
   });
 
   @override
@@ -255,12 +261,27 @@ class TarjetaPedido extends StatelessWidget {
                 [
                   if ((cliente?['direccion'] as String? ?? '').isNotEmpty)
                     cliente?['direccion'] as String,
+                  if (productoResumen != null && productoResumen!.isNotEmpty)
+                    productoResumen,
                   if (mostrarPrioridad && fecha != null) antiguedad(fecha),
                 ].join('  ·  '),
                 style: const TextStyle(color: Colors.black54, fontSize: 13),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
+              if (motorizadoNombre != null && motorizadoNombre!.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.delivery_dining_outlined, size: 13, color: Colors.black45),
+                    const SizedBox(width: 4),
+                    Text(
+                      motorizadoNombre!,
+                      style: const TextStyle(color: Colors.black45, fontSize: 12.5),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 10),
               Row(
                 children: [
@@ -269,6 +290,17 @@ class TarjetaPedido extends StatelessWidget {
                   if (trailer != null) trailer! else const SizedBox.shrink(),
                 ],
               ),
+              if (acciones != null && acciones!.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    for (var i = 0; i < acciones!.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 8),
+                      Expanded(child: acciones![i]),
+                    ],
+                  ],
+                ),
+              ],
             ],
           ),
         ),

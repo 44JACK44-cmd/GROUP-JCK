@@ -84,19 +84,24 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
   }
 
   Future<void> _elegirEnMapa() async {
-    final resultado = await Navigator.of(context).push<Map<String, dynamic>>(
-      MaterialPageRoute(
-        builder: (_) => MapaSelectorPage(
-          latitud: _latitud,
-          longitud: _longitud,
-          titulo: 'Ubicación del cliente',
-        ),
-      ),
+    final elegida = await abrirMiniMapa(
+      context,
+      latitud: _latitud,
+      longitud: _longitud,
+      direccion: _direccionCtrl.text,
+      referencia: _referenciaCtrl.text,
+      titulo: 'Ubicación del cliente',
     );
-    if (resultado == null) return;
+    if (elegida == null) return;
     setState(() {
-      _latitud = resultado['latitud'] as double?;
-      _longitud = resultado['longitud'] as double?;
+      _latitud = elegida.latitud;
+      _longitud = elegida.longitud;
+      if ((elegida.direccion ?? '').isNotEmpty) {
+        _direccionCtrl.text = elegida.direccion!;
+      }
+      if ((elegida.referencia ?? '').isNotEmpty) {
+        _referenciaCtrl.text = elegida.referencia!;
+      }
     });
   }
 
