@@ -77,8 +77,7 @@ class AppShell extends ConsumerWidget {
     final auth = ref.watch(authProvider);
     final pestanas = auth.esMotorizado ? pestanasMotorizado : pestanasAdmin;
 
-    var index = pestanas.indexWhere((p) => location.startsWith(p.ruta));
-    if (index < 0) index = 0;
+    final index = indicePestanaActiva(pestanas, location, esAdmin: auth.esAdmin);
 
     return Scaffold(
       body: child,
@@ -106,4 +105,47 @@ class AppShell extends ConsumerWidget {
       ),
     );
   }
+}
+
+/// Qué pestaña debe quedar resaltada según la ruta actual.
+///
+/// Se elige la coincidencia más específica (`/pedidos/nuevo` resalta
+/// "Pedidos") y las pantallas del admin que no son pestaña se mapean a su
+/// sección real.
+int indicePestanaActiva(
+  List<Pestana> pestanas,
+  String location, {
+  required bool esAdmin,
+}) {
+  var indice = -1;
+  var largo = 0;
+  for (var i = 0; i < pestanas.length; i++) {
+    final ruta = pestanas[i].ruta;
+    final coincide = location == ruta || location.startsWith('$ruta/');
+    if (coincide && ruta.length > largo) {
+      indice = i;
+      largo = ruta.length;
+    }
+  }
+  if (indice >= 0) return indice;
+
+  // Pantallas del administrador dentro de una sección con pestaña.
+  if (esAdmin) {
+    final seccion = switch (location) {
+      '/mis-pedidos' ||
+      '/historial' ||
+      '/balones' ||
+      '/mi-registro' ||
+      '/mi-registro/pedido' ||
+      '/mi-registro/gasto' ||
+      '/mi-registro/incidencia' =>
+        '/pedidos',
+      _ => null,
+    };
+    if (seccion != null) {
+      final i = pestanas.indexWhere((p) => p.ruta == seccion);
+      if (i >= 0) return i;
+    }
+  }
+  return 0;
 }

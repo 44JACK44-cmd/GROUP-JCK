@@ -219,10 +219,14 @@ class _CajaPageState extends ConsumerState<CajaPage> {
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _caja == null
-              ? _CajaCerrada(onAbrir: _abrirCaja)
+              ? RefreshIndicator(
+                  onRefresh: _cargar,
+                  child: _CajaCerrada(onAbrir: _abrirCaja),
+                )
               : RefreshIndicator(
                   onRefresh: _cargar,
                   child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                     children: [
                       // ---- Resumen del dinero ----
@@ -332,6 +336,7 @@ class _CajaCerrada extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(24),
       children: [
         const SizedBox(height: 80),

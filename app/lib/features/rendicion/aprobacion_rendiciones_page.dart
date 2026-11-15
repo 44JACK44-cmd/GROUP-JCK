@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme.dart';
 import '../../core/data/rendicion_repo.dart';
 import '../../core/data/rendiciones_repo.dart';
+import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
 import '../auth/auth_controller.dart';
 
@@ -36,26 +37,45 @@ class _AprobacionRendicionesPageState extends ConsumerState<AprobacionRendicione
         _rendiciones = data;
         _cargando = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(traducirError(e, contexto: 'No pudimos cargar las rendiciones').mensaje),
+        ),
+      );
     }
   }
 
   Future<void> _revisar(Map<String, dynamic> rendicion, String estado) async {
     final justificacion = await _pedirJustificacion(estado);
-    if (justificacion == null && estado != EstadoRendicion.aprobada) return;
+    // Si el admin cancela el diálogo, NO se aprueba ni se observa nada.
+    if (justificacion == null) return;
 
     final auth = ref.read(authProvider);
     try {
-      // Calcular diferencia
+      // La diferencia se calcula con la fecha real de la rendición (no con las
+      // últimas 24 h) y descontando los gastos de cada bolsillo.
       final motorizadoId = rendicion['motorizado_id'] as String;
-      final inicio = DateTime.now().subtract(const Duration(days: 1));
-      final fin = DateTime.now().add(const Duration(minutes: 1));
-      final r = await rendicionRepo.calcular(desde: inicio, hasta: fin, motorizadoId: motorizadoId);
-      final esperado = r.efectivo + r.yape;
+      final fechaRendicion =
+          DateTime.tryParse(rendicion['fecha']?.toString() ?? '') ?? DateTime.now();
+      final inicio = DateTime(
+        fechaRendicion.year,
+        fechaRendicion.month,
+        fechaRendicion.day,
+      );
+      final fin = inicio.add(const Duration(days: 1));
+      final r = await rendicionRepo.calcular(
+        desde: inicio,
+        hasta: fin,
+        motorizadoId: motorizadoId,
+      );
+      final esperado =
+          (r.efectivo - r.gastosEfectivo) + (r.yape - r.gastosYape);
       final declarado = (rendicion['efectivo_declarado'] as num? ?? 0).toDouble() +
           (rendicion['yape_declarado'] as num? ?? 0).toDouble();
+      // Positivo = falta dinero; negativo = sobra.
       final diferencia = esperado - declarado;
 
       await rendicionesRepo.revisar(
@@ -74,7 +94,9 @@ class _AprobacionRendicionesPageState extends ConsumerState<AprobacionRendicione
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(
+          content: Text(traducirError(e, contexto: 'No se pudo revisar').mensaje),
+        ),
       );
     }
   }

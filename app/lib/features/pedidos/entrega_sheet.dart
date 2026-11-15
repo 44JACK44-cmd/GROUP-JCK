@@ -81,7 +81,7 @@ class _EntregaSheetState extends State<_EntregaSheet> {
       } else {
         _quedoDebiendo = false;
         if (double.tryParse(_montoCtrl.text) == 0 ||
-            double.parse(_montoCtrl.text) >= widget.total) {
+            (double.tryParse(_montoCtrl.text) ?? 0) >= widget.total) {
           _montoCtrl.text = widget.total.toStringAsFixed(2);
         }
       }

@@ -76,6 +76,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: RefreshIndicator(
           onRefresh: _cargar,
           child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
               Row(
@@ -177,7 +178,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
               ),
               const SizedBox(height: 20),
-              Text('Configuración', style: Theme.of(context).textTheme.titleMedium),
+              Text('Dinero y control', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 10),
               GridView.count(
                 crossAxisCount: 2,
@@ -187,23 +188,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                 crossAxisSpacing: 10,
                 childAspectRatio: 1.7,
                 children: [
-                  _Acceso(icono: Icons.info_outline, titulo: 'Información', onTap: () => context.push('/ajustes')),
-                  _Acceso(icono: Icons.settings_outlined, titulo: 'Configuración', onTap: () => context.push('/ajustes')),
-                  _Acceso(icono: Icons.security_outlined, titulo: 'Permisos', onTap: () => context.push('/ajustes')),
-                  _Acceso(icono: Icons.volume_up_outlined, titulo: 'Audio', onTap: () => context.push('/ajustes')),
-                  _Acceso(icono: Icons.system_update_alt, titulo: 'Actualización', onTap: () => context.push('/mas')),
-                  _Acceso(icono: Icons.help_outline, titulo: 'Ayuda', onTap: () => context.push('/ajustes')),
+                  _Acceso(icono: Icons.point_of_sale_outlined, titulo: 'Caja', onTap: () => context.push('/caja')),
+                  _Acceso(icono: Icons.assignment_turned_in_outlined, titulo: 'Rendición', onTap: () => context.push('/rendicion')),
+                  _Acceso(icono: Icons.bar_chart_outlined, titulo: 'Reportes', onTap: () => context.push('/reportes')),
+                  _Acceso(icono: Icons.delivery_dining_outlined, titulo: 'Motorizados', onTap: () => context.push('/motorizados')),
                 ],
-              ),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () => context.push('/mas'),
-                  icon: const Icon(Icons.system_update_alt),
-                  label: const Text('BUSCAR ACTUALIZACIÓN'),
-                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-                ),
               ),
               const SizedBox(height: 20),
               Text('Accesos rápidos', style: Theme.of(context).textTheme.titleMedium),
@@ -218,7 +207,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 children: [
                   _Acceso(icono: Icons.people_outline, titulo: 'Clientes', onTap: () => context.go('/clientes')),
                   _Acceso(icono: Icons.payments_outlined, titulo: 'Cobros', onTap: () => context.go('/cobros')),
-                  _Acceso(icono: Icons.delivery_dining_outlined, titulo: 'Mis pedidos', onTap: () => context.push('/mis-pedidos')),
+                  _Acceso(icono: Icons.compare_arrows, titulo: 'Conciliación', onTap: () => context.push('/conciliacion')),
                   _Acceso(icono: Icons.grid_view_outlined, titulo: 'Más', onTap: () => context.go('/mas')),
                 ],
               ),

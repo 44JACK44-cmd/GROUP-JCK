@@ -21,7 +21,10 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
   final _observacionCtrl = TextEditingController();
 
   String _categoria = 'Combustible';
+  String _medioPago = 'EFECTIVO';
   bool _guardando = false;
+
+  static const _medios = ['EFECTIVO', 'YAPE', 'OTRO'];
 
   static const _categorias = {
     'Combustible': '⛽',
@@ -46,22 +49,38 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
       _error('Escribe una descripción.');
       return;
     }
-    final monto = double.tryParse(_montoCtrl.text) ?? 0;
+    final monto = double.tryParse(_montoCtrl.text.replaceAll(',', '.')) ?? 0;
     if (monto <= 0) {
       _error('El monto debe ser mayor a cero.');
       return;
     }
 
+    // La observación no se pierde: se guarda junto con la descripción.
+    final observacion = _observacionCtrl.text.trim();
+    final descripcionCompleta = observacion.isEmpty
+        ? descripcion
+        : '$descripcion — $observacion';
+
     setState(() => _guardando = true);
     final auth = ref.read(authProvider);
+    final datos = <String, dynamic>{
+      'empresa_id': auth.empresaId,
+      'descripcion': descripcionCompleta,
+      'monto': monto,
+      'categoria': _categoria,
+      'usuario_id': auth.usuarioId,
+      'medio_pago': _medioPago,
+    };
     try {
-      await sb.from('gastos').insert({
-        'empresa_id': auth.empresaId,
-        'descripcion': descripcion,
-        'monto': monto,
-        'categoria': _categoria,
-        'usuario_id': auth.usuarioId,
-      });
+      try {
+        await sb.from('gastos').insert(datos);
+      } catch (e) {
+        // Si la migración de `medio_pago` todavía no está aplicada, se guarda
+        // igual sin ese dato (no se pierde el gasto).
+        if (!esColumnaAusente(e)) rethrow;
+        datos.remove('medio_pago');
+        await sb.from('gastos').insert(datos);
+      }
       if (!mounted) return;
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -71,7 +90,11 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
       if (!mounted) return;
       setState(() => _guardando = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No pudimos registrar el gasto: $e')),
+        SnackBar(
+          content: Text(
+            traducirError(e, contexto: 'No pudimos registrar el gasto').mensaje,
+          ),
+        ),
       );
     }
   }
@@ -125,6 +148,26 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
               prefixText: 'S/ ',
               prefixIcon: Icon(Icons.attach_money),
             ),
+          ),
+          const SizedBox(height: 12),
+          Text('¿Con qué se pagó?',
+              style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final m in _medios)
+                ChoiceChip(
+                  label: Text(m == 'EFECTIVO'
+                      ? '💵 Efectivo'
+                      : m == 'YAPE'
+                          ? '📱 Yape'
+                          : '💳 Otro'),
+                  selected: _medioPago == m,
+                  selectedColor: AppTheme.primary.withValues(alpha: 0.15),
+                  onSelected: (_) => setState(() => _medioPago = m),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
           TextFormField(

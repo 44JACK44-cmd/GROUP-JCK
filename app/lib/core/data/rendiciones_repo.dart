@@ -315,6 +315,15 @@ class RendicionesRepo {
       rendiciones: rendiciones,
     );
 
+    // No se cierra la jornada con dinero sin cuadrar: si hay rendiciones
+    // pendientes se ocultaría un faltante real.
+    if (cierre.rendicionesPendientes > 0) {
+      throw Exception(
+        'Hay ${cierre.rendicionesPendientes} rendición(es) pendiente(s) de '
+        'revisión. Apruébalas o recházalas antes de cerrar la jornada.',
+      );
+    }
+
     final datos = {
       'empresa_id': empresaId,
       'fecha': fechaStr,

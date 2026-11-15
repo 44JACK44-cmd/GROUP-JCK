@@ -10,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme.dart';
 import '../../core/data/motorizados_repo.dart';
 import '../../core/data/rendicion_repo.dart';
+import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
 import '../../core/ui/widgets.dart';
 
@@ -78,8 +79,8 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
     }
   }
 
-  Future<void> _cargar() async {
-    setState(() => _cargando = true);
+  Future<void> _cargar({bool silencioso = false}) async {
+    if (!silencioso) setState(() => _cargando = true);
     try {
       final (desde, hasta) = _rango();
       final data = await rendicionRepo.calcular(
@@ -92,9 +93,17 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
         _rendicion = data;
         _cargando = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            traducirError(e, contexto: 'No pudimos calcular la rendición')
+                .mensaje,
+          ),
+        ),
+      );
     }
   }
 
@@ -203,9 +212,12 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
           Expanded(
             child: _cargando
                 ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-                : ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-                    children: [
+                : RefreshIndicator(
+                    onRefresh: () => _cargar(silencioso: true),
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                      children: [
                       if (nombreMotorizado != null)
                         Text('Motorizado: $nombreMotorizado',
                             style: Theme.of(context).textTheme.titleMedium),
@@ -275,6 +287,7 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                         ),
                     ],
                   ),
+                ),
           ),
         ],
       ),

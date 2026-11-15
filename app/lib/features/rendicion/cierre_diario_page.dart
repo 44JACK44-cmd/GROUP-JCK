@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/rendiciones_repo.dart';
+import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
@@ -35,8 +36,8 @@ class _CierreDiarioPageState extends ConsumerState<CierreDiarioPage> {
     super.dispose();
   }
 
-  Future<void> _cargar() async {
-    setState(() => _cargando = true);
+  Future<void> _cargar({bool silencioso = false}) async {
+    if (!silencioso) setState(() => _cargando = true);
     final auth = ref.read(authProvider);
     try {
       final data = await rendicionesRepo.obtenerCierre(auth.empresaId!, DateTime.now());
@@ -45,9 +46,16 @@ class _CierreDiarioPageState extends ConsumerState<CierreDiarioPage> {
         _cierre = data;
         _cargando = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            traducirError(e, contexto: 'No pudimos cargar el cierre').mensaje,
+          ),
+        ),
+      );
     }
   }
 
@@ -83,7 +91,11 @@ class _CierreDiarioPageState extends ConsumerState<CierreDiarioPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(
+          content: Text(
+            traducirError(e, contexto: 'No pudimos cerrar la jornada').mensaje,
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _cerrando = false);
@@ -103,9 +115,12 @@ class _CierreDiarioPageState extends ConsumerState<CierreDiarioPage> {
       ),
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
+          : RefreshIndicator(
+              onRefresh: () => _cargar(silencioso: true),
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                children: [
                 if (cerrado) ...[
                   Card(
                     color: AppTheme.success.withValues(alpha: 0.1),
@@ -178,6 +193,7 @@ class _CierreDiarioPageState extends ConsumerState<CierreDiarioPage> {
                   ),
                 ],
               ],
+              ),
             ),
     );
   }

@@ -51,8 +51,26 @@ class GasApp extends ConsumerStatefulWidget {
 
   static const _rutasPublicas = {'/welcome', '/login', '/registro-empresa', '/ajustes'};
 
-  /// Pestañas que solo puede usar el administrador.
-  static const _rutasAdmin = {'/pedidos', '/clientes', '/cobros', '/mas'};
+  /// Rutas que solo puede usar el administrador.
+  ///
+  /// `/cobros`, `/balones`, `/deudas`, `/mis-pedidos`, `/historial` y
+  /// `/declarar-rendicion` NO están aquí: el motorizado también las necesita.
+  static const _rutasAdmin = {
+    '/pedidos',
+    '/clientes',
+    '/mas',
+    '/caja',
+    '/rendicion',
+    '/conciliacion',
+    '/reportes',
+    '/motorizados',
+    '/aprobacion-rendiciones',
+    '/cierre-diario',
+    '/combustible',
+  };
+
+  /// Pantallas de administración que no son pestaña.
+  static const _rutasAdminExtra = {'/pedidos/nuevo'};
 
   @override
   ConsumerState<GasApp> createState() => _GasAppState();
@@ -194,9 +212,10 @@ class _GasAppState extends ConsumerState<GasApp> {
                 loc == '/splash') {
               return '/inicio';
             }
-            // El motorizado no entra a las pestañas de administración.
+            // El motorizado no entra a las pantallas de administración.
             if (auth.esMotorizado &&
-                (GasApp._rutasAdmin.contains(loc) || loc == '/pedidos/nuevo')) {
+                (GasApp._rutasAdmin.contains(loc) ||
+                    GasApp._rutasAdminExtra.contains(loc))) {
               return '/mis-pedidos';
             }
             // El administrador usa su propio menú "Más".

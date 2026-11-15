@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/pedidos_repo.dart';
+import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
 
 class ConciliacionPage extends ConsumerStatefulWidget {
@@ -29,8 +30,8 @@ class _ConciliacionPageState extends ConsumerState<ConciliacionPage> {
     _cargar();
   }
 
-  Future<void> _cargar() async {
-    setState(() => _cargando = true);
+  Future<void> _cargar({bool silencioso = false}) async {
+    if (!silencioso) setState(() => _cargando = true);
     try {
       final inicio = inicioHoy();
       final fin = DateTime.now().add(const Duration(minutes: 1));
@@ -43,9 +44,17 @@ class _ConciliacionPageState extends ConsumerState<ConciliacionPage> {
         _pedidosMoto = moto;
         _cargando = false;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            traducirError(e, contexto: 'No pudimos cargar la conciliación')
+                .mensaje,
+          ),
+        ),
+      );
     }
   }
 
@@ -68,8 +77,9 @@ class _ConciliacionPageState extends ConsumerState<ConciliacionPage> {
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : RefreshIndicator(
-              onRefresh: _cargar,
+              onRefresh: () => _cargar(silencioso: true),
               child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
                   // Resumen

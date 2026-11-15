@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config.dart';
+import '../../core/data/sb.dart';
 
 enum AuthStatus { cargando, autenticado, noAutenticado }
 
@@ -41,7 +42,7 @@ class AuthNotifier extends Notifier<AuthState> {
     return const AuthState(status: AuthStatus.cargando);
   }
 
-  Future<void> _cargarPerfil(String userId) async {
+  Future<void> _cargarPerfil(String userId, {int intento = 0}) async {
     try {
       final perfil = await _sb
           .from('perfiles')
@@ -69,8 +70,20 @@ class AuthNotifier extends Notifier<AuthState> {
         empresaId: empresaId,
         empresaNombre: empresaNombre,
       );
-    } catch (_) {
-      // Sesión sin perfil: cerrar sesión para no dejar estado inconsistente.
+    } catch (e) {
+      // Un fallo de red NO debe expulsar al usuario: se reintenta solo.
+      if (esErrorDeRed(e) && intento < 12) {
+        await Future<void>.delayed(const Duration(seconds: 5));
+        if (state.status != AuthStatus.cargando) return;
+        return _cargarPerfil(userId, intento: intento + 1);
+      }
+      if (esErrorDeRed(e)) {
+        // Sigue sin conexión: se conserva la sesión y se vuelve a intentar al
+        // abrir la app, en vez de borrar el acceso del usuario.
+        state = const AuthState(status: AuthStatus.noAutenticado);
+        return;
+      }
+      // Sesión sin perfil real: cerrar sesión para no dejar estado inconsistente.
       await _sb.auth.signOut();
       state = const AuthState(status: AuthStatus.noAutenticado);
     }
