@@ -109,8 +109,9 @@ referencia, latitud, longitud, forma de pago, total, repartidor).
 - Publicado como `releases/app-v9.apk` con `version_code 2009` y
   `obligatoria false`.
 - Verificación: SHA-256 del archivo subido coincide byte por byte con el
-  compilado; `aapt dump badging` confirma `com.grupojck.gas_app`,
-  `versionCode='2009'`, `versionName='1.0.9'`, `minSdk 24`, `targetSdk 36`.
+  compilado (`0B9D2E077E8AD212C01689348974282F90CF8FD5C45A9FB5CCF4847614F1B1EC`);
+  `aapt dump badging` confirma `com.grupojck.gas_app`, `versionCode='2009'`,
+  `versionName='1.0.9'`, `minSdk 24`, `targetSdk 36`.
 
 ## 6. Lo que falta por probar en un teléfono real
 1. Mapa de Google dentro de la app (necesita clave válida).
