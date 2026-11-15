@@ -25,6 +25,7 @@ Repetir en orden, uno por uno, esperando `Success` antes de pasar al siguiente.
 | 10 | `v7_10_productos.sql` | `productos.tipo` + depuración de duplicados sin borrar + "Fierro / Balón vacío" como único activo retornable |
 | 11 | `v7_11_cuaderno_motorizado.sql` | El motorizado puede registrar su propio pedido y cliente (origen `MOTORIZADO`) |
 | 12 | `v7_12_comprobantes.sql` | Columna `pagos.comprobante_url` + permisos de subida al bucket `comprobantes` (foto de Yape) |
+| 13 | `v7_13_dias_trabajo.sql` | Columna `perfiles.dias_trabajo` (días de trabajo del motorizado) |
 
 Después: `99_verificar.sql` — todo debe salir en `OK`.
 

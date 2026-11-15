@@ -1,12 +1,4 @@
 /// Catálogo de productos.
-///
-/// Regla de negocio: el **fierro** (soporte) y el **balón vacío** son el MISMO
-/// activo retornable. En el catálogo existen una sola vez, con
-/// `tipo = 'RETORNABLE'` y precio 0; no se cobran ni generan dinero. Su control
-/// real es el saldo de `movimiento_bal_on` / `movimiento_fierro`.
-///
-/// Las notas u observaciones nunca crean productos ni dinero: este repositorio
-/// solo lee el catálogo que el administrador mantiene.
 library;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -16,45 +8,38 @@ import 'sb.dart';
 class ProductosRepo {
   const ProductosRepo();
 
-  /// Columnas que usan todas las pantallas.
-  static const _columnas = 'id, nombre, capacidad_kg, precio_base, tipo';
+  static const _columnasConTipo = 'id, nombre, capacidad_kg, precio_base, tipo';
+  static const _columnasBase = 'id, nombre, capacidad_kg, precio_base';
 
-  /// Regla única del concepto retornable: el fierro y el balón vacío no se
-  /// venden. Se usa en la app y en las pruebas.
-  static bool esVendible(Map<String, dynamic> producto) =>
-      (producto['tipo'] as String?) != 'RETORNABLE';
+  static bool _tipoDisponible = true;
 
-  /// Productos que se pueden vender (excluye los activos retornables).
-  ///
-  /// Si la migración de la columna `tipo` todavía no se aplicó, se devuelve el
-  /// catálogo completo y la pantalla sigue funcionando.
+  static bool esVendible(Map<String, dynamic> producto) {
+    final tipo = producto['tipo'] as String?;
+    if (tipo == null) return true;
+    return tipo != 'RETORNABLE';
+  }
+
   Future<List<Map<String, dynamic>>> vendibles() async {
     try {
-      final data = await sb
-          .from('productos')
-          .select(_columnas)
-          .eq('activo', true)
-          .neq('tipo', 'RETORNABLE')
-          .order('nombre');
-      // Doble red de seguridad: aunque la consulta falle en filtrar, la lista
-      // nunca incluye un activo retornable.
+      final select = _tipoDisponible ? _columnasConTipo : _columnasBase;
+      var q = sb.from('productos').select(select).eq('activo', true);
+      if (_tipoDisponible) q = q.neq('tipo', 'RETORNABLE');
+      final data = await q.order('nombre');
       return List<Map<String, dynamic>>.from(data).where(esVendible).toList();
     } on PostgrestException catch (e) {
       if (!esColumnaAusente(e)) rethrow;
+      _tipoDisponible = false;
       final data = await sb
           .from('productos')
-          .select(_columnas)
+          .select(_columnasBase)
           .eq('activo', true)
           .order('nombre');
       return List<Map<String, dynamic>>.from(data);
     }
   }
 
-  /// El concepto único "Fierro / Balón vacío", si ya existe en la empresa.
-  ///
-  /// Sirve para mostrarlo como activo retornable y para dejar claro que no se
-  /// vende. Nunca se usa para generar una línea de pedido.
   Future<Map<String, dynamic>?> retornable() async {
+    if (!_tipoDisponible) return null;
     try {
       final fila = await sb
           .from('productos')
@@ -67,6 +52,7 @@ class ProductosRepo {
       return fila;
     } on PostgrestException catch (e) {
       if (!esColumnaAusente(e)) rethrow;
+      _tipoDisponible = false;
       return null;
     }
   }

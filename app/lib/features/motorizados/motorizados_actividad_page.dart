@@ -99,6 +99,64 @@ class _MotorizadosActividadPageState
     }
   }
 
+  Future<void> _configurarDias(Map<String, dynamic> moto) async {
+    final id = moto['id'] as String;
+    final nombre = moto['nombre'] as String? ?? '';
+    final dias = await motorizadosRepo.diasTrabajo(id);
+    final seleccion = <int>{...(dias ?? [1, 2, 3, 4, 5, 6, 7])};
+    if (!mounted) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setSt) => AlertDialog(
+            title: Text('Días de trabajo — $nombre'),
+            content: Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (var i = 1; i <= 7; i++)
+                  FilterChip(
+                    label: Text(_nombreDia(i)),
+                    selected: seleccion.contains(i),
+                    onSelected: (v) => setSt(() {
+                      if (v) {
+                        seleccion.add(i);
+                      } else {
+                        seleccion.remove(i);
+                      }
+                    }),
+                  ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Guardar'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (ok != true) return;
+    await motorizadosRepo.guardarDiasTrabajo(
+      id,
+      seleccion.isEmpty ? null : (seleccion.toList()..sort()),
+    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Días de trabajo de $nombre actualizados.')),
+      );
+    }
+  }
+
+  String _nombreDia(int d) => const ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'][d - 1];
+
   Future<void> _abrirDetalle(Map<String, dynamic> moto) async {
     final id = moto['id'] as String;
     final nombre = moto['nombre'] as String? ?? '';
@@ -135,6 +193,7 @@ class _MotorizadosActividadPageState
                         activo: m['activo'] as bool? ?? true,
                         resumen: _resumen[m['id'] as String] ?? const Rendicion(),
                         onTap: () => _abrirDetalle(m),
+                        onConfigurarDias: () => _configurarDias(m),
                       ),
                 ],
               ),
@@ -148,12 +207,14 @@ class _TarjetaMotorizado extends StatelessWidget {
   final bool activo;
   final Rendicion resumen;
   final VoidCallback onTap;
+  final VoidCallback onConfigurarDias;
 
   const _TarjetaMotorizado({
     required this.nombre,
     required this.activo,
     required this.resumen,
     required this.onTap,
+    required this.onConfigurarDias,
   });
 
   @override
@@ -192,6 +253,11 @@ class _TarjetaMotorizado extends StatelessWidget {
                         ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    tooltip: 'Días de trabajo',
+                    onPressed: onConfigurarDias,
+                    icon: const Icon(Icons.calendar_today_outlined, size: 18),
                   ),
                   const Icon(Icons.chevron_right, color: Colors.black45),
                 ],
@@ -274,6 +340,7 @@ class _ActividadMotorizadoPage extends StatefulWidget {
 class _ActividadMotorizadoPageState extends State<_ActividadMotorizadoPage> {
   List<Map<String, dynamic>> _pedidos = [];
   List<Map<String, dynamic>> _gastos = [];
+  Map<String, String> _comprobantes = {};
   bool _cargando = true;
 
   @override
@@ -306,10 +373,29 @@ class _ActividadMotorizadoPageState extends State<_ActividadMotorizadoPage> {
             .limit(100);
         gastos = List<Map<String, dynamic>>.from(data);
       } catch (_) {}
+      // Comprobantes Yape por pedido.
+      final comp = <String, String>{};
+      try {
+        if (pedidos.isNotEmpty) {
+          final ids = pedidos.map((p) => p['id']).toList();
+          final pagos = await sb
+              .from('pagos')
+              .select('pedido_id, comprobante_url')
+              .inFilter('pedido_id', ids);
+          for (final pg in (pagos as List)) {
+            final pid = pg['pedido_id'] as String?;
+            final url = pg['comprobante_url'] as String?;
+            if (pid != null && url != null && url.isNotEmpty) {
+              comp[pid] = url;
+            }
+          }
+        }
+      } catch (_) {}
       if (!mounted) return;
       setState(() {
         _pedidos = pedidos;
         _gastos = gastos;
+        _comprobantes = comp;
         _cargando = false;
       });
     } catch (_) {
@@ -330,6 +416,7 @@ class _ActividadMotorizadoPageState extends State<_ActividadMotorizadoPage> {
         detalle: p['forma_pago'] as String? ?? '',
         esGasto: false,
         estado: p['estado'] as String? ?? '',
+        pedidoId: p['id'] as String?,
       ));
     }
     for (final g in _gastos) {
@@ -375,7 +462,25 @@ class _ActividadMotorizadoPageState extends State<_ActividadMotorizadoPage> {
                           isThreeLine: true,
                           trailing: it.esGasto
                               ? null
-                              : EstadoBadge(it.estado, compacto: true),
+                              : Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (_comprobantes.containsKey(it.pedidoId))
+                                      Padding(
+                                        padding: const EdgeInsets.only(right: 6),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(6),
+                                          child: Image.network(
+                                            _comprobantes[it.pedidoId]!,
+                                            width: 36,
+                                            height: 36,
+                                            fit: BoxFit.cover,
+                                          ),
+                                        ),
+                                      ),
+                                    EstadoBadge(it.estado, compacto: true),
+                                  ],
+                                ),
                         ),
                       ),
                 ],
@@ -395,6 +500,7 @@ class _ItemActividad {
   final String detalle;
   final bool esGasto;
   final String estado;
+  final String? pedidoId;
 
   _ItemActividad({
     required this.fecha,
@@ -403,5 +509,6 @@ class _ItemActividad {
     required this.detalle,
     required this.esGasto,
     required this.estado,
+    this.pedidoId,
   });
 }

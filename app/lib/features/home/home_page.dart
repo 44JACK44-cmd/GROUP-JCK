@@ -79,6 +79,22 @@ class _HomePageState extends ConsumerState<HomePage> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () => context.push('/pedidos/nuevo'),
+                  icon: const Icon(Icons.add, size: 26),
+                  label: const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 10),
+                    child: Text('NUEVO PEDIDO', style: TextStyle(fontSize: 18)),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    minimumSize: const Size.fromHeight(60),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
               Row(
                 children: [
                   Expanded(
@@ -206,6 +222,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 childAspectRatio: 1.7,
                 children: [
                   _Acceso(icono: Icons.people_outline, titulo: 'Clientes', onTap: () => context.go('/clientes')),
+                  _Acceso(icono: Icons.calendar_month_outlined, titulo: 'Calendario', onTap: () => context.push('/calendario')),
                   _Acceso(icono: Icons.payments_outlined, titulo: 'Cobros', onTap: () => context.go('/cobros')),
                   _Acceso(icono: Icons.compare_arrows, titulo: 'Conciliación', onTap: () => context.push('/conciliacion')),
                   _Acceso(icono: Icons.grid_view_outlined, titulo: 'Más', onTap: () => context.go('/mas')),

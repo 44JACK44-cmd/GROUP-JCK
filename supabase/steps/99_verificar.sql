@@ -114,4 +114,9 @@ select 'columna pagos.comprobante_url',
        case when exists (select 1 from information_schema.columns
                           where table_schema = 'public' and table_name = 'pagos'
                             and column_name = 'comprobante_url')
-            then 'OK' else 'FALTA' end;
+            then 'OK' else 'FALTA' end
+union all
+select 'columna perfiles.dias_trabajo',
+       case when exists (select 1 from information_schema.columns
+                          where table_schema = 'public' and table_name = 'perfiles'
+                            and column_name = 'dias_trabajo') then 'OK' else 'FALTA' end;

@@ -575,6 +575,14 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                   hijos: [
                     if (_cargandoProductos)
                       const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                    else if (_productos.length == 1)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          'Producto: ${_nombreProducto(_productos.first)}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      )
                     else
                       Wrap(
                         spacing: 8,

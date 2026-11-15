@@ -198,6 +198,13 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                 label: const Text('Ver historial de mis pedidos'),
                 style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
               ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/calendario'),
+                icon: const Icon(Icons.calendar_month_outlined),
+                label: const Text('Calendario'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+              ),
             ],
           ),
         ),
