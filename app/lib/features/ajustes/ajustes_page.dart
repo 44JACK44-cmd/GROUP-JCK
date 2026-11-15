@@ -11,40 +11,13 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/theme.dart';
+import '../../core/audio/voz_service.dart';
 import '../../core/config.dart';
 import '../../core/offline/sync_service.dart';
+import '../../core/prefs/ajustes_prefs.dart';
 import '../../core/update/app_update_service.dart';
-
-/// Preferencias locales (se guardan en el dispositivo, nunca en la nube).
-class AjustesPrefs {
-  AjustesPrefs._();
-
-  static const _kMapaInterno = 'ajustes_mapa_dentro_app';
-  static const _kAudio = 'ajustes_asistente_voz';
-
-  static Future<bool> mapaDentroDeApp() async {
-    final p = await SharedPreferences.getInstance();
-    return p.getBool(_kMapaInterno) ?? false;
-  }
-
-  static Future<void> setMapaDentroDeApp(bool v) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setBool(_kMapaInterno, v);
-  }
-
-  static Future<bool> asistenteDeVoz() async {
-    final p = await SharedPreferences.getInstance();
-    return p.getBool(_kAudio) ?? true;
-  }
-
-  static Future<void> setAsistenteDeVoz(bool v) async {
-    final p = await SharedPreferences.getInstance();
-    await p.setBool(_kAudio, v);
-  }
-}
 
 enum EstadoPrueba { pendiente, probando, ok, fallido }
 
@@ -118,6 +91,23 @@ class _AjustesPageState extends State<AjustesPage> {
             ? 'Se sincronizaron $enviadas operaciones.'
             : 'No había nada pendiente por enviar.'),
       ),
+    );
+  }
+
+  Future<void> _probarVoz() async {
+    final ok = await VozService.instance.disponible();
+    if (!mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Este teléfono no tiene voz en español instalada '
+              'o el asistente está desactivado.'),
+        ),
+      );
+      return;
+    }
+    await VozService.instance.hablar(
+      'Asistente de voz activo. Las indicaciones se leerán durante la ruta.',
     );
   }
 
@@ -409,8 +399,8 @@ class _AjustesPageState extends State<AjustesPage> {
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: Text(
                     _mapaInterno
-                        ? 'Activado: la ruta se muestra en la pantalla de la app.'
-                        : 'Desactivado: se usa OpenStreetMap integrado.',
+                        ? 'Activado: la ruta se abre en la pantalla de la app.'
+                        : 'Desactivado: el botón de ruta abre Google Maps.',
                     style: const TextStyle(fontSize: 13),
                   ),
                   value: _mapaInterno,
@@ -421,11 +411,16 @@ class _AjustesPageState extends State<AjustesPage> {
                 ),
                 const Divider(height: 1),
                 const SizedBox(height: 8),
-                const Text(
-                  'Mapa actual: OpenStreetMap (sin clave). '
-                  'Google Maps se activará automáticamente cuando se configure '
-                  'una API key válida; si no la hay, seguirá este mapa.',
-                  style: TextStyle(fontSize: 12.5, color: Colors.black54),
+                Text(
+                  hayClaveGoogleMaps
+                      ? 'Google Maps activo: la ruta real y las indicaciones '
+                          'vienen del servicio de Google. La voz lee esas mismas '
+                          'indicaciones en español.'
+                      : 'Google Maps no configurado en esta compilación: se usa '
+                          'OpenStreetMap y, si se pide la ruta, un aviso claro con '
+                          'acceso a Google Maps. Para activarlo se compila con la '
+                          'clave de Google Maps (no se guarda en el código).',
+                  style: const TextStyle(fontSize: 12.5, color: Colors.black54),
                 ),
               ],
             ),
@@ -486,10 +481,15 @@ class _AjustesPageState extends State<AjustesPage> {
                 const Divider(height: 1),
                 const SizedBox(height: 8),
                 const Text(
-                  'Las instrucciones se generan con la ruta real. '
-                  'Esta preferencia se aplica en cuanto esté disponible '
-                  'el asistente de voz.',
+                  'Las instrucciones que se dicen son exactamente las de la ruta '
+                  'real (texto y distancia). Si no hay ruta, no se habla nada.',
                   style: TextStyle(fontSize: 12.5, color: Colors.black54),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: _probarVoz,
+                  icon: const Icon(Icons.play_circle_outline, size: 18),
+                  label: const Text('Probar la voz'),
                 ),
               ],
             ),

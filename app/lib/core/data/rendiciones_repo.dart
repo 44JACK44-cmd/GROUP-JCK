@@ -15,6 +15,122 @@ class EstadoRendicion {
   static const aprobada = 'APROBADA';
 }
 
+/// Totales de una jornada, calculados solo con datos reales.
+class CierreCalculado {
+  /// Solo pedidos ENTREGADO. Nunca lo pendiente ni lo cancelado.
+  final double totalVentas;
+
+  /// Cobros en efectivo del día (de `pagos`).
+  final double efectivoEsperado;
+
+  /// Cobros por Yape del día.
+  final double yapeTotal;
+
+  /// Gastos pagados en efectivo (los únicos que descuentan del efectivo).
+  final double gastosEfectivo;
+
+  /// Todos los gastos del día, sin importar con qué se pagaron.
+  final double gastosTotal;
+
+  /// Lo que debería quedar en efectivo: cobrado en efectivo − gastos en efectivo.
+  final double efectivoNeto;
+
+  /// Lo que el motorizado declaró (suma de rendiciones), o el neto si no hay.
+  final double efectivoRecibido;
+
+  /// Declarado − neto. Positivo = sobra; negativo = falta.
+  final double diferencias;
+
+  /// Ventas entregadas que todavía no se cobraron.
+  final double deudasTotal;
+
+  final int pedidosPendientes;
+  final int rendicionesPendientes;
+
+  const CierreCalculado({
+    this.totalVentas = 0,
+    this.efectivoEsperado = 0,
+    this.yapeTotal = 0,
+    this.gastosEfectivo = 0,
+    this.gastosTotal = 0,
+    this.efectivoNeto = 0,
+    this.efectivoRecibido = 0,
+    this.diferencias = 0,
+    this.deudasTotal = 0,
+    this.pedidosPendientes = 0,
+    this.rendicionesPendientes = 0,
+  });
+}
+
+/// Cálculo puro del cierre diario (sin base de datos, fácil de probar).
+class CalculoCierre {
+  const CalculoCierre._();
+
+  static CierreCalculado calcular({
+    required List<Map<String, dynamic>> pedidos,
+    required List<Map<String, dynamic>> pagos,
+    required List<Map<String, dynamic>> gastos,
+    required List<Map<String, dynamic>> rendiciones,
+  }) {
+    var totalVentas = 0.0, efectivoEsperado = 0.0, yapeTotal = 0.0;
+    var gastosTotal = 0.0, gastosEfectivo = 0.0;
+    var pedidosPendientes = 0;
+
+    for (final p in pedidos) {
+      final estado = p['estado'] as String? ?? '';
+      final total = (p['total'] as num? ?? 0).toDouble();
+      // Regla: una venta solo cuenta cuando el pedido fue ENTREGADO.
+      if (estado == 'ENTREGADO') totalVentas += total;
+      if (estado == 'NUEVO' || estado == 'ASIGNADO' || estado == 'EN_CAMINO') {
+        pedidosPendientes++;
+      }
+    }
+
+    for (final p in pagos) {
+      final monto = (p['monto'] as num? ?? 0).toDouble();
+      final metodo = p['metodo'] as String? ?? 'OTRO';
+      if (metodo == 'EFECTIVO') efectivoEsperado += monto;
+      if (metodo == 'YAPE') yapeTotal += monto;
+    }
+
+    // Regla: el gasto descuenta del bolsillo con el que se pagó.
+    for (final g in gastos) {
+      final monto = (g['monto'] as num? ?? 0).toDouble();
+      gastosTotal += monto;
+      if ((g['medio_pago'] as String? ?? 'EFECTIVO') == 'EFECTIVO') {
+        gastosEfectivo += monto;
+      }
+    }
+
+    var efectivoDeclarado = 0.0;
+    for (final r in rendiciones) {
+      efectivoDeclarado += (r['efectivo_declarado'] as num? ?? 0).toDouble();
+    }
+
+    final efectivoNeto = efectivoEsperado - gastosEfectivo;
+    final hayRendiciones = rendiciones.isNotEmpty;
+    final efectivoRecibido = hayRendiciones ? efectivoDeclarado : efectivoNeto;
+    final diferencias = hayRendiciones ? efectivoDeclarado - efectivoNeto : 0.0;
+    final cobrado = efectivoEsperado + yapeTotal;
+    final deudasTotal = (totalVentas - cobrado) > 0 ? totalVentas - cobrado : 0.0;
+
+    return CierreCalculado(
+      totalVentas: totalVentas,
+      efectivoEsperado: efectivoEsperado,
+      yapeTotal: yapeTotal,
+      gastosEfectivo: gastosEfectivo,
+      gastosTotal: gastosTotal,
+      efectivoNeto: efectivoNeto,
+      efectivoRecibido: efectivoRecibido,
+      diferencias: diferencias,
+      deudasTotal: deudasTotal,
+      pedidosPendientes: pedidosPendientes,
+      rendicionesPendientes:
+          rendiciones.where((r) => r['estado'] == 'PENDIENTE').length,
+    );
+  }
+}
+
 class RendicionesRepo {
   const RendicionesRepo();
 
@@ -191,60 +307,26 @@ class RendicionesRepo {
     final pagos = List<Map<String, dynamic>>.from(res[1] as List);
     final gastos = List<Map<String, dynamic>>.from(res[2] as List);
     final rendiciones = List<Map<String, dynamic>>.from(res[3] as List);
-    final rendicionesPendientes =
-        rendiciones.where((r) => r['estado'] == 'PENDIENTE').length;
 
-    var totalVentas = 0.0, efectivoEsperado = 0.0, yapeTotal = 0.0;
-    var gastosTotal = 0.0, gastosEfectivo = 0.0;
-    var pedidosPendientes = 0;
-    for (final p in pedidos) {
-      final estado = p['estado'] as String? ?? '';
-      final total = (p['total'] as num? ?? 0).toDouble();
-      if (estado == 'ENTREGADO') totalVentas += total;
-      if (estado == 'NUEVO' || estado == 'ASIGNADO' || estado == 'EN_CAMINO') pedidosPendientes++;
-    }
-    for (final p in pagos) {
-      final monto = (p['monto'] as num? ?? 0).toDouble();
-      final metodo = p['metodo'] as String? ?? 'OTRO';
-      if (metodo == 'EFECTIVO') efectivoEsperado += monto;
-      if (metodo == 'YAPE') yapeTotal += monto;
-    }
-    // Solo los gastos pagados en efectivo descuentan del efectivo.
-    for (final g in gastos) {
-      final monto = (g['monto'] as num? ?? 0).toDouble();
-      gastosTotal += monto;
-      if ((g['medio_pago'] as String? ?? 'EFECTIVO') == 'EFECTIVO') {
-        gastosEfectivo += monto;
-      }
-    }
-
-    var efectivoDeclarado = 0.0;
-    for (final r in rendiciones) {
-      efectivoDeclarado += (r['efectivo_declarado'] as num? ?? 0).toDouble();
-    }
-
-    // Lo que debería quedar en efectivo después de los gastos de efectivo.
-    final efectivoNeto = efectivoEsperado - gastosEfectivo;
-    final hayRendiciones = rendiciones.isNotEmpty;
-    final efectivoRecibido = hayRendiciones ? efectivoDeclarado : efectivoNeto;
-    final diferencias = hayRendiciones ? efectivoDeclarado - efectivoNeto : 0.0;
-
-    final deudasTotal = (totalVentas - (efectivoEsperado + yapeTotal)) > 0
-        ? totalVentas - (efectivoEsperado + yapeTotal)
-        : 0.0;
+    final cierre = CalculoCierre.calcular(
+      pedidos: pedidos,
+      pagos: pagos,
+      gastos: gastos,
+      rendiciones: rendiciones,
+    );
 
     final datos = {
       'empresa_id': empresaId,
       'fecha': fechaStr,
-      'total_ventas': totalVentas,
-      'efectivo_esperado': efectivoEsperado,
-      'efectivo_recibido': efectivoRecibido,
-      'yape_total': yapeTotal,
-      'deudas_total': deudasTotal,
-      'gastos_total': gastosTotal,
-      'rendiciones_pendientes': rendicionesPendientes,
-      'diferencias': diferencias,
-      'pedidos_pendientes': pedidosPendientes,
+      'total_ventas': cierre.totalVentas,
+      'efectivo_esperado': cierre.efectivoEsperado,
+      'efectivo_recibido': cierre.efectivoRecibido,
+      'yape_total': cierre.yapeTotal,
+      'deudas_total': cierre.deudasTotal,
+      'gastos_total': cierre.gastosTotal,
+      'rendiciones_pendientes': cierre.rendicionesPendientes,
+      'diferencias': cierre.diferencias,
+      'pedidos_pendientes': cierre.pedidosPendientes,
       'cerrado_por': adminId,
       'fecha_cierre': DateTime.now().toUtc().toIso8601String(),
       'estado': 'CERRADO',
@@ -265,14 +347,14 @@ class RendicionesRepo {
       usuarioId: adminId,
       detalle: {
         'fecha': fechaStr,
-        'total_ventas': totalVentas,
-        'efectivo_esperado': efectivoEsperado,
-        'efectivo_recibido': efectivoRecibido,
-        'yape_total': yapeTotal,
-        'gastos_total': gastosTotal,
-        'deudas_total': deudasTotal,
-        'pedidos_pendientes': pedidosPendientes,
-        'rendiciones_pendientes': rendicionesPendientes,
+        'total_ventas': cierre.totalVentas,
+        'efectivo_esperado': cierre.efectivoEsperado,
+        'efectivo_recibido': cierre.efectivoRecibido,
+        'yape_total': cierre.yapeTotal,
+        'gastos_total': cierre.gastosTotal,
+        'deudas_total': cierre.deudasTotal,
+        'pedidos_pendientes': cierre.pedidosPendientes,
+        'rendiciones_pendientes': cierre.rendicionesPendientes,
       },
     );
   }

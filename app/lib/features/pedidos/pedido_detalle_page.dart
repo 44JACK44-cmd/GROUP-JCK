@@ -17,8 +17,10 @@ import '../../core/domain/estado_pedido.dart';
 import '../../core/domain/formato.dart';
 import '../../core/domain/navegacion.dart';
 import '../../core/offline/outbox.dart';
+import '../../core/prefs/ajustes_prefs.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
+import '../rutas/ruta_page.dart';
 import 'entrega_sheet.dart';
 
 class PedidoDetallePage extends ConsumerStatefulWidget {
@@ -235,9 +237,48 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
       _huboCambios = true;
       setState(() {});
       _mensaje('Pedido en camino.');
+      await _abrirRuta();
     } catch (e) {
       _error(e is Exception ? e.toString().replaceFirst('Exception: ', '') : 'No se pudo actualizar.');
     }
+  }
+
+  /// Abre la ruta hasta el cliente.
+  ///
+  /// Si el cliente tiene coordenadas y el ajuste está activo, se navega dentro
+  /// de la app (Google Maps + indicaciones reales). Si no hay coordenadas o el
+  /// ajuste está desactivado, se abre Google Maps externo.
+  Future<void> _abrirRuta() async {
+    final cliente = widget.pedido['clientes'] as Map<String, dynamic>?;
+    final lat = (cliente?['latitud'] as num?)?.toDouble();
+    final lng = (cliente?['longitud'] as num?)?.toDouble();
+    final direccion = cliente?['direccion'] as String? ?? '';
+
+    if (lat == null || lng == null) {
+      final abierto = await navegarACliente(direccion: direccion);
+      if (!abierto && mounted) {
+        _error('El cliente no tiene ubicación guardada. Edita su ficha para marcarla en el mapa.');
+      }
+      return;
+    }
+
+    final dentro = await AjustesPrefs.mapaDentroDeApp();
+    if (!mounted) return;
+    if (!dentro) {
+      await navegarACliente(latitud: lat, longitud: lng, direccion: direccion);
+      return;
+    }
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RutaPage(
+          latitud: lat,
+          longitud: lng,
+          clienteNombre: cliente?['nombre'] as String?,
+          direccion: direccion.isEmpty ? null : direccion,
+        ),
+      ),
+    );
   }
 
   Future<void> _entregar() async {
@@ -516,16 +557,12 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                             ),
                           ],
                         ),
-                        if (lat != null && lng != null) ...[
+                        if (lat != null || direccion.isNotEmpty) ...[
                           const SizedBox(height: 10),
                           SizedBox(
                             width: double.infinity,
                             child: FilledButton.icon(
-                              onPressed: () => navegarACliente(
-                                latitud: lat,
-                                longitud: lng,
-                                direccion: direccion,
-                              ),
+                              onPressed: _abrirRuta,
                               icon: const Icon(Icons.directions_outlined),
                               label: const Text('Ir al cliente'),
                               style: FilledButton.styleFrom(

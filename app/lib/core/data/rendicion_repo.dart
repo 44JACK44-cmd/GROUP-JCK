@@ -66,6 +66,23 @@ class Rendicion {
 class RendicionRepo {
   const RendicionRepo();
 
+  /// Saldo de fierros de un periodo: entregados − devueltos.
+  ///
+  /// El fierro y el balón vacío son el mismo activo retornable: si el cliente
+  /// devolvió más de lo que se le dejó, el saldo es 0 (nunca negativo).
+  static int saldoFierros(List<Map<String, dynamic>> movimientos) {
+    var entregados = 0;
+    var devueltos = 0;
+    for (final m in movimientos) {
+      final cant = (m['cantidad'] as num? ?? 0).toInt();
+      if (cant <= 0) continue;
+      if (m['tipo'] == 'ENTREGA') entregados += cant;
+      if (m['tipo'] == 'DEVOLUCION') devueltos += cant;
+    }
+    final saldo = entregados - devueltos;
+    return saldo > 0 ? saldo : 0;
+  }
+
   /// Calcula la rendición de un periodo.
   ///
   /// - [motorizadoId] filtra por motorizado asignado (null = toda la empresa).
@@ -191,15 +208,7 @@ class RendicionRepo {
       }
     }
 
-    var fierrosEntregados = 0;
-    var fierrosDevueltos = 0;
-    for (final m in movFierros) {
-      final cant = (m['cantidad'] as num? ?? 0).toInt();
-      if (m['tipo'] == 'ENTREGA') fierrosEntregados += cant;
-      if (m['tipo'] == 'DEVOLUCION') fierrosDevueltos += cant;
-    }
-    final fierrosPendientes =
-        (fierrosEntregados - fierrosDevueltos) > 0 ? fierrosEntregados - fierrosDevueltos : 0;
+    final fierrosPendientes = RendicionRepo.saldoFierros(movFierros);
 
     // 6. Combustible del motorizado en el periodo.
     var combustible = 0.0;

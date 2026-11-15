@@ -4,6 +4,17 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Clave de Google Maps: se lee de android/local.properties (ignorado por git)
+// o de la variable de entorno GOOGLE_MAPS_API_KEY. Nunca se escribe en el repo.
+val mapsApiKey: String = run {
+    val props = java.util.Properties()
+    val archivo = rootProject.file("local.properties")
+    if (archivo.exists()) {
+        archivo.inputStream().use { props.load(it) }
+    }
+    props.getProperty("maps.apiKey") ?: System.getenv("GOOGLE_MAPS_API_KEY") ?: ""
+}
+
 android {
     namespace = "com.grupojck.gas_app"
     compileSdk = flutter.compileSdkVersion
@@ -27,6 +38,8 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        manifestPlaceholders["mapsApiKey"] = mapsApiKey
     }
 
     buildTypes {

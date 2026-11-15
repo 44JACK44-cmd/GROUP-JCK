@@ -17,7 +17,12 @@ class ProductosRepo {
   const ProductosRepo();
 
   /// Columnas que usan todas las pantallas.
-  static const _columnas = 'id, nombre, capacidad_kg, precio_base';
+  static const _columnas = 'id, nombre, capacidad_kg, precio_base, tipo';
+
+  /// Regla única del concepto retornable: el fierro y el balón vacío no se
+  /// venden. Se usa en la app y en las pruebas.
+  static bool esVendible(Map<String, dynamic> producto) =>
+      (producto['tipo'] as String?) != 'RETORNABLE';
 
   /// Productos que se pueden vender (excluye los activos retornables).
   ///
@@ -31,7 +36,9 @@ class ProductosRepo {
           .eq('activo', true)
           .neq('tipo', 'RETORNABLE')
           .order('nombre');
-      return List<Map<String, dynamic>>.from(data);
+      // Doble red de seguridad: aunque la consulta falle en filtrar, la lista
+      // nunca incluye un activo retornable.
+      return List<Map<String, dynamic>>.from(data).where(esVendible).toList();
     } on PostgrestException catch (e) {
       if (!esColumnaAusente(e)) rethrow;
       final data = await sb

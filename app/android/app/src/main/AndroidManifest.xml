@@ -34,6 +34,12 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Clave de Google Maps. NUNCA se escribe aquí: se inyecta al compilar
+             desde android/local.properties (maps.apiKey=...) o desde la
+             variable de entorno GOOGLE_MAPS_API_KEY. Ver app/android/app/build.gradle.kts -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${mapsApiKey}" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
