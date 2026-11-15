@@ -4,14 +4,18 @@
 /// y qué quedó pendiente.
 library;
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/balones_repo.dart';
 import '../../core/data/pedidos_repo.dart';
 import '../../core/data/rendicion_repo.dart';
+import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
@@ -27,11 +31,42 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
   Rendicion _hoy = const Rendicion();
   int _porEntregar = 0;
   bool _cargando = true;
+  RealtimeChannel? _canal;
 
   @override
   void initState() {
     super.initState();
     _cargar();
+    _escucharRealtime();
+  }
+
+  @override
+  void dispose() {
+    _canal?.unsubscribe();
+    super.dispose();
+  }
+
+  void _escucharRealtime() {
+    final uid = ref.read(authProvider).usuarioId;
+    if (uid == null) return;
+    try {
+      _canal = sb
+          .channel('home-moto-$uid')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'pedidos',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'repartidor_id',
+              value: uid,
+            ),
+            callback: (_) {
+              if (mounted) _cargar();
+            },
+          )
+          .subscribe();
+    } catch (_) {}
   }
 
   Future<void> _cargar() async {
@@ -141,6 +176,12 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                       FilaValor('Balones vacíos recibidos', '${_hoy.balonesVaciosRecibidos}'),
                       FilaValor('Balones vacíos pendientes', '${_hoy.balonesVaciosPendientes}',
                           color: _hoy.balonesVaciosPendientes > 0 ? AppTheme.warning : null),
+                      if (_hoy.gastosTotal > 0) ...[
+                        const Divider(height: 22),
+                        FilaValor('Gastos', dinero(_hoy.gastosTotal), color: AppTheme.warning),
+                        FilaValor('Efectivo esperado', dinero(_hoy.efectivo - _hoy.gastosEfectivo),
+                            destacado: true),
+                      ],
                     ],
                   ),
                 ),

@@ -108,4 +108,10 @@ select 'permiso cliente del motorizado',
                           where schemaname = 'public'
                             and tablename = 'clientes'
                             and policyname = 'clientes_moto_insert')
+            then 'OK' else 'FALTA' end
+union all
+select 'columna pagos.comprobante_url',
+       case when exists (select 1 from information_schema.columns
+                          where table_schema = 'public' and table_name = 'pagos'
+                            and column_name = 'comprobante_url')
             then 'OK' else 'FALTA' end;

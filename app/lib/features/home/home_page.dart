@@ -191,7 +191,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   _Acceso(icono: Icons.point_of_sale_outlined, titulo: 'Caja', onTap: () => context.push('/caja')),
                   _Acceso(icono: Icons.assignment_turned_in_outlined, titulo: 'Rendición', onTap: () => context.push('/rendicion')),
                   _Acceso(icono: Icons.bar_chart_outlined, titulo: 'Reportes', onTap: () => context.push('/reportes')),
-                  _Acceso(icono: Icons.delivery_dining_outlined, titulo: 'Motorizados', onTap: () => context.push('/motorizados')),
+                  _Acceso(icono: Icons.delivery_dining_outlined, titulo: 'Motorizados', onTap: () => context.push('/motorizados-actividad')),
                 ],
               ),
               const SizedBox(height: 20),

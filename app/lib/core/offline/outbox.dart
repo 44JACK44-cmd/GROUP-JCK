@@ -9,6 +9,7 @@
 library;
 
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -63,6 +64,37 @@ class Outbox {
       'pedido': pedido,
       'detalles': detalles,
       if (clienteNuevo != null) 'cliente_nuevo': clienteNuevo,
+      'fecha': DateTime.now().toIso8601String(),
+    });
+    await _escribir(ops);
+  }
+
+  /// Encola un pedido ya entregado por el motorizado (Mi registro).
+  ///
+  /// Al sincronizar crea cliente + pedido + entrega + pago + balón en una sola
+  /// operación, de forma idempotente. No duplica movimientos si se reintenta.
+  static Future<void> encolarPedidoCompleto({
+    required String uuidOffline,
+    required Map<String, dynamic> pedido,
+    Map<String, dynamic>? clienteNuevo,
+    required List<Map<String, dynamic>> detalles,
+    required Map<String, dynamic> entrega,
+    Map<String, dynamic>? pago,
+    Map<String, dynamic>? balon,
+    String? comprobanteLocalPath,
+  }) async {
+    pedido['uuid_offline'] ??= uuidOffline;
+    final ops = await _leer();
+    ops.add({
+      'tipo': 'pedido_completo',
+      'uuid_offline': uuidOffline,
+      'pedido': pedido,
+      'cliente_nuevo': clienteNuevo,
+      'detalles': detalles,
+      'entrega': entrega,
+      'pago': pago,
+      'balon': balon,
+      'comprobante_local_path': comprobanteLocalPath,
       'fecha': DateTime.now().toIso8601String(),
     });
     await _escribir(ops);
@@ -153,6 +185,9 @@ class Outbox {
       case 'pedido':
         await _insertarPedido(op);
         break;
+      case 'pedido_completo':
+        await _insertarPedidoCompleto(op);
+        break;
       case 'entrega':
         await _insertarEntrega(op);
         break;
@@ -165,6 +200,177 @@ class Outbox {
       default:
         // Tipo desconocido: se ignora (no se bloquea la cola).
         break;
+    }
+  }
+
+  /// Inserta un pedido ya entregado por el motorizado (Mi registro).
+  static Future<void> _insertarPedidoCompleto(Map<String, dynamic> op) async {
+    final pedido = Map<String, dynamic>.from(op['pedido'] as Map);
+    final detalles = (op['detalles'] as List).cast<Map<String, dynamic>>();
+    final clienteNuevo = op['cliente_nuevo'] == null
+        ? null
+        : Map<String, dynamic>.from(op['cliente_nuevo'] as Map);
+    final entrega = Map<String, dynamic>.from(op['entrega'] as Map);
+    final pago = op['pago'] == null ? null : Map<String, dynamic>.from(op['pago'] as Map);
+    final balon = op['balon'] == null ? null : Map<String, dynamic>.from(op['balon'] as Map);
+    final comprobanteLocalPath = op['comprobante_local_path'] as String?;
+    final uuid = op['uuid_offline'] as String?;
+
+    // 1) Cliente.
+    String? clienteId = pedido['cliente_id'] as String?;
+    if (clienteId == null && clienteNuevo != null) {
+      final empresaId = pedido['empresa_id'] as String;
+      final nombre = (clienteNuevo['nombre'] as String? ?? '').trim();
+      final existentes = await _sb
+          .from('clientes')
+          .select('id')
+          .eq('empresa_id', empresaId)
+          .eq('nombre', nombre)
+          .limit(1);
+      final lista = List<Map<String, dynamic>>.from(existentes as List);
+      if (lista.isNotEmpty) {
+        clienteId = lista.first['id'] as String;
+      } else {
+        final creado = await _sb
+            .from('clientes')
+            .insert({
+              'empresa_id': empresaId,
+              'nombre': nombre,
+              if (clienteNuevo['telefono'] != null) 'telefono': clienteNuevo['telefono'],
+              if (clienteNuevo['direccion'] != null) 'direccion': clienteNuevo['direccion'],
+              if (clienteNuevo['referencia'] != null) 'referencia': clienteNuevo['referencia'],
+              if (clienteNuevo['latitud'] != null) 'latitud': clienteNuevo['latitud'],
+              if (clienteNuevo['longitud'] != null) 'longitud': clienteNuevo['longitud'],
+            })
+            .select('id')
+            .single();
+        clienteId = creado['id'] as String;
+      }
+    }
+    if (clienteId != null) {
+      pedido['cliente_id'] = clienteId;
+      entrega['cliente_id'] = clienteId;
+      if (pago != null) pago['cliente_id'] = clienteId;
+      if (balon != null) balon['cliente_id'] = clienteId;
+    }
+
+    // 2) Pedido (idempotente por uuid_offline).
+    String? pedidoId;
+    if (uuid != null) {
+      final existente = await _sb
+          .from('pedidos')
+          .select('id')
+          .eq('uuid_offline', uuid)
+          .maybeSingle();
+      pedidoId = existente?['id'] as String?;
+    }
+    if (pedidoId == null) {
+      final insertado = await _sb
+          .from('pedidos')
+          .insert({...pedido, 'estado': 'ENTREGADO'})
+          .select('id')
+          .single();
+      pedidoId = insertado['id'] as String;
+    }
+
+    // 3) Detalles.
+    for (final d in detalles) {
+      final fila = Map<String, dynamic>.from(d);
+      fila['pedido_id'] = pedidoId;
+      final yaExiste = await _sb
+          .from('detalle_pedido')
+          .select('id')
+          .eq('pedido_id', pedidoId)
+          .eq('producto_id', fila['producto_id'])
+          .maybeSingle();
+      if (yaExiste != null) continue;
+      try {
+        await _sb.from('detalle_pedido').insert(fila);
+      } catch (_) {}
+    }
+
+    // 4) Entrega (idempotente: pedido_id es UNIQUE).
+    final entregaExistente = await _sb
+        .from('entregas')
+        .select('id')
+        .eq('pedido_id', pedidoId)
+        .maybeSingle();
+    if (entregaExistente == null) {
+      final entregaRow = Map<String, dynamic>.from(entrega);
+      entregaRow['pedido_id'] = pedidoId;
+      entregaRow['uuid_offline'] ??= _uuid.v4();
+      try {
+        await _sb.from('entregas').insert(entregaRow);
+      } catch (_) {}
+    }
+
+    // 5) Pago (idempotente por uuid_offline del pago).
+    if (pago != null && clienteId != null) {
+      final monto = (pago['monto'] as num? ?? 0).toDouble();
+      if (monto > 0.009) {
+        // Subir comprobante si hay foto local.
+        String? comprobanteUrl;
+        if (comprobanteLocalPath != null) {
+          comprobanteUrl = await _subirComprobante(comprobanteLocalPath);
+        }
+        final pagoRow = Map<String, dynamic>.from(pago);
+        pagoRow['pedido_id'] = pedidoId;
+        pagoRow['cliente_id'] = clienteId;
+        pagoRow['uuid_offline'] ??= _uuid.v4();
+        if (comprobanteUrl != null) pagoRow['comprobante_url'] = comprobanteUrl;
+        // Evitar duplicado por uuid_offline.
+        final yaPago = await _sb
+            .from('pagos')
+            .select('id')
+            .eq('uuid_offline', pagoRow['uuid_offline'])
+            .maybeSingle();
+        if (yaPago == null) {
+          try {
+            await _sb.from('pagos').insert(pagoRow);
+          } catch (_) {}
+        }
+      }
+    }
+
+    // 6) Balón.
+    if (balon != null && clienteId != null) {
+      final cantidad = (balon['cantidad'] as num? ?? 0).toInt();
+      if (cantidad > 0) {
+        final balonRow = Map<String, dynamic>.from(balon);
+        balonRow['pedido_id'] = pedidoId;
+        balonRow['cliente_id'] = clienteId;
+        balonRow['tipo'] = 'ENTREGA_LLENO';
+        balonRow['uuid_offline'] ??= _uuid.v4();
+        final yaBalon = await _sb
+            .from('movimiento_bal_on')
+            .select('id')
+            .eq('pedido_id', pedidoId)
+            .eq('tipo', 'ENTREGA_LLENO')
+            .maybeSingle();
+        if (yaBalon == null) {
+          try {
+            await _sb.from('movimiento_bal_on').insert(balonRow);
+          } catch (_) {}
+        }
+      }
+    }
+  }
+
+  static Future<String?> _subirComprobante(String localPath) async {
+    try {
+      final file = File(localPath);
+      if (!await file.exists()) return null;
+      final ext = localPath.split('.').last.toLowerCase();
+      final name = '${_uuid.v4()}.$ext';
+      final path = 'yape/$name';
+      final bytes = await file.readAsBytes();
+      final ct = ext == 'png' ? 'image/png' : (ext == 'webp' ? 'image/webp' : 'image/jpeg');
+      await _sb.storage
+          .from('comprobantes')
+          .uploadBinary(path, bytes, fileOptions: FileOptions(contentType: ct));
+      return _sb.storage.from('comprobantes').getPublicUrl(path);
+    } catch (_) {
+      return null;
     }
   }
 

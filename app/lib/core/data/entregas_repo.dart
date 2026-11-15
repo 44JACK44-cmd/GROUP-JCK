@@ -105,6 +105,7 @@ class EntregasRepo {
     required String clienteId,
     required double total,
     required DatosEntrega datos,
+    String? comprobanteUrl,
   }) async {
     // 1. Entrega (protección contra doble entrega).
     final existente = await sb
@@ -143,6 +144,8 @@ class EntregasRepo {
             'metodo': datos.metodo,
             'registrado_por': usuarioId,
             'uuid_offline': const Uuid().v4(),
+            if (comprobanteUrl != null && comprobanteUrl.isNotEmpty)
+              'comprobante_url': comprobanteUrl,
           })
           .select('id')
           .single();

@@ -27,6 +27,7 @@ class PagosRepo {
     required String metodo,
     String? pedidoId,
     String? uuidOffline,
+    String? comprobanteUrl,
   }) async {
     if (monto <= 0) throw Exception('El monto debe ser mayor a cero.');
 
@@ -40,6 +41,8 @@ class PagosRepo {
           'metodo': metodo,
           'registrado_por': usuarioId,
           'uuid_offline': uuidOffline ?? const Uuid().v4(),
+          if (comprobanteUrl != null && comprobanteUrl.isNotEmpty)
+            'comprobante_url': comprobanteUrl,
         })
         .select('id')
         .single();

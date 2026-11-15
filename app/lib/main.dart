@@ -25,6 +25,7 @@ import 'features/mi_registro/mi_registro_page.dart';
 import 'features/mi_registro/registro_gasto_page.dart';
 import 'features/mi_registro/registro_incidencia_page.dart';
 import 'features/mi_registro/registro_pedido_page.dart';
+import 'features/motorizados/motorizados_actividad_page.dart';
 import 'features/motorizados/motorizados_page.dart';
 import 'features/pedidos/historial_page.dart';
 import 'features/pedidos/mis_pedidos_page.dart';
@@ -262,6 +263,7 @@ class _GasAppState extends ConsumerState<GasApp> {
         GoRoute(path: '/cierre-diario', builder: (_, state) => const CierreDiarioPage()),
         GoRoute(path: '/reportes', builder: (_, state) => const ReportesPage()),
         GoRoute(path: '/motorizados', builder: (_, state) => const MotorizadosPage()),
+GoRoute(path: '/motorizados-actividad', builder: (_, state) => const MotorizadosActividadPage()),
         GoRoute(path: '/combustible', builder: (_, state) => const CombustiblePage()),
         GoRoute(path: '/mi-registro', builder: (_, state) => const MiRegistroPage()),
         GoRoute(path: '/mi-registro/pedido', builder: (_, state) => const RegistroPedidoPage()),

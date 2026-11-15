@@ -6,10 +6,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/motorizados_repo.dart';
 import '../../core/data/rendicion_repo.dart';
+import '../../core/data/sb.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
 import '../../core/ui/widgets.dart';
@@ -42,12 +44,52 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
   String? _motorizadoId;
   Rendicion _rendicion = const Rendicion();
   bool _cargando = true;
+  RealtimeChannel? _canal;
 
   @override
   void initState() {
     super.initState();
     _cargarMotorizados();
     _cargar();
+    _escucharRealtime();
+  }
+
+  @override
+  void dispose() {
+    _canal?.unsubscribe();
+    super.dispose();
+  }
+
+  void _escucharRealtime() {
+    try {
+      _canal = sb
+          .channel('rendicion')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'pedidos',
+            callback: (_) {
+              if (mounted) _cargar(silencioso: true);
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'pagos',
+            callback: (_) {
+              if (mounted) _cargar(silencioso: true);
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'gastos',
+            callback: (_) {
+              if (mounted) _cargar(silencioso: true);
+            },
+          )
+          .subscribe();
+    } catch (_) {}
   }
 
   Future<void> _cargarMotorizados() async {

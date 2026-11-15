@@ -166,6 +166,7 @@ class PedidosRepo {
     String? repartidorId,
     String? uuidOffline,
     String origen = 'ADMIN',
+    DateTime? fecha,
   }) async {
     if (lineas.isEmpty) {
       throw Exception('El pedido debe tener al menos un producto.');
@@ -186,6 +187,7 @@ class PedidosRepo {
       'total': total,
       'uuid_offline': uuid,
       'origen': origen,
+      if (fecha != null) 'fecha': fecha.toIso8601String(),
     };
 
     final insertado = await _insertarCabecera(cabecera);
