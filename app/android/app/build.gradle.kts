@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -7,10 +9,10 @@ plugins {
 // Clave de Google Maps: se lee de android/local.properties (ignorado por git)
 // o de la variable de entorno GOOGLE_MAPS_API_KEY. Nunca se escribe en el repo.
 val mapsApiKey: String = run {
-    val props = java.util.Properties()
+    val props = Properties()
     val archivo = rootProject.file("local.properties")
     if (archivo.exists()) {
-        archivo.inputStream().use { props.load(it) }
+        archivo.inputStream().use { entrada -> props.load(entrada) }
     }
     props.getProperty("maps.apiKey") ?: System.getenv("GOOGLE_MAPS_API_KEY") ?: ""
 }

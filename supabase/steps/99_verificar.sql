@@ -1,5 +1,5 @@
 -- Verificación posterior a la migración (solo lectura)
--- Ejecutar después de los 10 pasos. Debe devolver todo en "OK".
+-- Ejecutar después de los 11 pasos. Debe devolver todo en "OK".
 
 select 'tabla rendiciones' as control,
        case when to_regclass('public.rendiciones') is not null then 'OK' else 'FALTA' end as resultado
@@ -87,4 +87,25 @@ select 'concepto fierro/balon vacio',
        case when exists (select 1 from public.productos
                           where activo and tipo = 'RETORNABLE'
                             and lower(btrim(nombre)) = lower('Fierro / Balón vacío'))
+            then 'OK' else 'FALTA' end
+union all
+select 'permiso pedido del motorizado',
+       case when exists (select 1 from pg_policies
+                          where schemaname = 'public'
+                            and tablename = 'pedidos'
+                            and policyname = 'pedidos_moto_insert')
+            then 'OK' else 'FALTA' end
+union all
+select 'permiso lineas del motorizado',
+       case when exists (select 1 from pg_policies
+                          where schemaname = 'public'
+                            and tablename = 'detalle_pedido'
+                            and policyname = 'detalle_moto_insert')
+            then 'OK' else 'FALTA' end
+union all
+select 'permiso cliente del motorizado',
+       case when exists (select 1 from pg_policies
+                          where schemaname = 'public'
+                            and tablename = 'clientes'
+                            and policyname = 'clientes_moto_insert')
             then 'OK' else 'FALTA' end;

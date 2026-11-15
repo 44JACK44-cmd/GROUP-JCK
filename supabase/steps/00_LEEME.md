@@ -23,6 +23,7 @@ Repetir en orden, uno por uno, esperando `Success` antes de pasar al siguiente.
 | 8 | `v7_08_permisos.sql` | Solo el motorizado asignado (o ADMIN) registra entrega/cobro |
 | 9 | `v7_09_integridad.sql` | Índices únicos (caja abierta, cobro idempotente, rendición diaria) |
 | 10 | `v7_10_productos.sql` | `productos.tipo` + depuración de duplicados sin borrar + "Fierro / Balón vacío" como único activo retornable |
+| 11 | `v7_11_cuaderno_motorizado.sql` | El motorizado puede registrar su propio pedido y cliente (origen `MOTORIZADO`) |
 
 Después: `99_verificar.sql` — todo debe salir en `OK`.
 

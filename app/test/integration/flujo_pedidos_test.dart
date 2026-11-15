@@ -237,21 +237,44 @@ void main() {
     expect(pedido['clientes']['latitud'], isNotNull);
   });
 
-  test('7. El MOTORIZADO NO puede crear pedidos ni clientes', () async {
-    final pedido = await moto.post('pedidos', {
+  test('7. El MOTORIZADO solo crea pedidos de su cuaderno, no de recepción', () async {
+    // Pedido "de recepción": origen ADMIN por defecto → rechazado.
+    final pedidoAdmin = await moto.post('pedidos', {
       'empresa_id': empresaId,
       'cliente_id': clienteId,
       'total': 45,
     });
-    expect(_esRechazoPorRls(pedido), isTrue,
-        reason: 'El motorizado no tiene permiso para crear pedidos');
+    expect(_esRechazoPorRls(pedidoAdmin), isTrue,
+        reason: 'El motorizado no puede crear pedidos de recepción');
 
+    // Pedido de su cuaderno: origen MOTORIZADO y creado_por él → permitido.
+    final pedidoMoto = await moto.post('pedidos', {
+      'empresa_id': empresaId,
+      'cliente_id': clienteId,
+      'total': 45,
+      'origen': 'MOTORIZADO',
+      'creado_por': motoId,
+    });
+    expect(pedidoMoto.statusCode, anyOf(200, 201),
+        reason: 'El motorizado debe poder registrar su propio pedido');
+
+    // El ADMIN limpia el pedido de prueba.
+    if (pedidoMoto.statusCode == 200 || pedidoMoto.statusCode == 201) {
+      final creado = (jsonDecode(pedidoMoto.body) as List).first;
+      await admin.delete('pedidos', 'id=eq.${creado['id']}');
+    }
+
+    // Un cliente nuevo de su empresa sí es parte del cuaderno.
     final cliente = await moto.post('clientes', {
       'empresa_id': empresaId,
-      'nombre': 'Intruso',
+      'nombre': 'Cliente cuaderno motorizado',
     });
-    expect(_esRechazoPorRls(cliente), isTrue,
-        reason: 'El motorizado no tiene permiso para crear clientes');
+    expect(cliente.statusCode, anyOf(200, 201),
+        reason: 'El motorizado debe poder registrar un cliente de su empresa');
+    if (cliente.statusCode == 200 || cliente.statusCode == 201) {
+      final creadoCliente = (jsonDecode(cliente.body) as List).first;
+      await admin.delete('clientes', 'id=eq.${creadoCliente['id']}');
+    }
   });
 
   test('8. El MOTORIZADO entrega: registra entrega, pago Yape y balón', () async {

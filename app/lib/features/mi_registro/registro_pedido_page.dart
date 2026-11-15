@@ -122,9 +122,17 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
     final total = cantidad * precio;
     final uuid = const Uuid().v4();
 
+    final productoId = _productoIds[_producto] ?? '';
+    if (productoId.isEmpty) {
+      setState(() => _guardando = false);
+      _error('No se encontró el producto seleccionado.');
+      return;
+    }
+
+    String? clienteId;
+
     try {
       // Buscar o crear cliente
-      String clienteId;
       final clientes = await clientesRepo.buscar(nombre);
       if (clientes.isNotEmpty) {
         clienteId = clientes.first['id'] as String;
@@ -142,13 +150,6 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
       }
 
       // Crear pedido con origen MOTORIZADO
-      final productoId = _productoIds[_producto] ?? '';
-      if (productoId.isEmpty) {
-        _error('No se encontró el producto seleccionado.');
-        setState(() => _guardando = false);
-        return;
-      }
-
       await pedidosRepo.crear(
         empresaId: auth.empresaId!,
         clienteId: clienteId,
@@ -175,13 +176,24 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
       );
     } catch (e) {
       if (esErrorDeRed(e)) {
+        // Sin conexión solo se puede guardar si ya se conoce el cliente y el
+        // producto: así la cola nunca queda con un pedido imposible de enviar.
+        if (clienteId == null) {
+          if (!mounted) return;
+          setState(() => _guardando = false);
+          _error('Sin conexión no se pudo identificar al cliente. '
+              'Anótalo y vuelve a registrarlo cuando tengas señal.');
+          return;
+        }
         await Outbox.encolarPedido(
           pedido: {
             'empresa_id': auth.empresaId,
-            'cliente_id': null,
+            'cliente_id': clienteId,
             'creado_por': auth.usuarioId,
             'forma_pago': _formaPago,
-            'observaciones': 'Registrado por motorizado: $nombre',
+            'observaciones': _observacionesCtrl.text.trim().isEmpty
+                ? 'Registrado por motorizado'
+                : _observacionesCtrl.text.trim(),
             'total': total,
             'uuid_offline': uuid,
             'origen': 'MOTORIZADO',
@@ -189,7 +201,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
           detalles: [
             {
               'empresa_id': auth.empresaId,
-              'producto_id': null,
+              'producto_id': productoId,
               'cantidad': cantidad,
               'precio_unitario': precio,
             },
@@ -204,7 +216,10 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
       }
       if (!mounted) return;
       setState(() => _guardando = false);
-      _error(traducirError(e, contexto: 'No pudimos registrar el pedido').mensaje);
+      _error(esPermisoDenegado(e)
+          ? 'Registrar pedidos desde el teléfono aún no está habilitado. '
+              'Avisa al administrador.'
+          : traducirError(e, contexto: 'No pudimos registrar el pedido').mensaje);
     }
   }
 

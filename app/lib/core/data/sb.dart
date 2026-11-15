@@ -101,6 +101,19 @@ bool esValorInvalido(Object e) {
   return false;
 }
 
+/// True si la base rechazó la operación por permisos (RLS).
+///
+/// Sirve para explicar en lenguaje claro que una función todavía no está
+/// habilitada, en vez de mostrar un error técnico.
+bool esPermisoDenegado(Object e) {
+  if (e is PostgrestException) {
+    return e.code == '42501' ||
+        e.message.toLowerCase().contains('row-level security') ||
+        e.message.toLowerCase().contains('permission denied');
+  }
+  return false;
+}
+
 /// True si el error parece ser de red (para Offers: cola offline).
 bool esErrorDeRed(Object e) {
   if (e is PostgrestException) {
