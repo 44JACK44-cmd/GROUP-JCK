@@ -1,8 +1,14 @@
 /// Rendición de cuentas por motorizado.
 ///
 /// Toda la información sale de los registros reales: `pedidos`, `entregas`,
-/// `pagos`, `movimiento_bal_on`, `movimiento_fierro` y `combustible`.
-/// No hay datos ficticios.
+/// `pagos`, `movimiento_bal_on`, `movimiento_fierro`, `combustible`,
+/// `gastos`, `fondo_vuelto` y `rendiciones`. No hay datos ficticios.
+///
+/// Regla del dinero:
+///   fondo inicial + efectivo cobrado − gastos en efectivo = efectivo esperado
+///   diferencia = efectivo declarado − efectivo esperado
+///
+/// El Yape y la deuda NUNCA se suman al efectivo.
 library;
 
 import 'sb.dart';
@@ -29,6 +35,12 @@ class Rendicion {
   final int balonesVaciosPendientes;
   final int fierrosPendientes;
 
+  /// Balones llenos que salieron en el periodo.
+  final int balonesEntregados;
+
+  /// Balones vacíos que volvieron en el periodo.
+  final int balonesDevueltos;
+
   final double combustible;
 
   // Gastos por medio de pago
@@ -36,6 +48,13 @@ class Rendicion {
   final double gastosYape;
   final double gastosOtros;
   final double gastosTotal;
+
+  // Fondo de vuelto y cierre
+  final double fondoInicial;
+  final double efectivoEsperado;
+  final double efectivoDeclarado;
+  final double diferencia;
+  final bool hayDeclaracion;
 
   const Rendicion({
     this.pedidosRealizados = 0,
@@ -53,18 +72,51 @@ class Rendicion {
     this.balonesVaciosRecibidos = 0,
     this.balonesVaciosPendientes = 0,
     this.fierrosPendientes = 0,
+    this.balonesEntregados = 0,
+    this.balonesDevueltos = 0,
     this.combustible = 0,
     this.gastosEfectivo = 0,
     this.gastosYape = 0,
     this.gastosOtros = 0,
     this.gastosTotal = 0,
+    this.fondoInicial = 0,
+    this.efectivoEsperado = 0,
+    this.efectivoDeclarado = 0,
+    this.diferencia = 0,
+    this.hayDeclaracion = false,
   });
 
-  bool get vacio => pedidosRealizados == 0;
+  /// Una jornada está vacía solo si no hubo pedidos, cobros, gastos ni fondo.
+  bool get vacio =>
+      pedidosRealizados == 0 &&
+      cobrado <= 0.009 &&
+      gastosTotal <= 0.009 &&
+      fondoInicial <= 0.009;
+
+  /// Sobra dinero (positivo) o falta dinero (negativo).
+  bool get tieneDiferencia => hayDeclaracion && diferencia.abs() > 0.009;
 }
 
 class RendicionRepo {
   const RendicionRepo();
+
+  /// Efectivo que debería quedar en el bolsillo al final de la jornada.
+  static double calcularEsperado({
+    required double fondoInicial,
+    required double efectivoCobrado,
+    required double gastosEfectivo,
+  }) {
+    final esperado = fondoInicial + efectivoCobrado - gastosEfectivo;
+    return esperado > 0 ? esperado : 0;
+  }
+
+  /// Diferencia entre lo declarado y lo esperado.
+  /// Positivo = sobra; negativo = falta.
+  static double calcularDiferencia({
+    required double declarado,
+    required double esperado,
+  }) =>
+      declarado - esperado;
 
   /// Saldo de fierros de un periodo: entregados − devueltos.
   ///
@@ -86,7 +138,6 @@ class RendicionRepo {
   /// Calcula la rendición de un periodo.
   ///
   /// - [motorizadoId] filtra por motorizado asignado (null = toda la empresa).
-  /// - [soloAsignados] cuando es true solo cuenta pedidos que tienen motorizado.
   Future<Rendicion> calcular({
     required DateTime desde,
     required DateTime hasta,
@@ -94,62 +145,121 @@ class RendicionRepo {
   }) async {
     final hastaIso = hasta.toIso8601String();
 
-    // 1. Pedidos del periodo.
-    var qPedidos = sb
-        .from('pedidos')
-        .select('id, numero, total, estado, cliente_id, repartidor_id, fecha')
-        .gte('fecha', desde.toIso8601String())
-        .lte('fecha', hastaIso);
-    if (motorizadoId != null) {
-      qPedidos = qPedidos.eq('repartidor_id', motorizadoId);
-    }
-    final pedidos = List<Map<String, dynamic>>.from(await qPedidos.limit(5000));
-
-    if (pedidos.isEmpty) {
-      return Rendicion();
+    // 1. Pedidos del periodo. Puede no haber ninguno y aun así existir fondo
+    //    o gastos: la rendición NO puede quedar vacía en ese caso.
+    final pedidos = <Map<String, dynamic>>[];
+    try {
+      var qPedidos = sb
+          .from('pedidos')
+          .select('id, numero, total, estado, cliente_id, repartidor_id, fecha')
+          .gte('fecha', desde.toIso8601String())
+          .lte('fecha', hastaIso);
+      if (motorizadoId != null) {
+        qPedidos = qPedidos.eq('repartidor_id', motorizadoId);
+      }
+      pedidos.addAll(List<Map<String, dynamic>>.from(await qPedidos.limit(5000)));
+    } catch (e) {
+      if (!esPermisoDenegado(e)) rethrow;
+      // Sin permiso de lectura no se inventan números: se informa en pantalla.
+      rethrow;
     }
 
     final pedidosIds = pedidos.map((p) => p['id'] as String).toList();
 
-    // 2. Entregas y pagos de esos pedidos.
-    final res = await Future.wait([
-      sb.from('entregas')
-          .select('pedido_id, estado_bal_on_vacio, estado_pago')
-          .inFilter('pedido_id', pedidosIds)
-          .limit(5000),
-      sb.from('pagos')
-          .select('pedido_id, monto, metodo')
-          .inFilter('pedido_id', pedidosIds)
-          .limit(10000),
-      sb.from('movimiento_bal_on')
-          .select('cliente_id, tipo, cantidad, usuario_id, fecha')
-          .inFilter('pedido_id', pedidosIds)
-          .limit(10000),
-      sb.from('movimiento_fierro')
-          .select('cliente_id, tipo, cantidad, usuario_id, fecha')
-          .inFilter('pedido_id', pedidosIds)
-          .limit(10000),
-    ]);
-
-    // Gastos del motorizado en el periodo (con medio de pago)
-    List<Map<String, dynamic>> gastosData = [];
-    if (motorizadoId != null) {
-      final g = await sb
-          .from('gastos')
-          .select('monto, medio_pago, categoria')
-          .eq('usuario_id', motorizadoId)
-          .gte('fecha', desde.toIso8601String())
-          .lte('fecha', hastaIso)
-          .limit(500);
-      gastosData = List<Map<String, dynamic>>.from(g);
+    // 2. Entregas, pagos y movimientos de esos pedidos.
+    var entregas = <Map<String, dynamic>>[];
+    var pagos = <Map<String, dynamic>>[];
+    var movBalones = <Map<String, dynamic>>[];
+    var movFierros = <Map<String, dynamic>>[];
+    if (pedidosIds.isNotEmpty) {
+      final res = await Future.wait([
+        sb
+            .from('entregas')
+            .select('pedido_id, estado_bal_on_vacio, estado_pago')
+            .inFilter('pedido_id', pedidosIds)
+            .limit(5000),
+        sb
+            .from('pagos')
+            .select('pedido_id, monto, metodo')
+            .inFilter('pedido_id', pedidosIds)
+            .limit(10000),
+        sb
+            .from('movimiento_bal_on')
+            .select('cliente_id, tipo, cantidad, usuario_id, fecha')
+            .inFilter('pedido_id', pedidosIds)
+            .limit(10000),
+        sb
+            .from('movimiento_fierro')
+            .select('cliente_id, tipo, cantidad, usuario_id, fecha')
+            .inFilter('pedido_id', pedidosIds)
+            .limit(10000),
+      ]);
+      entregas = List<Map<String, dynamic>>.from(res[0] as List);
+      pagos = List<Map<String, dynamic>>.from(res[1] as List);
+      movBalones = List<Map<String, dynamic>>.from(res[2] as List);
+      movFierros = List<Map<String, dynamic>>.from(res[3] as List);
     }
 
-    final entregas = List<Map<String, dynamic>>.from(res[0] as List);
-    final pagos = List<Map<String, dynamic>>.from(res[1] as List);
-    final movBalones = List<Map<String, dynamic>>.from(res[2] as List);
-    final movFierros = List<Map<String, dynamic>>.from(res[3] as List);
+    // 3. Gastos del motorizado en el periodo (con medio de pago).
+    var gastosData = <Map<String, dynamic>>[];
+    if (motorizadoId != null) {
+      try {
+        final g = await sb
+            .from('gastos')
+            .select('monto, medio_pago, categoria')
+            .eq('usuario_id', motorizadoId)
+            .gte('fecha', desde.toIso8601String())
+            .lte('fecha', hastaIso)
+            .limit(500);
+        gastosData = List<Map<String, dynamic>>.from(g);
+      } catch (e) {
+        if (!esPermisoDenegado(e) && !esColumnaAusente(e)) rethrow;
+      }
+    }
 
-    // 3. Totales por estado.
+    // 4. Fondo de vuelto entregado por el administrador.
+    var fondoInicial = 0.0;
+    if (motorizadoId != null) {
+      try {
+        final f = await sb
+            .from('fondo_vuelto')
+            .select('monto')
+            .eq('motorizado_id', motorizadoId)
+            .gte('fecha', desde.toIso8601String())
+            .lte('fecha', hastaIso)
+            .limit(500);
+        for (final fila in f) {
+          fondoInicial += (fila['monto'] as num? ?? 0).toDouble();
+        }
+      } catch (e) {
+        // Tabla aún no migrada (PGRST205) o sin permiso: se muestra 0 y la
+        // pantalla explica que falta aplicar el paso 15.
+        if (!esPermisoDenegado(e) && !esTablaAusente(e)) rethrow;
+      }
+    }
+
+    // 5. Rendiciones declaradas en el periodo.
+    var efectivoDeclarado = 0.0;
+    var hayDeclaracion = false;
+    if (motorizadoId != null) {
+      try {
+        final r = await sb
+            .from('rendiciones')
+            .select('efectivo_declarado, estado, fecha')
+            .eq('motorizado_id', motorizadoId)
+            .gte('fecha', desde.toIso8601String().substring(0, 10))
+            .lte('fecha', hastaIso.substring(0, 10))
+            .limit(100);
+        for (final fila in r) {
+          efectivoDeclarado += (fila['efectivo_declarado'] as num? ?? 0).toDouble();
+          hayDeclaracion = true;
+        }
+      } catch (e) {
+        if (!esPermisoDenegado(e) && !esTablaAusente(e)) rethrow;
+      }
+    }
+
+    // 6. Totales por estado.
     var entregados = 0, noEntregados = 0, cancelados = 0, pendientes = 0;
     var totalACobrar = 0.0;
     for (final p in pedidos) {
@@ -171,7 +281,7 @@ class RendicionRepo {
       }
     }
 
-    // 4. Cobrado por método.
+    // 7. Cobrado por método. La deuda no es efectivo ni Yape.
     var cobrado = 0.0, yape = 0.0, efectivo = 0.0, otros = 0.0;
     for (final p in pagos) {
       final monto = (p['monto'] as num? ?? 0).toDouble();
@@ -189,11 +299,13 @@ class RendicionRepo {
       }
     }
 
-    // 5. Balones: recibidos (devoluciones) y pendientes (no devueltos).
+    // 8. Balones: salieron llenos, volvieron vacíos.
     var vaciosRecibidos = 0;
+    var balonesEntregados = 0;
     final clientesConPendiente = <String>{};
     for (final m in movBalones) {
       final cant = (m['cantidad'] as num? ?? 0).toInt();
+      if (m['tipo'] == 'ENTREGA_LLENO') balonesEntregados += cant;
       if (m['tipo'] == 'DEVOLUCION_VACIO') vaciosRecibidos += cant;
     }
     for (final e in entregas) {
@@ -210,24 +322,28 @@ class RendicionRepo {
 
     final fierrosPendientes = RendicionRepo.saldoFierros(movFierros);
 
-    // 6. Combustible del motorizado en el periodo.
+    // 9. Combustible del motorizado en el periodo.
     var combustible = 0.0;
     if (motorizadoId != null) {
-      final comb = await sb
-          .from('combustible')
-          .select('monto')
-          .eq('usuario_id', motorizadoId)
-          .gte('fecha', desde.toIso8601String())
-          .lte('fecha', hastaIso)
-          .limit(500);
-      for (final c in comb) {
-        combustible += (c['monto'] as num? ?? 0).toDouble();
+      try {
+        final comb = await sb
+            .from('combustible')
+            .select('monto')
+            .eq('usuario_id', motorizadoId)
+            .gte('fecha', desde.toIso8601String())
+            .lte('fecha', hastaIso)
+            .limit(500);
+        for (final c in comb) {
+          combustible += (c['monto'] as num? ?? 0).toDouble();
+        }
+      } catch (e) {
+        if (!esPermisoDenegado(e)) rethrow;
       }
     }
 
     final pendiente = (totalACobrar - cobrado) > 0 ? totalACobrar - cobrado : 0.0;
 
-    // Gastos por medio de pago
+    // 10. Gastos por medio de pago.
     var gastosEfectivo = 0.0, gastosYape = 0.0, gastosOtros = 0.0;
     for (final g in gastosData) {
       final monto = (g['monto'] as num? ?? 0).toDouble();
@@ -243,6 +359,15 @@ class RendicionRepo {
       }
     }
     final gastosTotal = gastosEfectivo + gastosYape + gastosOtros;
+
+    final efectivoEsperado = calcularEsperado(
+      fondoInicial: fondoInicial,
+      efectivoCobrado: efectivo,
+      gastosEfectivo: gastosEfectivo,
+    );
+    final diferencia = hayDeclaracion
+        ? calcularDiferencia(declarado: efectivoDeclarado, esperado: efectivoEsperado)
+        : 0.0;
 
     return Rendicion(
       pedidosRealizados: pedidos.length,
@@ -260,11 +385,18 @@ class RendicionRepo {
       balonesVaciosRecibidos: vaciosRecibidos,
       balonesVaciosPendientes: clientesConPendiente.length,
       fierrosPendientes: fierrosPendientes,
+      balonesEntregados: balonesEntregados,
+      balonesDevueltos: vaciosRecibidos,
       combustible: combustible,
       gastosEfectivo: gastosEfectivo,
       gastosYape: gastosYape,
       gastosOtros: gastosOtros,
       gastosTotal: gastosTotal,
+      fondoInicial: fondoInicial,
+      efectivoEsperado: efectivoEsperado,
+      efectivoDeclarado: efectivoDeclarado,
+      diferencia: diferencia,
+      hayDeclaracion: hayDeclaracion,
     );
   }
 }

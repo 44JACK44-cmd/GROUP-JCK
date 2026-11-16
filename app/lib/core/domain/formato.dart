@@ -48,6 +48,14 @@ String fechaCorta(DateTime? f) {
   return '${f.day.toString().padLeft(2, '0')}/${f.month.toString().padLeft(2, '0')}/${f.year}';
 }
 
+/// "14:30" (hora local del pedido, para la lista de Pedidos de hoy)
+String horaCorta(DateTime? f) {
+  if (f == null) return '';
+  final h = f.hour.toString().padLeft(2, '0');
+  final m = f.minute.toString().padLeft(2, '0');
+  return '$h:$m';
+}
+
 /// "13/11/2026 14:30"
 String fechaHora(DateTime? f) {
   if (f == null) return '';

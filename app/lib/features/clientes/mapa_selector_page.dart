@@ -17,11 +17,13 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 
 import '../../app/theme.dart';
+import '../../core/config.dart';
 
 /// Resultado del mini mapa.
 class UbicacionElegida {
@@ -85,6 +87,7 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
 
   late LatLng _posicion;
   final MapController _controlador = MapController();
+  gmaps.GoogleMapController? _mapaGoogle;
   final _busquedaCtrl = TextEditingController();
   late final TextEditingController _direccionCtrl =
       TextEditingController(text: widget.direccion ?? '');
@@ -114,9 +117,75 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
     super.dispose();
   }
 
+  /// Google Maps nativo cuando hay clave; si no, el mapa OSM de siempre.
+  /// La selección de ubicación funciona igual en ambos.
+  Widget _mapa() {
+    if (hayClaveGoogleMaps) {
+      return gmaps.GoogleMap(
+        onMapCreated: (c) => _mapaGoogle = c,
+        initialCameraPosition: gmaps.CameraPosition(
+          target: gmaps.LatLng(_posicion.latitude, _posicion.longitude),
+          zoom: 16,
+        ),
+        onTap: (punto) => setState(() => _posicion = LatLng(
+              punto.latitude,
+              punto.longitude,
+            )),
+        markers: {
+          gmaps.Marker(
+            markerId: const gmaps.MarkerId('destino'),
+            position: gmaps.LatLng(_posicion.latitude, _posicion.longitude),
+            infoWindow: const gmaps.InfoWindow(title: 'Ubicación elegida'),
+            icon: gmaps.BitmapDescriptor.defaultMarkerWithHue(
+              gmaps.BitmapDescriptor.hueRed,
+            ),
+          ),
+        },
+        zoomControlsEnabled: false,
+        mapToolbarEnabled: false,
+      );
+    }
+
+    return FlutterMap(
+      mapController: _controlador,
+      options: MapOptions(
+        initialCenter: _posicion,
+        initialZoom: 16,
+        onTap: (_, point) => setState(() => _posicion = point),
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.grupojck.gas_app',
+        ),
+        MarkerLayer(
+          markers: [
+            Marker(
+              point: _posicion,
+              width: 48,
+              height: 48,
+              child: const Icon(
+                Icons.location_on,
+                size: 48,
+                color: AppTheme.danger,
+                shadows: [Shadow(color: Colors.black26, blurRadius: 6)],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   void _moverA(LatLng punto) {
     setState(() => _posicion = punto);
     _controlador.move(punto, 17);
+    _mapaGoogle?.animateCamera(
+      gmaps.CameraUpdate.newLatLngZoom(
+        gmaps.LatLng(punto.latitude, punto.longitude),
+        17,
+      ),
+    );
   }
 
   /// Búsqueda de direcciones con OpenStreetMap (no necesita clave).
@@ -310,35 +379,7 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
           Expanded(
             child: Stack(
               children: [
-                FlutterMap(
-                  mapController: _controlador,
-                  options: MapOptions(
-                    initialCenter: _posicion,
-                    initialZoom: 16,
-                    onTap: (_, point) => setState(() => _posicion = point),
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.grupojck.gas_app',
-                    ),
-                    MarkerLayer(
-                      markers: [
-                        Marker(
-                          point: _posicion,
-                          width: 48,
-                          height: 48,
-                          child: const Icon(
-                            Icons.location_on,
-                            size: 48,
-                            color: AppTheme.danger,
-                            shadows: [Shadow(color: Colors.black26, blurRadius: 6)],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                _mapa(),
                 Positioned(
                   right: 12,
                   bottom: 12,

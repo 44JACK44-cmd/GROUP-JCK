@@ -1,7 +1,7 @@
-/// Inicio del motorizado: "MI DÍA".
+/// Inicio del motorizado: cuatro tareas reales, sin gráficos ni ruido.
 ///
-/// Información práctica, sin gráficos: qué tengo que hacer, cuánto cobré
-/// y qué quedó pendiente.
+/// Mis pedidos · Mi registro · Gastos · Rendición.
+/// Todo lo demás (historial, calendario) sigue disponible desde esas pantallas.
 library;
 
 import 'dart:async';
@@ -12,13 +12,11 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
-import '../../core/data/balones_repo.dart';
 import '../../core/data/pedidos_repo.dart';
 import '../../core/data/rendicion_repo.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
 import '../../core/location/ubicacion_service.dart';
-import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
 class HomeMotoPage extends ConsumerStatefulWidget {
@@ -73,6 +71,22 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
               if (mounted) _cargar();
             },
           )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'gastos',
+            callback: (_) {
+              if (mounted) _cargar();
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'fondo_vuelto',
+            callback: (_) {
+              if (mounted) _cargar();
+            },
+          )
           .subscribe();
     } catch (_) {}
   }
@@ -90,7 +104,6 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
           estados: const ['ASIGNADO', 'EN_CAMINO'],
           limite: 100,
         ),
-        balonesRepo.pendientesBalones(),
       ]);
       if (!mounted) return;
       setState(() {
@@ -182,6 +195,54 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
     );
   }
 
+  Widget _seccion({
+    required IconData icono,
+    required Color color,
+    required String titulo,
+    required String detalle,
+    required String accion,
+    required VoidCallback onTap,
+  }) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icono, color: color, size: 26),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      titulo,
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(detalle,
+                  style: const TextStyle(color: Colors.black54, fontSize: 13)),
+              const SizedBox(height: 12),
+              FilledButton(
+                onPressed: onTap,
+                style: FilledButton.styleFrom(
+                  backgroundColor: color,
+                  minimumSize: const Size.fromHeight(44),
+                ),
+                child: Text(accion),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
@@ -206,10 +267,10 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                         const SizedBox(height: 2),
                         Text(
                           _porEntregar > 0
-                              ? 'Tienes $_porEntregar pedido(s) por entregar.'
-                              : 'No tienes pedidos por entregar.',
+                              ? '🟢 Jornada activa · $_porEntregar pedido(s) por entregar'
+                              : '🟢 Jornada activa · sin pedidos por entregar',
                           style: const TextStyle(
-                            color: Colors.black54,
+                            color: AppTheme.success,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -223,92 +284,52 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => context.go('/mis-pedidos'),
-                  icon: const Icon(Icons.delivery_dining_outlined, size: 26),
-                  label: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text('VER MIS PEDIDOS', style: TextStyle(fontSize: 17)),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    minimumSize: const Size.fromHeight(58),
-                  ),
-                ),
+              const SizedBox(height: 16),
+              _seccion(
+                icono: Icons.delivery_dining_outlined,
+                color: AppTheme.primary,
+                titulo: 'MIS PEDIDOS',
+                detalle: '$_porEntregar pendiente(s) · ${_hoy.entregados} entregados hoy',
+                accion: 'VER PEDIDOS',
+                onTap: () => context.go('/mis-pedidos'),
               ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => context.go('/mi-registro'),
-                  icon: const Icon(Icons.edit_note, size: 26),
-                  label: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text('MI REGISTRO', style: TextStyle(fontSize: 17)),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.info,
-                    minimumSize: const Size.fromHeight(54),
-                  ),
-                ),
+              const SizedBox(height: 12),
+              _seccion(
+                icono: Icons.edit_note,
+                color: AppTheme.info,
+                titulo: 'MI REGISTRO',
+                detalle: '${_hoy.pedidosRealizados} pedidos · '
+                    '${dinero(_hoy.totalACobrar)} ventas · fondo '
+                    '${dinero(_hoy.fondoInicial)}',
+                accion: 'REGISTRAR MOVIMIENTO',
+                onTap: () => context.go('/mi-registro'),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
+              _seccion(
+                icono: Icons.payments_outlined,
+                color: AppTheme.warning,
+                titulo: 'GASTOS',
+                detalle: '${dinero(_hoy.gastosTotal)} gastados hoy',
+                accion: 'REGISTRAR GASTO',
+                onTap: () => context.push('/mi-registro/gasto'),
+              ),
+              const SizedBox(height: 12),
+              _seccion(
+                icono: Icons.assignment_turned_in_outlined,
+                color: AppTheme.success,
+                titulo: 'RENDICIÓN',
+                detalle: 'Esperado ${dinero(_hoy.efectivoEsperado)}'
+                    '${_hoy.hayDeclaracion ? ' · declarado ${dinero(_hoy.efectivoDeclarado)}' : ''}',
+                accion: 'VER MI RENDICIÓN',
+                onTap: () => context.push('/declarar-rendicion'),
+              ),
+              const SizedBox(height: 12),
               _gpsCard(),
-              const SizedBox(height: 22),
-              Text('MI DÍA', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 10),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      FilaValor('Pedidos', '${_hoy.pedidosRealizados}'),
-                      FilaValor('Entregados', '${_hoy.entregados}', color: AppTheme.success),
-                      FilaValor('Por entregar', '$_porEntregar', color: AppTheme.warning),
-                      const Divider(height: 22),
-                      FilaValor('Cobrado', dinero(_hoy.cobrado), destacado: true),
-                      FilaValor('Yape', dinero(_hoy.yape), color: AppTheme.info),
-                      FilaValor('Efectivo', dinero(_hoy.efectivo)),
-                      if (_hoy.pendiente > 0)
-                        FilaValor('Pendiente de cobro', dinero(_hoy.pendiente),
-                            color: AppTheme.danger),
-                      const Divider(height: 22),
-                      FilaValor('Balones vacíos recibidos', '${_hoy.balonesVaciosRecibidos}'),
-                      FilaValor('Balones vacíos pendientes', '${_hoy.balonesVaciosPendientes}',
-                          color: _hoy.balonesVaciosPendientes > 0 ? AppTheme.warning : null),
-                      if (_hoy.gastosTotal > 0) ...[
-                        const Divider(height: 22),
-                        FilaValor('Gastos', dinero(_hoy.gastosTotal), color: AppTheme.warning),
-                        FilaValor('Efectivo esperado', dinero(_hoy.efectivo - _hoy.gastosEfectivo),
-                            destacado: true),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
               if (_cargando)
                 const Padding(
                   padding: EdgeInsets.only(top: 12),
                   child: LinearProgressIndicator(color: AppTheme.primary),
                 ),
-              const SizedBox(height: 20),
-              OutlinedButton.icon(
-                onPressed: () => context.go('/historial'),
-                icon: const Icon(Icons.history_outlined),
-                label: const Text('Ver historial de mis pedidos'),
-                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-              ),
-              const SizedBox(height: 8),
-              OutlinedButton.icon(
-                onPressed: () => context.push('/calendario'),
-                icon: const Icon(Icons.calendar_month_outlined),
-                label: const Text('Calendario'),
-                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
-              ),
             ],
           ),
         ),

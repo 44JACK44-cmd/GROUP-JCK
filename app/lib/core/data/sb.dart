@@ -23,7 +23,26 @@ ErrorApp traducirError(Object e, {String? contexto}) {
     final code = e.code;
     switch (code) {
       case '42501':
-        return ErrorApp('${prefijo}no tienes permiso para esta operación.');
+        return ErrorApp(
+          '${prefijo}la base de datos rechazó el permiso. '
+          'Falta aplicar el paso 15 (supabase/steps/v7_15_flujo_simple.sql) '
+          'en Supabase → SQL Editor.',
+        );
+      case '42703':
+        return ErrorApp(
+          '${prefijo}falta una columna en la base de datos. '
+          'Aplica el paso 15 (v7_15_flujo_simple.sql) en Supabase → SQL Editor.',
+        );
+      case '42P01':
+        return ErrorApp(
+          '${prefijo}falta una tabla en la base de datos. '
+          'Aplica el paso 15 (v7_15_flujo_simple.sql) en Supabase → SQL Editor.',
+        );
+      case 'PGRST205':
+        return ErrorApp(
+          '${prefijo}la tabla todavía no existe en Supabase. '
+          'Aplica el paso 15 (v7_15_flujo_simple.sql) en el SQL Editor.',
+        );
       case '23505':
         return ErrorApp('${prefijo}este registro ya existe.');
       case '23503':
@@ -42,8 +61,19 @@ ErrorApp traducirError(Object e, {String? contexto}) {
     if (msg.contains('duplicate key')) {
       return ErrorApp('${prefijo}este registro ya existe.');
     }
-    if (msg.contains('row-level security')) {
-      return ErrorApp('${prefijo}no tienes permiso para esta operación.');
+    if (msg.contains('row-level security') || msg.contains('permission denied')) {
+      return ErrorApp(
+        '${prefijo}la base de datos rechazó el permiso. '
+        'Aplica el paso 15 (v7_15_flujo_simple.sql) en Supabase → SQL Editor.',
+      );
+    }
+    if (msg.contains('does not exist') ||
+        msg.contains('could not find the table') ||
+        msg.contains('could not find the function')) {
+      return ErrorApp(
+        '${prefijo}la base de datos está incompleta. '
+        'Aplica el paso 15 (v7_15_flujo_simple.sql) en Supabase → SQL Editor.',
+      );
     }
     if (msg.contains('violates check constraint')) {
       return ErrorApp('${prefijo}el valor enviado no es válido.');
@@ -87,6 +117,17 @@ bool esColumnaAusente(Object e) {
     return e.code == '42703' ||
         e.code == 'PGRST204' ||
         e.message.contains("Could not find the '");
+  }
+  return false;
+}
+
+/// True si el error indica que una tabla todavía no existe en la base
+/// (migración pendiente). PostgreSQL usa 42P01 y PostgREST PGRST205.
+bool esTablaAusente(Object e) {
+  if (e is PostgrestException) {
+    return e.code == '42P01' ||
+        e.code == 'PGRST205' ||
+        e.message.contains('Could not find the table');
   }
   return false;
 }

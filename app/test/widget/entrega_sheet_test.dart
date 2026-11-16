@@ -98,12 +98,29 @@ void main() {
       interaccion: (t) async {
         await _tocar(t, '📱 Yape');
         await _tocar(t, 'Finalizar entrega');
+        // Sin foto se pide confirmación explícita.
+        await _tocar(t, 'Continuar sin foto');
       },
     );
     expect(datos, isNotNull);
     expect(datos!.metodo, 'YAPE');
     expect(datos.montoCobrado, 45);
     expect(datos.quedanDeuda(45), isFalse);
+  });
+
+  testWidgets('Yape muestra la opción de foto del comprobante', (tester) async {
+    await _abrirYConfirmar(
+      tester,
+      total: 45,
+      interaccion: (t) async {
+        await _tocar(t, '📱 Yape');
+        expect(find.text('Tomar foto'), findsOneWidget);
+        expect(find.text('Galería'), findsOneWidget);
+        expect(find.text('Finalizar entrega'), findsOneWidget);
+        await _tocar(t, 'Finalizar entrega');
+        await _tocar(t, 'Continuar sin foto');
+      },
+    );
   });
 
   testWidgets('por defecto el balón vacío queda pendiente', (tester) async {

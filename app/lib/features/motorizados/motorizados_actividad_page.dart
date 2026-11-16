@@ -16,6 +16,7 @@ import '../../core/data/actividad_repo.dart';
 import '../../core/data/motorizados_repo.dart';
 import '../../core/data/rendicion_repo.dart';
 import '../../core/data/sb.dart';
+import '../../core/data/ubicaciones_repo.dart';
 import '../../core/domain/formato.dart';
 import '../../core/state/bus.dart';
 import '../../core/ui/actividad_tile.dart';
@@ -346,6 +347,7 @@ class _ActividadMotorizadoPageState
   DateTime _dia = inicioHoy();
   Rendicion _resumen = const Rendicion();
   List<MovimientoActividad> _movimientos = [];
+  UbicacionMotorizado? _ubicacion;
   bool _cargando = true;
   int _peticion = 0;
   RealtimeChannel? _canal;
@@ -401,6 +403,30 @@ class _ActividadMotorizadoPageState
               if (mounted) _cargar();
             },
           )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'ubicaciones_motorizado',
+            callback: (_) {
+              if (mounted) _cargar();
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'fondo_vuelto',
+            callback: (_) {
+              if (mounted) _cargar();
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'rendiciones',
+            callback: (_) {
+              if (mounted) _cargar();
+            },
+          )
           .subscribe();
     } catch (_) {}
   }
@@ -420,11 +446,16 @@ class _ActividadMotorizadoPageState
           desde: _dia,
           hasta: hasta,
         ),
+        ubicacionesRepo.listar(),
       ]);
       if (!mounted || miPeticion != _peticion) return;
+      final ubicaciones = <String, UbicacionMotorizado>{
+        for (final u in res[2] as List<UbicacionMotorizado>) u.usuarioId: u,
+      };
       setState(() {
         _resumen = res[0] as Rendicion;
         _movimientos = res[1] as List<MovimientoActividad>;
+        _ubicacion = ubicaciones[widget.motorizadoId];
         _cargando = false;
       });
     } catch (_) {
@@ -518,6 +549,32 @@ class _ActividadMotorizadoPageState
                         _Mini('Deudas', dinero(r.pendiente),
                             color: r.pendiente > 0 ? AppTheme.danger : null),
                       ],
+                    ),
+                    const Divider(height: 18),
+                    FilaValor('Fondo de vuelto', dinero(r.fondoInicial)),
+                    FilaValor('Efectivo esperado', dinero(r.efectivoEsperado),
+                        destacado: true),
+                    if (r.hayDeclaracion) ...[
+                      FilaValor('Efectivo declarado', dinero(r.efectivoDeclarado)),
+                      FilaValor(
+                        'Diferencia',
+                        '${r.diferencia >= 0 ? '+' : '-'}${dinero(r.diferencia.abs())}',
+                        color: r.tieneDiferencia ? AppTheme.danger : AppTheme.success,
+                      ),
+                    ],
+                    FilaValor('Balones entregados', '${r.balonesEntregados}'),
+                    FilaValor('Balones devueltos', '${r.balonesDevueltos}'),
+                    const Divider(height: 18),
+                    FilaValor(
+                      'Ubicación',
+                      _ubicacion == null
+                          ? 'Sin ubicación compartida'
+                          : '${_ubicacion!.estado.label} · ${_ubicacion!.haceTexto}',
+                      color: _ubicacion == null
+                          ? Colors.black45
+                          : (_ubicacion!.estado == EstadoUbicacion.activo
+                              ? AppTheme.success
+                              : AppTheme.warning),
                     ),
                   ],
                 ),

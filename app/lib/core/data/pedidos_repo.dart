@@ -161,12 +161,22 @@ class PedidosRepo {
 
   /// Pagos registrados para un pedido.
   Future<List<Map<String, dynamic>>> pagosDe(String pedidoId) async {
-    final data = await sb
-        .from('pagos')
-        .select('id, monto, metodo, fecha, registrado_por, cliente_id, pedido_id')
-        .eq('pedido_id', pedidoId)
-        .order('fecha');
-    return List<Map<String, dynamic>>.from(data);
+    try {
+      final data = await sb
+          .from('pagos')
+          .select('id, monto, metodo, fecha, registrado_por, cliente_id, pedido_id, comprobante_url')
+          .eq('pedido_id', pedidoId)
+          .order('fecha');
+      return List<Map<String, dynamic>>.from(data);
+    } catch (e) {
+      if (!esColumnaAusente(e)) rethrow;
+      final data = await sb
+          .from('pagos')
+          .select('id, monto, metodo, fecha, registrado_por, cliente_id, pedido_id')
+          .eq('pedido_id', pedidoId)
+          .order('fecha');
+      return List<Map<String, dynamic>>.from(data);
+    }
   }
 
   /// Conteo de pedidos (para la pantalla de inicio).

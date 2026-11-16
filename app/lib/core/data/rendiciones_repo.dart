@@ -32,7 +32,11 @@ class CierreCalculado {
   /// Todos los gastos del día, sin importar con qué se pagaron.
   final double gastosTotal;
 
-  /// Lo que debería quedar en efectivo: cobrado en efectivo − gastos en efectivo.
+  /// Fondo de vuelto entregado por el administrador.
+  final double fondoInicial;
+
+  /// Lo que debería quedar en efectivo, ya con el fondo:
+  /// fondo + cobrado en efectivo − gastos en efectivo.
   final double efectivoNeto;
 
   /// Lo que el motorizado declaró (suma de rendiciones), o el neto si no hay.
@@ -53,6 +57,7 @@ class CierreCalculado {
     this.yapeTotal = 0,
     this.gastosEfectivo = 0,
     this.gastosTotal = 0,
+    this.fondoInicial = 0,
     this.efectivoNeto = 0,
     this.efectivoRecibido = 0,
     this.diferencias = 0,
@@ -71,6 +76,7 @@ class CalculoCierre {
     required List<Map<String, dynamic>> pagos,
     required List<Map<String, dynamic>> gastos,
     required List<Map<String, dynamic>> rendiciones,
+    double fondoInicial = 0,
   }) {
     var totalVentas = 0.0, efectivoEsperado = 0.0, yapeTotal = 0.0;
     var gastosTotal = 0.0, gastosEfectivo = 0.0;
@@ -107,7 +113,7 @@ class CalculoCierre {
       efectivoDeclarado += (r['efectivo_declarado'] as num? ?? 0).toDouble();
     }
 
-    final efectivoNeto = efectivoEsperado - gastosEfectivo;
+    final efectivoNeto = fondoInicial + efectivoEsperado - gastosEfectivo;
     final hayRendiciones = rendiciones.isNotEmpty;
     final efectivoRecibido = hayRendiciones ? efectivoDeclarado : efectivoNeto;
     final diferencias = hayRendiciones ? efectivoDeclarado - efectivoNeto : 0.0;
@@ -120,6 +126,7 @@ class CalculoCierre {
       yapeTotal: yapeTotal,
       gastosEfectivo: gastosEfectivo,
       gastosTotal: gastosTotal,
+      fondoInicial: fondoInicial,
       efectivoNeto: efectivoNeto,
       efectivoRecibido: efectivoRecibido,
       diferencias: diferencias,
@@ -140,6 +147,8 @@ class RendicionesRepo {
     required String motorizadoId,
     required double efectivoDeclarado,
     required double yapeDeclarado,
+    double fondoInicial = 0,
+    double? efectivoEsperado,
     String? observaciones,
     String? uuidOffline,
   }) async {
@@ -157,18 +166,40 @@ class RendicionesRepo {
       throw Exception('Ya declaraste tu rendición de hoy.');
     }
 
-    final data = await sb
-        .from('rendiciones')
-        .insert({
-          'empresa_id': empresaId,
-          'motorizado_id': motorizadoId,
-          'efectivo_declarado': efectivoDeclarado,
-          'yape_declarado': yapeDeclarado,
-          'observaciones': observaciones?.trim().isEmpty == true ? null : observaciones?.trim(),
-          'uuid_offline': uuid,
-        })
-        .select('id')
-        .single();
+    final fila = <String, dynamic>{
+      'empresa_id': empresaId,
+      'motorizado_id': motorizadoId,
+      'efectivo_declarado': efectivoDeclarado,
+      'yape_declarado': yapeDeclarado,
+      'observaciones': observaciones?.trim().isEmpty == true ? null : observaciones?.trim(),
+      'uuid_offline': uuid,
+    };
+
+    // Fondo y esperado se guardan como snapshot de la jornada. Si la base
+    // todavía no tiene las columnas (paso 15 pendiente), el cobro no se pierde.
+    if (fondoInicial > 0 || efectivoEsperado != null) {
+      fila['fondo_inicial'] = fondoInicial;
+      fila['efectivo_esperado'] = efectivoEsperado ?? 0;
+    }
+
+    Map<String, dynamic> data;
+    try {
+      data = await sb
+          .from('rendiciones')
+          .insert(fila)
+          .select('id')
+          .single();
+    } catch (e) {
+      if (!esColumnaAusente(e)) rethrow;
+      final basica = Map<String, dynamic>.from(fila)
+        ..remove('fondo_inicial')
+        ..remove('efectivo_esperado');
+      data = await sb.from('rendiciones').insert(basica).select('id').single();
+    }
+
+    final diferenciaCalculada = efectivoEsperado == null
+        ? 0.0
+        : efectivoDeclarado - efectivoEsperado;
 
     await auditoriaRepo.registrar(
       empresaId: empresaId,
@@ -179,6 +210,9 @@ class RendicionesRepo {
       detalle: {
         'efectivo': efectivoDeclarado,
         'yape': yapeDeclarado,
+        'fondo_inicial': fondoInicial,
+        'efectivo_esperado': efectivoEsperado,
+        'diferencia': diferenciaCalculada,
         'observaciones': observaciones,
       },
     );
@@ -308,11 +342,30 @@ class RendicionesRepo {
     final gastos = List<Map<String, dynamic>>.from(res[2] as List);
     final rendiciones = List<Map<String, dynamic>>.from(res[3] as List);
 
+    // Fondo entregado en la jornada (tabla del paso 15). Si aún no existe,
+    // se cierra con fondo 0 en vez de impedir el cierre.
+    var fondoInicial = 0.0;
+    try {
+      final fondos = await sb
+          .from('fondo_vuelto')
+          .select('monto')
+          .eq('empresa_id', empresaId)
+          .gte('fecha', inicioIso)
+          .lt('fecha', finIso)
+          .limit(500);
+      for (final f in fondos) {
+        fondoInicial += (f['monto'] as num? ?? 0).toDouble();
+      }
+    } catch (e) {
+      if (!esTablaAusente(e) && !esPermisoDenegado(e)) rethrow;
+    }
+
     final cierre = CalculoCierre.calcular(
       pedidos: pedidos,
       pagos: pagos,
       gastos: gastos,
       rendiciones: rendiciones,
+      fondoInicial: fondoInicial,
     );
 
     // No se cierra la jornada con dinero sin cuadrar: si hay rendiciones
@@ -328,7 +381,7 @@ class RendicionesRepo {
       'empresa_id': empresaId,
       'fecha': fechaStr,
       'total_ventas': cierre.totalVentas,
-      'efectivo_esperado': cierre.efectivoEsperado,
+      'efectivo_esperado': cierre.efectivoNeto,
       'efectivo_recibido': cierre.efectivoRecibido,
       'yape_total': cierre.yapeTotal,
       'deudas_total': cierre.deudasTotal,
@@ -357,7 +410,8 @@ class RendicionesRepo {
       detalle: {
         'fecha': fechaStr,
         'total_ventas': cierre.totalVentas,
-        'efectivo_esperado': cierre.efectivoEsperado,
+        'fondo_inicial': fondoInicial,
+        'efectivo_esperado': cierre.efectivoNeto,
         'efectivo_recibido': cierre.efectivoRecibido,
         'yape_total': cierre.yapeTotal,
         'gastos_total': cierre.gastosTotal,

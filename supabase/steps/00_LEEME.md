@@ -27,8 +27,13 @@ Repetir en orden, uno por uno, esperando `Success` antes de pasar al siguiente.
 | 12 | `v7_12_comprobantes.sql` | Columna `pagos.comprobante_url` + permisos de subida al bucket `comprobantes` (foto de Yape) |
 | 13 | `v7_13_dias_trabajo.sql` | Columna `perfiles.dias_trabajo` (días de trabajo del motorizado) |
 | 14 | `v7_14_sincronizacion.sql` | Gastos del motorizado + Realtime de pagos/gastos/entregas + tabla `ubicaciones_motorizado` (GPS) + reconciliación de pedidos entregados |
+| 15 | `v7_15_flujo_simple.sql` | **IMPORTANTE — aplicar este paso sí o sí.** Repone TODAS las políticas del motorizado (corrige "No autorizado"), crea `fondo_vuelto`, añade columnas aditivas y publica Realtime. Es autónomo: se puede ejecutar aunque los pasos 10–14 no estén aplicados. |
 
 Después: `99_verificar.sql` — todo debe salir en `OK`.
+
+> **Atajo:** si solo quieres destrabar la app ahora mismo, ejecuta primero el
+> paso 15 y luego `99_verificar.sql`. El paso 15 reintentar de forma segura
+> todo lo que los pasos anteriores pudieron haber dejado sin aplicar.
 
 ## Si un paso falla
 

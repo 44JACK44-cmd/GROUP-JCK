@@ -94,6 +94,39 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
     return d > 0.009 ? d : 0;
   }
 
+  /// Muestra el comprobante de Yape guardado en Supabase Storage.
+  void _verComprobante(String url) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.network(
+                  url,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Padding(
+                    padding: EdgeInsets.all(30),
+                    child: Text('No se pudo cargar el comprobante.'),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cerrar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // ------------------------------------------------------------------
   // Acciones
   // ------------------------------------------------------------------
@@ -135,6 +168,36 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
       ),
     );
     if (elegido == null) return;
+
+    // Aviso no bloqueante: si no suele trabajar hoy, ADMIN puede asignar igual.
+    try {
+      final dias = await motorizadosRepo.diasTrabajo(elegido['id'] as String);
+      if (!motorizadosRepo.trabajaHoy(dias, DateTime.now().weekday) && mounted) {
+        final continuar = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('⚠ No suele trabajar hoy'),
+            content: Text(
+              '${elegido['nombre'] ?? 'Este motorizado'} normalmente no trabaja '
+              'este día. ¿Quieres asignar el pedido excepcionalmente?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(true),
+                child: const Text('Asignar igual'),
+              ),
+            ],
+          ),
+        );
+        if (continuar != true) return;
+      }
+    } catch (_) {
+      // Sin información de días se permite la asignación normal.
+    }
 
     final auth = ref.read(authProvider);
     try {
@@ -559,6 +622,21 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                                 ? 'Pendiente'
                                 : metodoPago(_pagos.first['metodo'] as String?),
                           ),
+                          for (final pago in _pagos)
+                            if (pago['comprobante_url'] != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: OutlinedButton.icon(
+                                  onPressed: () => _verComprobante(
+                                    pago['comprobante_url'] as String,
+                                  ),
+                                  icon: const Icon(Icons.receipt_long_outlined),
+                                  label: const Text('VER COMPROBANTE'),
+                                  style: OutlinedButton.styleFrom(
+                                    minimumSize: const Size.fromHeight(42),
+                                  ),
+                                ),
+                              ),
                           FilaValor(
                             'Balón vacío',
                             labelEstadoBalon(_entrega!['estado_bal_on_vacio'] as String?),

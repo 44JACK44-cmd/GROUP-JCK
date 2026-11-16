@@ -5,8 +5,11 @@
 /// vacío → observaciones.
 library;
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/entregas_repo.dart';
@@ -56,12 +59,27 @@ class _EntregaSheetState extends State<_EntregaSheet> {
   bool _quedoDebiendo = false;
   EstadoBalonVacio _balonVacio = EstadoBalonVacio.noRecibido;
   EstadoFierro _fierro = EstadoFierro.noAplica;
+  String? _fotoPath;
 
   @override
   void dispose() {
     _montoCtrl.dispose();
     _observacionesCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _tomarFoto(ImageSource source) async {
+    try {
+      final x = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: 70,
+        maxWidth: 1280,
+      );
+      if (x == null || !mounted) return;
+      setState(() => _fotoPath = x.path);
+    } on PlatformException {
+      if (mounted) _aviso('No se pudo abrir la cámara.');
+    }
   }
 
   double get _cobrado {
@@ -71,6 +89,8 @@ class _EntregaSheetState extends State<_EntregaSheet> {
   }
 
   double get _deuda => (widget.total - _cobrado) > 0.009 ? widget.total - _cobrado : 0;
+
+  bool get montoCobradoPositivo => (double.tryParse(_montoCtrl.text) ?? 0) > 0;
 
   void _elegirMetodo(String metodo) {
     setState(() {
@@ -88,7 +108,7 @@ class _EntregaSheetState extends State<_EntregaSheet> {
     });
   }
 
-  void _confirmar() {
+  Future<void> _confirmar() async {
     if (_quedoDebiendo) {
       Navigator.of(context).pop(DatosEntrega(
         montoCobrado: 0,
@@ -114,6 +134,33 @@ class _EntregaSheetState extends State<_EntregaSheet> {
       return;
     }
 
+    // El comprobante de Yape se pide siempre. Si no hay cámara o se olvidó,
+    // se permite continuar con aviso explícito (nunca se finge que se guardó).
+    if (_metodo == 'YAPE' && monto > 0 && _fotoPath == null) {
+      final continuar = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Sin comprobante'),
+          content: const Text(
+            'Pagó con Yape pero no tomaste foto del comprobante. '
+            '¿Quieres continuar así?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Tomar foto'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Continuar sin foto'),
+            ),
+          ],
+        ),
+      );
+      if (continuar != true) return;
+    }
+
+    if (!mounted) return;
     Navigator.of(context).pop(DatosEntrega(
       montoCobrado: monto,
       metodo: _metodo,
@@ -124,6 +171,7 @@ class _EntregaSheetState extends State<_EntregaSheet> {
       observaciones: _observacionesCtrl.text.trim().isEmpty
           ? null
           : _observacionesCtrl.text.trim(),
+      comprobanteLocalPath: _fotoPath,
     ));
   }
 
@@ -254,6 +302,55 @@ class _EntregaSheetState extends State<_EntregaSheet> {
                   style: const TextStyle(color: AppTheme.warning, fontWeight: FontWeight.w600),
                 ),
               ),
+
+            // --- Foto del comprobante de Yape ---
+            if (!_quedoDebiendo && _metodo == 'YAPE' && montoCobradoPositivo) ...[
+              const SizedBox(height: 16),
+              const Text('Foto del comprobante',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              if (_fotoPath != null) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    File(_fotoPath!),
+                    height: 120,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => setState(() => _fotoPath = null),
+                  icon: const Icon(Icons.delete_outline),
+                  label: const Text('Quitar foto'),
+                ),
+              ] else ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _tomarFoto(ImageSource.camera),
+                        icon: const Icon(Icons.photo_camera),
+                        label: const Text('Tomar foto'),
+                        style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(46)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _tomarFoto(ImageSource.gallery),
+                        icon: const Icon(Icons.photo_library_outlined),
+                        label: const Text('Galería'),
+                        style: OutlinedButton.styleFrom(
+                            minimumSize: const Size.fromHeight(46)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
             const SizedBox(height: 18),
 
             // --- Balón vacío ---

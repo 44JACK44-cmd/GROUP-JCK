@@ -45,6 +45,10 @@ class DatosEntrega {
   final int cantidadBalones;
   final int cantidadFierros;
   final String? observaciones;
+
+  /// Ruta local de la foto del comprobante de Yape (se sube a Storage al
+  /// sincronizar). No se guarda nunca como URL definitiva en el teléfono.
+  final String? comprobanteLocalPath;
   final bool sinConexion;
 
   const DatosEntrega({
@@ -55,6 +59,7 @@ class DatosEntrega {
     this.cantidadBalones = 0,
     this.cantidadFierros = 0,
     this.observaciones,
+    this.comprobanteLocalPath,
     this.sinConexion = false,
   });
 

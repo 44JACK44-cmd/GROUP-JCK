@@ -80,6 +80,45 @@ class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
               if (mounted) _cargar();
             },
           )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'gastos',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'usuario_id',
+              value: uid,
+            ),
+            callback: (_) {
+              if (mounted) _cargar();
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'fondo_vuelto',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'motorizado_id',
+              value: uid,
+            ),
+            callback: (_) {
+              if (mounted) _cargar();
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'rendiciones',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'motorizado_id',
+              value: uid,
+            ),
+            callback: (_) {
+              if (mounted) _cargar();
+            },
+          )
           .subscribe();
     } catch (_) {}
   }
@@ -269,16 +308,29 @@ class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
             FilaValor('No entregados', '${r.noEntregados}',
                 color: r.noEntregados > 0 ? AppTheme.danger : null),
             const Divider(height: 22),
-            FilaValor('Cobrado', dinero(r.cobrado), destacado: true),
-            FilaValor('Yape', dinero(r.yape), color: AppTheme.info),
+            FilaValor('Ventas', dinero(r.totalACobrar), destacado: true),
+            FilaValor('Cobrado', dinero(r.cobrado)),
             FilaValor('Efectivo', dinero(r.efectivo)),
+            FilaValor('Yape', dinero(r.yape), color: AppTheme.info),
             if (r.pendiente > 0)
-              FilaValor('Pendiente de cobro', dinero(r.pendiente), color: AppTheme.danger),
-            if (r.gastosTotal > 0) ...[
-              const Divider(height: 22),
-              FilaValor('Gastos', dinero(r.gastosTotal), color: AppTheme.warning),
-              FilaValor('Efectivo esperado', dinero(r.efectivo - r.gastosEfectivo),
-                  destacado: true),
+              FilaValor('Deuda', dinero(r.pendiente), color: AppTheme.danger),
+            const Divider(height: 22),
+            FilaValor('Balones entregados', '${r.balonesEntregados}'),
+            FilaValor('Balones devueltos', '${r.balonesDevueltos}',
+                color: AppTheme.success),
+            const Divider(height: 22),
+            FilaValor('Fondo de vuelto', dinero(r.fondoInicial), color: AppTheme.info),
+            FilaValor('Gastos en efectivo', dinero(r.gastosEfectivo),
+                color: r.gastosEfectivo > 0 ? AppTheme.danger : null),
+            FilaValor('Efectivo esperado', dinero(r.efectivoEsperado),
+                destacado: true),
+            if (r.hayDeclaracion) ...[
+              FilaValor('Efectivo declarado', dinero(r.efectivoDeclarado)),
+              FilaValor(
+                'Diferencia',
+                '${r.diferencia >= 0 ? '+' : '-'}${dinero(r.diferencia.abs())}',
+                color: r.tieneDiferencia ? AppTheme.danger : AppTheme.success,
+              ),
             ],
           ],
         ),

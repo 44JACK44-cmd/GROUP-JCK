@@ -102,12 +102,19 @@ class Outbox {
   }
 
   /// Encola una entrega completa (entrega + pago + movimientos de balón/fierro).
+  ///
+  /// [comprobanteLocalPath] conserva la foto de Yape hasta que se pueda subir.
+  /// [balonDevuelto]/[fierroDevuelto] registran la devolución del vacío.
   static Future<void> encolarEntrega({
     required Map<String, dynamic> entrega,
     Map<String, dynamic>? pago,
     Map<String, dynamic>? movimientoBalon,
     Map<String, dynamic>? movimientoFierro,
     Map<String, dynamic>? auditoria,
+    String? comprobanteLocalPath,
+    String? clienteId,
+    bool balonDevuelto = false,
+    bool fierroDevuelto = false,
   }) async {
     entrega['uuid_offline'] ??= _uuid.v4();
     if (pago != null) pago['uuid_offline'] ??= _uuid.v4();
@@ -122,6 +129,10 @@ class Outbox {
       'movimientoBalon': movimientoBalon,
       'movimientoFierro': movimientoFierro,
       'auditoria': auditoria,
+      'comprobante_local_path': comprobanteLocalPath,
+      'cliente_id': clienteId ?? pago?['cliente_id'] as String?,
+      'balon_devuelto': balonDevuelto,
+      'fierro_devuelto': fierroDevuelto,
       'fecha': DateTime.now().toIso8601String(),
     });
     await _escribir(ops);
@@ -421,17 +432,19 @@ class Outbox {
     return fila;
   }
 
-  /// Inserta el pago. Si la base todavía no tiene `pagos.comprobante_url`
-  /// (migración pendiente), reintenta sin la columna para no perder el cobro.
-  static Future<void> _insertarPagoConRespaldo(Map<String, dynamic> pagoRow) async {
+  /// Inserta el pago y devuelve la fila. Si la base todavía no tiene
+  /// `pagos.comprobante_url` (migración pendiente), reintenta sin la columna
+  /// para no perder el cobro.
+  static Future<Map<String, dynamic>> _insertarPagoConRespaldo(
+    Map<String, dynamic> pagoRow,
+  ) async {
     try {
-      await _sb.from('pagos').insert(pagoRow).select('id').single();
+      return await _sb.from('pagos').insert(pagoRow).select('id').single();
     } catch (e) {
       if (pagoRow.containsKey('comprobante_url')) {
         final sinFoto = Map<String, dynamic>.from(pagoRow)..remove('comprobante_url');
         try {
-          await _sb.from('pagos').insert(sinFoto).select('id').single();
-          return;
+          return await _sb.from('pagos').insert(sinFoto).select('id').single();
         } catch (_) {}
       }
       rethrow;
@@ -533,6 +546,11 @@ class Outbox {
         ? null
         : Map<String, dynamic>.from(op['movimientoFierro'] as Map);
     final auditoria = op['auditoria'] == null ? null : Map<String, dynamic>.from(op['auditoria'] as Map);
+    final comprobanteLocalPath = op['comprobante_local_path'] as String?;
+    final clienteId = (op['cliente_id'] as String?) ?? pago?['cliente_id'] as String?;
+    final balonDevuelto = op['balon_devuelto'] as bool? ?? false;
+    final fierroDevuelto = op['fierro_devuelto'] as bool? ?? false;
+    final pedidoId = entrega['pedido_id'] as String?;
 
     final existente = await _sb
         .from('entregas')
@@ -553,8 +571,14 @@ class Outbox {
           .maybeSingle();
       var pagoId = yaHay?['id'] as String?;
       if (pagoId == null) {
+        // Subir la foto antes del cobro: si falla la subida se reintenta la
+        // operación completa y no se pierde el comprobante.
+        if (comprobanteLocalPath != null) {
+          final url = await _subirComprobante(comprobanteLocalPath);
+          if (url != null) pagoRow['comprobante_url'] = url;
+        }
         final insertado =
-            await _sb.from('pagos').insert(pagoRow).select('id').single();
+            await _insertarPagoConRespaldo(pagoRow);
         pagoId = insertado['id'] as String;
       }
       await asegurarIngresoCaja(
@@ -573,6 +597,27 @@ class Outbox {
           .eq('uuid_offline', balon['uuid_offline'])
           .maybeSingle();
       if (yaHay == null) await _sb.from('movimiento_bal_on').insert(balon);
+
+      // El vacío devuelto es información logística del mismo pedido.
+      if (balonDevuelto && clienteId != null && pedidoId != null) {
+        final yaDevuelto = await _sb
+            .from('movimiento_bal_on')
+            .select('id')
+            .eq('pedido_id', pedidoId)
+            .eq('tipo', 'DEVOLUCION_VACIO')
+            .maybeSingle();
+        if (yaDevuelto == null) {
+          await _sb.from('movimiento_bal_on').insert({
+            'empresa_id': balon['empresa_id'],
+            'cliente_id': clienteId,
+            'tipo': 'DEVOLUCION_VACIO',
+            'pedido_id': pedidoId,
+            'cantidad': balon['cantidad'],
+            'usuario_id': balon['usuario_id'],
+            'uuid_offline': _uuid.v4(),
+          });
+        }
+      }
     }
 
     if (fierro != null) {
@@ -582,10 +627,29 @@ class Outbox {
           .eq('uuid_offline', fierro['uuid_offline'])
           .maybeSingle();
       if (yaHay == null) await _sb.from('movimiento_fierro').insert(fierro);
+
+      if (fierroDevuelto && clienteId != null && pedidoId != null) {
+        final yaDevuelto = await _sb
+            .from('movimiento_fierro')
+            .select('id')
+            .eq('pedido_id', pedidoId)
+            .eq('tipo', 'DEVOLUCION')
+            .maybeSingle();
+        if (yaDevuelto == null) {
+          await _sb.from('movimiento_fierro').insert({
+            'empresa_id': fierro['empresa_id'],
+            'cliente_id': clienteId,
+            'tipo': 'DEVOLUCION',
+            'pedido_id': pedidoId,
+            'cantidad': fierro['cantidad'],
+            'usuario_id': fierro['usuario_id'],
+            'uuid_offline': _uuid.v4(),
+          });
+        }
+      }
     }
 
     // Marcar el pedido como ENTREGADO.
-    final pedidoId = entrega['pedido_id'] as String?;
     if (pedidoId != null) {
       await _sb.from('pedidos').update({'estado': 'ENTREGADO'}).eq('id', pedidoId);
     }

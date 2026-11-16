@@ -54,7 +54,9 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
       if (!mounted) return;
       setState(() {
         _rendicionCalculada = data;
-        _efectivoCtrl.text = data.efectivo.toStringAsFixed(2);
+        // Se precarga lo que DEBERÍA entregarse (con fondo y menos gastos),
+        // no solo lo cobrado: el motorizado declara el dinero físico.
+        _efectivoCtrl.text = data.efectivoEsperado.toStringAsFixed(2);
         _yapeCtrl.text = data.yape.toStringAsFixed(2);
       });
     } catch (_) {}
@@ -77,6 +79,8 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
         motorizadoId: auth.usuarioId!,
         efectivoDeclarado: efectivo,
         yapeDeclarado: yape,
+        fondoInicial: _rendicionCalculada?.fondoInicial ?? 0,
+        efectivoEsperado: _rendicionCalculada?.efectivoEsperado,
         observaciones: _observacionesCtrl.text.trim().isEmpty ? null : _observacionesCtrl.text.trim(),
       );
       if (!mounted) return;
@@ -97,6 +101,33 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  Widget _diferenciaWidget(Rendicion r) {
+    final declarado = double.tryParse(_efectivoCtrl.text.replaceAll(',', '.')) ?? 0;
+    final diferencia = declarado - r.efectivoEsperado;
+    final color = diferencia.abs() <= 0.009 ? AppTheme.success : AppTheme.danger;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          FilaValor('Esperado', dinero(r.efectivoEsperado)),
+          FilaValor('Declarado', dinero(declarado)),
+          FilaValor(
+            'Diferencia',
+            '${diferencia >= 0 ? '+' : '-'}${dinero(diferencia.abs())}',
+            color: color,
+            destacado: true,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = _rendicionCalculada;
@@ -115,11 +146,21 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
                     Text('Resumen del día', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 10),
                     FilaValor('Pedidos entregados', '${r.entregados}'),
-                    FilaValor('Cobrado', dinero(r.cobrado), destacado: true),
-                    FilaValor('Efectivo esperado', dinero(r.efectivo)),
-                    FilaValor('Yape esperado', dinero(r.yape)),
+                    FilaValor('Ventas', dinero(r.totalACobrar)),
+                    FilaValor('Efectivo cobrado', dinero(r.efectivo)),
+                    FilaValor('Yape (no va en efectivo)', dinero(r.yape),
+                        color: AppTheme.info),
+                    FilaValor('Deuda (no va en efectivo)', dinero(r.pendiente),
+                        color: AppTheme.warning),
                     if (r.gastosTotal > 0)
                       FilaValor('Gastos', dinero(r.gastosTotal), color: AppTheme.danger),
+                    FilaValor('Fondo de vuelto', dinero(r.fondoInicial),
+                        color: AppTheme.info),
+                    const Divider(height: 18),
+                    FilaValor('Efectivo esperado', dinero(r.efectivoEsperado),
+                        destacado: true),
+                    FilaValor('Balones entregados', '${r.balonesEntregados}'),
+                    FilaValor('Balones devueltos', '${r.balonesDevueltos}'),
                   ],
                 ),
               ),
@@ -136,7 +177,12 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
               prefixText: 'S/ ',
               prefixIcon: Icon(Icons.payments_outlined),
             ),
+            onChanged: (_) => setState(() {}),
           ),
+          if (r != null) ...[
+            const SizedBox(height: 8),
+            _diferenciaWidget(r),
+          ],
           const SizedBox(height: 12),
           TextFormField(
             controller: _yapeCtrl,

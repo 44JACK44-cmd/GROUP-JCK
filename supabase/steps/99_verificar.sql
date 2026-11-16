@@ -160,6 +160,35 @@ select 'realtime ubicaciones',
                             and schemaname = 'public' and tablename = 'ubicaciones_motorizado')
             then 'OK' else 'FALTA' end
 union all
+select 'tabla fondo_vuelto',
+       case when to_regclass('public.fondo_vuelto') is not null
+            then 'OK' else 'FALTA' end
+union all
+select 'permiso fondo del motorizado',
+       case when exists (select 1 from pg_policies
+                           where schemaname = 'public'
+                             and tablename = 'fondo_vuelto'
+                             and policyname = 'fondo_vuelto_select')
+            then 'OK' else 'FALTA' end
+union all
+select 'columna rendiciones.fondo_inicial',
+       case when exists (select 1 from information_schema.columns
+                           where table_schema = 'public' and table_name = 'rendiciones'
+                             and column_name = 'fondo_inicial')
+            then 'OK' else 'FALTA' end
+union all
+select 'realtime rendiciones',
+       case when exists (select 1 from pg_publication_tables
+                           where pubname = 'supabase_realtime'
+                             and schemaname = 'public' and tablename = 'rendiciones')
+            then 'OK' else 'FALTA' end
+union all
+select 'realtime fondo_vuelto',
+       case when exists (select 1 from pg_publication_tables
+                           where pubname = 'supabase_realtime'
+                             and schemaname = 'public' and tablename = 'fondo_vuelto')
+            then 'OK' else 'FALTA' end
+union all
 select 'pedidos entregados sin estado viejo',
        case when not exists (
               select 1

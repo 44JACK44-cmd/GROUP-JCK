@@ -71,8 +71,11 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
 
   Future<void> _cargar() async {
     try {
+      final esHoy = _grupo == GrupoPedido.hoy;
       final data = await pedidosRepo.listar(
-        estados: _grupo.estados,
+        estados: esHoy ? const [] : _grupo.estados,
+        desde: esHoy ? inicioHoy() : null,
+        hasta: esHoy ? DateTime.now().add(const Duration(minutes: 1)) : null,
         masAntigosPrimero: _grupo == GrupoPedido.pendientes,
         limite: 200,
       );
@@ -125,7 +128,7 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Pedidos'),
+        title: Text(_grupo == GrupoPedido.hoy ? 'Pedidos de hoy' : 'Pedidos'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(56),
           child: Padding(
@@ -191,16 +194,25 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
                         mostrarPrioridad: _grupo == GrupoPedido.pendientes,
                         productoResumen: resumenProductos(p),
                         motorizadoNombre: _motorizadoNombre[p['repartidor_id'] as String?],
-                        trailer: _grupo == GrupoPedido.pendientes
+                        trailer: _grupo == GrupoPedido.hoy
                             ? Text(
-                                antiguedad(parseFecha(p['fecha'])),
+                                horaCorta(parseFecha(p['fecha'])),
                                 style: const TextStyle(
                                   color: Colors.black54,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                 ),
                               )
-                            : null,
+                            : _grupo == GrupoPedido.pendientes
+                                ? Text(
+                                    antiguedad(parseFecha(p['fecha'])),
+                                    style: const TextStyle(
+                                      color: Colors.black54,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  )
+                                : null,
                       );
                     },
                   ),

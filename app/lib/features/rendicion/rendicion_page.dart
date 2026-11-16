@@ -9,11 +9,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
+import '../../core/data/fondo_vuelto_repo.dart';
 import '../../core/data/motorizados_repo.dart';
 import '../../core/data/rendicion_repo.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
 import '../../core/ui/widgets.dart';
+import '../auth/auth_controller.dart';
 
 /// Periodos disponibles.
 enum PeriodoRendicion {
@@ -83,6 +85,22 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
             event: PostgresChangeEvent.all,
             schema: 'public',
             table: 'gastos',
+            callback: (_) {
+              if (mounted) _cargar(silencioso: true);
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'fondo_vuelto',
+            callback: (_) {
+              if (mounted) _cargar(silencioso: true);
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'rendiciones',
             callback: (_) {
               if (mounted) _cargar(silencioso: true);
             },
@@ -167,6 +185,113 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
     _cargar();
   }
 
+  /// El administrador entrega dinero de vuelto al motorizado al inicio de la
+  /// jornada. No es venta ni ingreso: es un fondo que debe volver.
+  Future<void> _entregarFondo() async {
+    final auth = ref.read(authProvider);
+    if (_motorizados.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No hay motorizados registrados.')),
+      );
+      return;
+    }
+    String? moto = _motorizadoId ?? _motorizados.first['id'] as String;
+    final montoCtrl = TextEditingController();
+    final obsCtrl = TextEditingController();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlg) => AlertDialog(
+          title: const Text('Entregar fondo de vuelto'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: moto,
+                  decoration: const InputDecoration(
+                    labelText: 'Motorizado',
+                    prefixIcon: Icon(Icons.delivery_dining_outlined),
+                  ),
+                  items: [
+                    for (final m in _motorizados)
+                      DropdownMenuItem<String>(
+                        value: m['id'] as String,
+                        child: Text(m['nombre'] as String? ?? ''),
+                      ),
+                  ],
+                  onChanged: (v) => setDlg(() => moto = v),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: montoCtrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Monto entregado',
+                    prefixText: 'S/ ',
+                    prefixIcon: Icon(Icons.payments_outlined),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: obsCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Observación (opcional)',
+                    prefixIcon: Icon(Icons.notes_outlined),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Entregar'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (ok != true || moto == null || !mounted) return;
+
+    final monto = double.tryParse(montoCtrl.text.replaceAll(',', '.')) ?? 0;
+    if (monto <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Escribe un monto mayor a cero.')),
+      );
+      return;
+    }
+    try {
+      await fondoVueltoRepo.entregar(
+        empresaId: auth.empresaId!,
+        motorizadoId: moto!,
+        entregadoPor: auth.usuarioId!,
+        monto: monto,
+        observaciones: obsCtrl.text.trim().isEmpty ? null : obsCtrl.text.trim(),
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Fondo de vuelto registrado. Ya aparece en la rendición.'),
+        ),
+      );
+      _cargar(silencioso: true);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(traducirError(e, contexto: 'No pudimos registrar el fondo').mensaje),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final r = _rendicion;
@@ -179,6 +304,11 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
       appBar: AppBar(
         title: const Text('Rendición'),
         actions: [
+          TextButton.icon(
+            onPressed: _entregarFondo,
+            icon: const Icon(Icons.money_outlined),
+            label: const Text('Fondo'),
+          ),
           IconButton(
             tooltip: 'Actualizar',
             onPressed: _cargar,
@@ -289,11 +419,31 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                               FilaValor('Efectivo', dinero(r.efectivo)),
                               if (r.otros > 0) FilaValor('Otros', dinero(r.otros)),
                               const Divider(height: 22),
+                              FilaValor('Fondo de vuelto', dinero(r.fondoInicial),
+                                  color: AppTheme.info),
+                              FilaValor('Gastos en efectivo', dinero(r.gastosEfectivo),
+                                  color: r.gastosEfectivo > 0 ? AppTheme.danger : null),
+                              FilaValor('Efectivo esperado', dinero(r.efectivoEsperado),
+                                  destacado: true),
+                              if (r.hayDeclaracion) ...[
+                                FilaValor('Efectivo declarado',
+                                    dinero(r.efectivoDeclarado)),
+                                FilaValor(
+                                  'Diferencia',
+                                  '${r.diferencia >= 0 ? '+' : '-'}${dinero(r.diferencia.abs())}',
+                                  color: r.tieneDiferencia
+                                      ? AppTheme.danger
+                                      : AppTheme.success,
+                                  destacado: true,
+                                ),
+                              ],
+                              const Divider(height: 22),
                               FilaValor('Deudas generadas', dinero(r.deudasGeneradas),
                                   color: r.deudasGeneradas > 0 ? AppTheme.danger : null),
                               const Divider(height: 22),
-                              FilaValor('Balones vacíos recibidos',
-                                  '${r.balonesVaciosRecibidos}'),
+                              FilaValor('Balones entregados', '${r.balonesEntregados}'),
+                              FilaValor('Balones devueltos', '${r.balonesDevueltos}',
+                                  color: AppTheme.success),
                               FilaValor('Balones vacíos pendientes',
                                   '${r.balonesVaciosPendientes}',
                                   color: r.balonesVaciosPendientes > 0
