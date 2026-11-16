@@ -146,6 +146,7 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
                     Text('Resumen del día', style: Theme.of(context).textTheme.titleMedium),
                     const SizedBox(height: 10),
                     FilaValor('Pedidos entregados', '${r.entregados}'),
+                    FilaValor('Registrados por mí', '${r.pedidosManuales}'),
                     FilaValor('Ventas', dinero(r.totalACobrar)),
                     FilaValor('Efectivo cobrado', dinero(r.efectivo)),
                     FilaValor('Yape (no va en efectivo)', dinero(r.yape),
@@ -154,6 +155,9 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
                         color: AppTheme.warning),
                     if (r.gastosTotal > 0)
                       FilaValor('Gastos', dinero(r.gastosTotal), color: AppTheme.danger),
+                    if (r.incidencias > 0)
+                      FilaValor('Fallas (${r.incidencias})',
+                          dinero(r.incidenciasTotal), color: AppTheme.danger),
                     FilaValor('Fondo de vuelto', dinero(r.fondoInicial),
                         color: AppTheme.info),
                     const Divider(height: 18),

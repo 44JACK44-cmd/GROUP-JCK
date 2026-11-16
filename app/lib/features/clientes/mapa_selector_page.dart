@@ -24,6 +24,7 @@ import 'package:latlong2/latlong.dart';
 
 import '../../app/theme.dart';
 import '../../core/config.dart';
+import '../../core/ui/aviso_maps.dart';
 
 /// Resultado del mini mapa.
 class UbicacionElegida {
@@ -376,6 +377,7 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
                 ],
               ),
             ),
+          const AvisoGoogleMaps(),
           Expanded(
             child: Stack(
               children: [

@@ -1,14 +1,21 @@
 /// Registro rápido de gasto por el motorizado.
+///
+/// La foto del comprobante es opcional. Si no hay Internet, la ruta local se
+/// conserva en el Outbox y se sube a Storage al sincronizar.
 library;
+
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/sb.dart';
 import '../../core/offline/outbox.dart';
 import '../../core/state/bus.dart';
+import '../../core/storage/comprobante_service.dart';
 import '../auth/auth_controller.dart';
 
 class RegistroGastoPage extends ConsumerStatefulWidget {
@@ -25,17 +32,18 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
 
   String _categoria = 'Combustible';
   String _medioPago = 'EFECTIVO';
+  String? _fotoPath;
   bool _guardando = false;
 
   static const _medios = ['EFECTIVO', 'YAPE', 'OTRO'];
 
-  static const _categorias = {
-    'Combustible': '⛽',
-    'Reparación': '🔧',
-    'Mantenimiento': '🛠️',
-    'Estacionamiento': '🅿️',
-    'Peaje': '🛣️',
-    'Otro': '💳',
+  static const _categorias = <String, IconData>{
+    'Combustible': Icons.local_gas_station_outlined,
+    'Reparación': Icons.build_outlined,
+    'Mantenimiento': Icons.handyman_outlined,
+    'Estacionamiento': Icons.local_parking_outlined,
+    'Peaje': Icons.toll_outlined,
+    'Otro': Icons.receipt_long_outlined,
   };
 
   @override
@@ -44,6 +52,19 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
     _montoCtrl.dispose();
     _observacionCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _tomarFoto(ImageSource source) async {
+    try {
+      final x = await ImagePicker().pickImage(
+        source: source,
+        imageQuality: 70,
+        maxWidth: 1280,
+      );
+      if (x != null && mounted) setState(() => _fotoPath = x.path);
+    } catch (_) {
+      if (mounted) _error('No se pudo abrir la cámara.');
+    }
   }
 
   Future<void> _guardar() async {
@@ -58,7 +79,6 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
       return;
     }
 
-    // La observación no se pierde: se guarda junto con la descripción.
     final observacion = _observacionCtrl.text.trim();
     final descripcionCompleta = observacion.isEmpty
         ? descripcion
@@ -76,49 +96,66 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
       'medio_pago': _medioPago,
       'fecha': DateTime.now().toIso8601String(),
       'uuid_offline': uuid,
+      if (_fotoPath != null) 'comprobante_local_path': _fotoPath,
     };
-    try {
+
+    String? comprobanteUrl;
+    if (_fotoPath != null) {
+      comprobanteUrl = await ComprobanteService.subir(_fotoPath!);
+    }
+    final fotoPendiente = _fotoPath != null && comprobanteUrl == null;
+
+    if (!fotoPendiente) {
+      final fila = Map<String, dynamic>.from(datos)
+        ..remove('comprobante_local_path');
+      if (comprobanteUrl != null) fila['comprobante_url'] = comprobanteUrl;
       try {
-        await sb.from('gastos').insert(datos);
-      } catch (e) {
-        if (esErrorDeRed(e)) rethrow;
-        // Si la migración de `medio_pago`/`uuid_offline` todavía no está
-        // aplicada, se guarda igual sin ese dato (no se pierde el gasto).
-        if (!esColumnaAusente(e) && !esValorInvalido(e)) rethrow;
-        final reintento = Map<String, dynamic>.from(datos)
-          ..remove('medio_pago')
-          ..remove('uuid_offline');
-        await sb.from('gastos').insert(reintento);
-      }
-      SyncBus.dineroCambio();
-      if (!mounted) return;
-      Navigator.of(context).pop(true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gasto registrado.')),
-      );
-    } catch (e) {
-      if (esErrorDeRed(e)) {
-        // Sin conexión: el gasto queda en la cola y se envía solo. No se pierde.
-        await Outbox.encolarGasto(gasto: datos);
+        try {
+          await sb.from('gastos').insert(fila);
+        } catch (e) {
+          if (esErrorDeRed(e)) rethrow;
+          if (!esColumnaAusente(e) && !esValorInvalido(e)) rethrow;
+          final reintento = Map<String, dynamic>.from(fila)
+            ..remove('comprobante_url')
+            ..remove('medio_pago')
+            ..remove('uuid_offline');
+          await sb.from('gastos').insert(reintento);
+        }
+        SyncBus.dineroCambio();
         if (!mounted) return;
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Sin conexión: el gasto quedó guardado y se enviará solo.'),
-          ),
+          const SnackBar(content: Text('Gasto registrado.')),
         );
         return;
+      } catch (e) {
+        if (!esErrorDeRed(e)) {
+          if (!mounted) return;
+          setState(() => _guardando = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                traducirError(e, contexto: 'No pudimos registrar el gasto').mensaje,
+              ),
+            ),
+          );
+          return;
+        }
+        // Sin conexión: se encola con la foto local.
       }
-      if (!mounted) return;
-      setState(() => _guardando = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            traducirError(e, contexto: 'No pudimos registrar el gasto').mensaje,
-          ),
-        ),
-      );
     }
+
+    await Outbox.encolarGasto(
+      gasto: datos,
+      comprobanteLocalPath: _fotoPath,
+    );
+    if (!mounted) return;
+    Navigator.of(context).pop(true);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Guardado en el dispositivo. Se sincronizará automáticamente.'),
+      ),
+    );
   }
 
   void _error(String msg) {
@@ -140,9 +177,10 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
             children: [
               for (final e in _categorias.entries)
                 ChoiceChip(
-                  label: Text('${e.value} ${e.key}'),
+                  avatar: Icon(e.value, size: 18),
+                  label: Text(e.key),
                   selected: _categoria == e.key,
-                  selectedColor: AppTheme.primary.withValues(alpha: 0.15),
+                  selectedColor: AppTheme.primary.withValues(alpha: 0.12),
                   labelStyle: TextStyle(
                     color: _categoria == e.key ? AppTheme.primary : Colors.black87,
                     fontWeight: _categoria == e.key ? FontWeight.w600 : FontWeight.normal,
@@ -181,12 +219,12 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
               for (final m in _medios)
                 ChoiceChip(
                   label: Text(m == 'EFECTIVO'
-                      ? '💵 Efectivo'
+                      ? 'Efectivo'
                       : m == 'YAPE'
-                          ? '📱 Yape'
-                          : '💳 Otro'),
+                          ? 'Yape'
+                          : 'Otro'),
                   selected: _medioPago == m,
-                  selectedColor: AppTheme.primary.withValues(alpha: 0.15),
+                  selectedColor: AppTheme.primary.withValues(alpha: 0.12),
                   onSelected: (_) => setState(() => _medioPago = m),
                 ),
             ],
@@ -200,10 +238,41 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
               prefixIcon: Icon(Icons.notes_outlined),
             ),
           ),
+          const SizedBox(height: 12),
+          Text('Comprobante (opcional)',
+              style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              OutlinedButton.icon(
+                onPressed: () => _tomarFoto(ImageSource.camera),
+                icon: const Icon(Icons.photo_camera_outlined),
+                label: const Text('Tomar foto'),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton.icon(
+                onPressed: () => _tomarFoto(ImageSource.gallery),
+                icon: const Icon(Icons.photo_library_outlined),
+                label: const Text('Galería'),
+              ),
+            ],
+          ),
+          if (_fotoPath != null) ...[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.file(
+                File(_fotoPath!),
+                height: 110,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ],
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: _guardando ? null : _guardar,
-            icon: const Icon(Icons.check),
+            icon: const Icon(Icons.check_circle_outline),
             label: Text(_guardando ? 'Guardando…' : 'Guardar gasto'),
             style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
           ),

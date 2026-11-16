@@ -41,6 +41,13 @@ class Rendicion {
   /// Balones vacíos que volvieron en el periodo.
   final int balonesDevueltos;
 
+  /// Pedidos registrados por el motorizado (cuaderno digital).
+  final int pedidosManuales;
+
+  /// Fallas/incidencias de la jornada y su costo.
+  final int incidencias;
+  final double incidenciasTotal;
+
   final double combustible;
 
   // Gastos por medio de pago
@@ -74,6 +81,9 @@ class Rendicion {
     this.fierrosPendientes = 0,
     this.balonesEntregados = 0,
     this.balonesDevueltos = 0,
+    this.pedidosManuales = 0,
+    this.incidencias = 0,
+    this.incidenciasTotal = 0,
     this.combustible = 0,
     this.gastosEfectivo = 0,
     this.gastosYape = 0,
@@ -91,7 +101,8 @@ class Rendicion {
       pedidosRealizados == 0 &&
       cobrado <= 0.009 &&
       gastosTotal <= 0.009 &&
-      fondoInicial <= 0.009;
+      fondoInicial <= 0.009 &&
+      incidencias == 0;
 
   /// Sobra dinero (positivo) o falta dinero (negativo).
   bool get tieneDiferencia => hayDeclaracion && diferencia.abs() > 0.009;
@@ -148,20 +159,25 @@ class RendicionRepo {
     // 1. Pedidos del periodo. Puede no haber ninguno y aun así existir fondo
     //    o gastos: la rendición NO puede quedar vacía en ese caso.
     final pedidos = <Map<String, dynamic>>[];
-    try {
-      var qPedidos = sb
+    Future<List<Map<String, dynamic>>> consultarPedidos(String columnas) async {
+      var q = sb
           .from('pedidos')
-          .select('id, numero, total, estado, cliente_id, repartidor_id, fecha')
+          .select(columnas)
           .gte('fecha', desde.toIso8601String())
           .lte('fecha', hastaIso);
-      if (motorizadoId != null) {
-        qPedidos = qPedidos.eq('repartidor_id', motorizadoId);
-      }
-      pedidos.addAll(List<Map<String, dynamic>>.from(await qPedidos.limit(5000)));
+      if (motorizadoId != null) q = q.eq('repartidor_id', motorizadoId);
+      return List<Map<String, dynamic>>.from(await q.limit(5000));
+    }
+
+    const conOrigen =
+        'id, numero, total, estado, cliente_id, repartidor_id, fecha, origen';
+    const sinOrigen =
+        'id, numero, total, estado, cliente_id, repartidor_id, fecha';
+    try {
+      pedidos.addAll(await consultarPedidos(conOrigen));
     } catch (e) {
-      if (!esPermisoDenegado(e)) rethrow;
-      // Sin permiso de lectura no se inventan números: se informa en pantalla.
-      rethrow;
+      if (!esColumnaAusente(e)) rethrow;
+      pedidos.addAll(await consultarPedidos(sinOrigen));
     }
 
     final pedidosIds = pedidos.map((p) => p['id'] as String).toList();
@@ -217,6 +233,27 @@ class RendicionRepo {
       }
     }
 
+    // 3b. Fallas e incidencias de la jornada.
+    var incidenciasData = <Map<String, dynamic>>[];
+    if (motorizadoId != null) {
+      try {
+        final i = await sb
+            .from('incidencias')
+            .select('monto')
+            .eq('usuario_id', motorizadoId)
+            .gte('fecha', desde.toIso8601String())
+            .lte('fecha', hastaIso)
+            .limit(200);
+        incidenciasData = List<Map<String, dynamic>>.from(i);
+      } catch (e) {
+        if (!esPermisoDenegado(e) && !esTablaAusente(e)) rethrow;
+      }
+    }
+    final incidenciasTotal = incidenciasData.fold<double>(
+      0,
+      (s, i) => s + (i['monto'] as num? ?? 0).toDouble(),
+    );
+
     // 4. Fondo de vuelto entregado por el administrador.
     var fondoInicial = 0.0;
     if (motorizadoId != null) {
@@ -261,8 +298,10 @@ class RendicionRepo {
 
     // 6. Totales por estado.
     var entregados = 0, noEntregados = 0, cancelados = 0, pendientes = 0;
+    var pedidosManuales = 0;
     var totalACobrar = 0.0;
     for (final p in pedidos) {
+      if (p['origen'] == 'MOTORIZADO') pedidosManuales++;
       final estado = p['estado'] as String? ?? '';
       final total = (p['total'] as num? ?? 0).toDouble();
       switch (estado) {
@@ -387,6 +426,9 @@ class RendicionRepo {
       fierrosPendientes: fierrosPendientes,
       balonesEntregados: balonesEntregados,
       balonesDevueltos: vaciosRecibidos,
+      pedidosManuales: pedidosManuales,
+      incidencias: incidenciasData.length,
+      incidenciasTotal: incidenciasTotal,
       combustible: combustible,
       gastosEfectivo: gastosEfectivo,
       gastosYape: gastosYape,

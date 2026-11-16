@@ -258,7 +258,7 @@ class _EntregaSheetState extends State<_EntregaSheet> {
               children: [
                 Expanded(
                   child: _BotonPago(
-                    etiqueta: '💵 Efectivo',
+                    etiqueta: 'Efectivo',
                     seleccionado: !_quedoDebiendo && _metodo == 'EFECTIVO',
                     onTap: () => _elegirMetodo('EFECTIVO'),
                   ),
@@ -266,7 +266,7 @@ class _EntregaSheetState extends State<_EntregaSheet> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _BotonPago(
-                    etiqueta: '📱 Yape',
+                    etiqueta: 'Yape',
                     seleccionado: !_quedoDebiendo && _metodo == 'YAPE',
                     onTap: () => _elegirMetodo('YAPE'),
                   ),
@@ -278,7 +278,7 @@ class _EntregaSheetState extends State<_EntregaSheet> {
               children: [
                 Expanded(
                   child: _BotonPago(
-                    etiqueta: '💳 Otro',
+                    etiqueta: 'Otro',
                     seleccionado: !_quedoDebiendo && _metodo == 'OTRO',
                     onTap: () => _elegirMetodo('OTRO'),
                   ),
@@ -286,7 +286,7 @@ class _EntregaSheetState extends State<_EntregaSheet> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: _BotonPago(
-                    etiqueta: '🟠 Quedó debiendo',
+                    etiqueta: 'Quedó debiendo',
                     seleccionado: _quedoDebiendo,
                     color: AppTheme.warning,
                     onTap: () => _elegirMetodo('DEUDA'),

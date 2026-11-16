@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app/theme.dart';
 import 'core/config.dart';
 import 'core/offline/sync_service.dart';
+import 'core/realtime/realtime_service.dart';
 import 'core/update/app_update_service.dart';
 import 'features/ajustes/ajustes_page.dart';
 import 'features/auth/auth_controller.dart';
@@ -27,6 +28,7 @@ import 'features/mi_registro/registro_incidencia_page.dart';
 import 'features/mi_registro/registro_pedido_page.dart';
 import 'features/motorizados/motorizados_actividad_page.dart';
 import 'features/motorizados/motorizados_page.dart';
+import 'features/movimientos/movimientos_page.dart';
 import 'features/pedidos/calendario_page.dart';
 import 'features/pedidos/historial_page.dart';
 import 'features/pedidos/mis_pedidos_page.dart';
@@ -88,12 +90,14 @@ class _GasAppState extends ConsumerState<GasApp> {
   void initState() {
     super.initState();
     SyncService.instance.start();
+    RealtimeService.instance.start();
     WidgetsBinding.instance.addPostFrameCallback((_) => _verificarActualizacion());
   }
 
   @override
   void dispose() {
     SyncService.instance.stop();
+    RealtimeService.instance.stop();
     super.dispose();
   }
 
@@ -250,6 +254,7 @@ class _GasAppState extends ConsumerState<GasApp> {
             GoRoute(path: '/mis-pedidos', builder: (_, state) => const MisPedidosPage()),
             GoRoute(path: '/historial', builder: (_, state) => const HistorialPage()),
             GoRoute(path: '/mi-registro', builder: (_, state) => const MiRegistroPage()),
+            GoRoute(path: '/movimientos', builder: (_, state) => const MovimientosPage()),
             GoRoute(path: '/calendario', builder: (_, state) => const CalendarioPage()),
             GoRoute(path: '/mas-moto', builder: (_, state) => const MasMotoPage()),
           ],

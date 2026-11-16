@@ -356,8 +356,8 @@ class _AjustesPageState extends State<AjustesPage> {
           t == ConnectivityResult.wifi ||
           t == ConnectivityResult.ethernet);
       resultados.add(hayRed
-          ? '✓ Red del dispositivo: conectada'
-          : '✗ Red del dispositivo: sin conexión');
+          ? 'OK · Red del dispositivo: conectada'
+          : 'NO · Red del dispositivo: sin conexión');
     } catch (_) {
       resultados.add('• Red del dispositivo: no se pudo comprobar');
     }
@@ -367,28 +367,28 @@ class _AjustesPageState extends State<AjustesPage> {
     switch (_estadoCon) {
       case EstadoPrueba.ok:
         final ms = _latencia ?? 0;
-        resultados.add('✓ Servidor Supabase: responde en $ms ms');
+        resultados.add('OK · Servidor Supabase: responde en $ms ms');
       case EstadoPrueba.fallido:
-        resultados.add('✗ Servidor Supabase: ${_errorCon ?? 'sin respuesta'}');
+        resultados.add('NO · Servidor Supabase: ${_errorCon ?? 'sin respuesta'}');
       default:
         resultados.add('• Servidor Supabase: sin comprobar');
     }
 
     // 3. Versión publicada
     if (_versionServidor == null) {
-      resultados.add('✗ Actualizaciones: no se pudo leer la versión publicada');
+      resultados.add('NO · Actualizaciones: no se pudo leer la versión publicada');
     } else if (_hayActualizacion == true) {
       resultados.add(
           '! Actualización disponible: $_versionLocal → $_versionServidor');
     } else if (_hayActualizacion == false) {
-      resultados.add('✓ Versión: $_versionLocal (actualizada)');
+      resultados.add('OK · Versión: $_versionLocal (actualizada)');
     } else {
       resultados.add('• Versión publicada: $_versionServidor');
     }
 
     // 4. Ubicación
     if (_permisoUbicacion == 'Concedido') {
-      resultados.add('✓ Permiso de ubicación: concedido');
+      resultados.add('OK · Permiso de ubicación: concedido');
     } else {
       resultados.add('! Permiso de ubicación: $_permisoUbicacion');
     }

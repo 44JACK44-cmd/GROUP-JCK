@@ -63,9 +63,9 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
   bool _guardando = false;
 
   static const _formasPago = [
-    ('EFECTIVO', '💵', 'Efectivo'),
-    ('YAPE', '📱', 'Yape'),
-    ('DEUDA', '🟠', 'Queda debiendo'),
+    ('EFECTIVO', Icons.payments_outlined, 'Efectivo'),
+    ('YAPE', Icons.account_balance_wallet_outlined, 'Yape'),
+    ('DEUDA', Icons.assignment_outlined, 'Queda debiendo'),
   ];
 
   @override
@@ -157,17 +157,6 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
       _longitud = elegida.longitud;
       if ((elegida.direccion ?? '').isNotEmpty) _direccionCtrl.text = elegida.direccion!;
       if ((elegida.referencia ?? '').isNotEmpty) _referenciaCtrl.text = elegida.referencia!;
-    });
-  }
-
-  Future<void> _elegirHora() async {
-    final t = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.fromDateTime(_hora),
-    );
-    if (t == null) return;
-    setState(() {
-      _hora = DateTime(_hora.year, _hora.month, _hora.day, t.hour, t.minute);
     });
   }
 
@@ -339,7 +328,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
         repartidorId: usuarioId,
         uuidOffline: uuid,
         origen: 'MOTORIZADO',
-        fecha: _hora,
+        // La hora la pone la base de datos (`pedidos.fecha default now()`).
       );
 
       // 3) Subir comprobante si hay foto y es Yape.
@@ -398,7 +387,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
             'uuid_offline': uuid,
             'repartidor_id': usuarioId,
             'origen': 'MOTORIZADO',
-            'fecha': _hora.toIso8601String(),
+            'fecha': DateTime.now().toIso8601String(),
           },
           clienteNuevo: clienteNuevo,
           detalles: [
@@ -530,7 +519,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                       onPressed: _marcarUbicacion,
                       icon: const Icon(Icons.map_outlined),
                       label: Text(
-                        _latitud != null ? 'Cambiar ubicación' : '📍 Marcar ubicación',
+                        _latitud != null ? 'Cambiar ubicación' : 'Marcar ubicación',
                       ),
                       style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
                     ),
@@ -546,21 +535,23 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                 ),
                 const SizedBox(height: 12),
                 _seccion(
-                  titulo: 'Hora',
+                  titulo: 'Hora del pedido',
                   icono: Icons.schedule_outlined,
                   hijos: [
-                    OutlinedButton.icon(
-                      onPressed: _elegirHora,
-                      icon: const Icon(Icons.access_time),
-                      label: Text(
-                        '${_hora.hour.toString().padLeft(2, '0')}:${_hora.minute.toString().padLeft(2, '0')}  '
-                        '${_hora.day}/${_hora.month}/${_hora.year}',
-                      ),
-                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, size: 18, color: Colors.black45),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${_hora.hour.toString().padLeft(2, '0')}:${_hora.minute.toString().padLeft(2, '0')}'
+                          '  ·  ${_hora.day}/${_hora.month}/${_hora.year}',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     const Text(
-                      'Por defecto es la hora actual. Cámbiala si registras después.',
+                      'La hora la registra el sistema automáticamente.',
                       style: TextStyle(fontSize: 12, color: Colors.black45),
                     ),
                   ],
@@ -656,7 +647,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                         for (final f in _formasPago) ...[
                           Expanded(
                             child: _BotonOpcion(
-                              emoji: f.$2,
+                              icono: f.$2,
                               etiqueta: f.$3,
                               seleccionado: _formaPago == f.$1,
                               color: f.$1 == 'DEUDA' ? AppTheme.warning : AppTheme.primary,
@@ -713,7 +704,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                       children: [
                         Expanded(
                           child: _BotonOpcion(
-                            emoji: '✅',
+                            icono: Icons.check_circle_outline,
                             etiqueta: 'Sí',
                             seleccionado: _balonDejado,
                             color: AppTheme.success,
@@ -723,7 +714,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: _BotonOpcion(
-                            emoji: '❌',
+                            icono: Icons.cancel_outlined,
                             etiqueta: 'No',
                             seleccionado: !_balonDejado,
                             color: AppTheme.warning,
@@ -807,14 +798,14 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
 }
 
 class _BotonOpcion extends StatelessWidget {
-  final String emoji;
+  final IconData icono;
   final String etiqueta;
   final bool seleccionado;
   final Color color;
   final VoidCallback onTap;
 
   const _BotonOpcion({
-    required this.emoji,
+    required this.icono,
     required this.etiqueta,
     required this.seleccionado,
     required this.color,
@@ -840,7 +831,7 @@ class _BotonOpcion extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 16)),
+            Icon(icono, size: 22, color: seleccionado ? color : Colors.black54),
             const SizedBox(height: 2),
             Text(
               etiqueta,

@@ -160,6 +160,18 @@ select 'realtime ubicaciones',
                             and schemaname = 'public' and tablename = 'ubicaciones_motorizado')
             then 'OK' else 'FALTA' end
 union all
+select 'foto comprobante de gasto',
+       case when exists (select 1 from information_schema.columns
+                           where table_schema = 'public' and table_name = 'gastos'
+                             and column_name = 'comprobante_url')
+            then 'OK' else 'FALTA' end
+union all
+select 'foto comprobante de falla',
+       case when exists (select 1 from information_schema.columns
+                           where table_schema = 'public' and table_name = 'incidencias'
+                             and column_name = 'comprobante_url')
+            then 'OK' else 'FALTA' end
+union all
 select 'tabla fondo_vuelto',
        case when to_regclass('public.fondo_vuelto') is not null
             then 'OK' else 'FALTA' end

@@ -9,14 +9,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/pedidos_repo.dart';
 import '../../core/data/rendicion_repo.dart';
-import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
 import '../../core/location/ubicacion_service.dart';
+import '../../core/state/bus.dart';
+import '../../core/ui/estado_conexion.dart';
 import '../auth/auth_controller.dart';
 
 class HomeMotoPage extends ConsumerStatefulWidget {
@@ -30,13 +30,15 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
   Rendicion _hoy = const Rendicion();
   int _porEntregar = 0;
   bool _cargando = true;
-  RealtimeChannel? _canal;
 
   @override
   void initState() {
     super.initState();
+    SyncBus.pedidos.addListener(_onBus);
+    SyncBus.dinero.addListener(_onBus);
+    SyncBus.movimientos.addListener(_onBus);
+    SyncBus.rendiciones.addListener(_onBus);
     _cargar();
-    _escucharRealtime();
     UbicacionService.instance.iniciarSiCorresponde();
     UbicacionService.instance.estado.addListener(_onGps);
   }
@@ -44,7 +46,10 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
   @override
   void dispose() {
     UbicacionService.instance.estado.removeListener(_onGps);
-    _canal?.unsubscribe();
+    SyncBus.pedidos.removeListener(_onBus);
+    SyncBus.dinero.removeListener(_onBus);
+    SyncBus.movimientos.removeListener(_onBus);
+    SyncBus.rendiciones.removeListener(_onBus);
     super.dispose();
   }
 
@@ -52,43 +57,8 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
     if (mounted) setState(() {});
   }
 
-  void _escucharRealtime() {
-    final uid = ref.read(authProvider).usuarioId;
-    if (uid == null) return;
-    try {
-      _canal = sb
-          .channel('home-moto-$uid')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'pedidos',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'repartidor_id',
-              value: uid,
-            ),
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'gastos',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'fondo_vuelto',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .subscribe();
-    } catch (_) {}
+  void _onBus() {
+    if (mounted) _cargar();
   }
 
   Future<void> _cargar() async {
@@ -256,19 +226,20 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
+              const EstadoConexion(),
               Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('$saludo, ${auth.nombre ?? ''} 👋',
+                        Text('$saludo, ${auth.nombre ?? ''}',
                             style: Theme.of(context).textTheme.titleLarge),
                         const SizedBox(height: 2),
                         Text(
                           _porEntregar > 0
-                              ? '🟢 Jornada activa · $_porEntregar pedido(s) por entregar'
-                              : '🟢 Jornada activa · sin pedidos por entregar',
+                              ? 'Jornada activa · $_porEntregar pedido(s) por entregar'
+                              : 'Jornada activa · sin pedidos por entregar',
                           style: const TextStyle(
                             color: AppTheme.success,
                             fontWeight: FontWeight.w600,
@@ -322,6 +293,13 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                     '${_hoy.hayDeclaracion ? ' · declarado ${dinero(_hoy.efectivoDeclarado)}' : ''}',
                 accion: 'VER MI RENDICIÓN',
                 onTap: () => context.push('/declarar-rendicion'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/movimientos'),
+                icon: const Icon(Icons.timeline),
+                label: const Text('Movimientos de mi jornada'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
               ),
               const SizedBox(height: 12),
               _gpsCard(),

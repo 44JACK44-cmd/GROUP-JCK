@@ -212,11 +212,11 @@ class _CobroSheetState extends State<_CobroSheet> {
   bool _buscando = false;
 
   static const _metodos = {
-    'EFECTIVO': '💵 Efectivo',
-    'YAPE': '📱 Yape',
-    'PLIN': '📱 Plin',
-    'TRANSFERENCIA': '🏦 Transferencia',
-    'OTRO': '💳 Otro',
+    'EFECTIVO': 'Efectivo',
+    'YAPE': 'Yape',
+    'PLIN': 'Plin',
+    'TRANSFERENCIA': 'Transferencia',
+    'OTRO': 'Otro',
   };
 
   @override

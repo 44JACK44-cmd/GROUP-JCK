@@ -11,6 +11,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../realtime/realtime_service.dart';
+import '../state/bus.dart';
 import 'outbox.dart';
 
 class SyncService with WidgetsBindingObserver {
@@ -31,7 +33,11 @@ class SyncService with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     _conexion = Connectivity().onConnectivityChanged.listen((resultados) {
       final hayRed = resultados.any((r) => r != ConnectivityResult.none);
-      if (hayRed) sincronizar();
+      SyncBus.conexionCambio(hayRed);
+      if (hayRed) {
+        RealtimeService.instance.reconectar();
+        sincronizar();
+      }
     });
     _reloj = Timer.periodic(const Duration(seconds: 60), (_) => sincronizar());
     sincronizar();
@@ -55,6 +61,7 @@ class SyncService with WidgetsBindingObserver {
     if (_corriendo) return 0;
     if (Supabase.instance.client.auth.currentUser == null) return 0;
     _corriendo = true;
+    SyncBus.sincronizandoCambio(true);
     try {
       final enviadas = await Outbox.procesar();
       if (enviadas > 0) ultimaSincronizacion = DateTime.now();
@@ -63,6 +70,7 @@ class SyncService with WidgetsBindingObserver {
       return 0;
     } finally {
       _corriendo = false;
+      SyncBus.sincronizandoCambio(false);
     }
   }
 

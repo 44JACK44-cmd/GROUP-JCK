@@ -219,11 +219,11 @@ class _PagoDeudaSheetState extends State<_PagoDeudaSheet> {
   String _metodo = 'EFECTIVO';
 
   static const _metodos = {
-    'EFECTIVO': '💵 Efectivo',
-    'YAPE': '📱 Yape',
-    'PLIN': '📱 Plin',
-    'TRANSFERENCIA': '🏦 Transferencia',
-    'OTRO': '💳 Otro',
+    'EFECTIVO': 'Efectivo',
+    'YAPE': 'Yape',
+    'PLIN': 'Plin',
+    'TRANSFERENCIA': 'Transferencia',
+    'OTRO': 'Otro',
   };
 
   @override

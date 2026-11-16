@@ -6,16 +6,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/actividad_repo.dart';
 import '../../core/data/motorizados_repo.dart';
 import '../../core/data/pedidos_repo.dart';
-import '../../core/data/sb.dart';
 import '../../core/data/ubicaciones_repo.dart';
 import '../../core/domain/formato.dart';
 import '../../core/state/bus.dart';
+import '../../core/ui/estado_conexion.dart';
 import '../auth/auth_controller.dart';
 
 class HomePage extends ConsumerStatefulWidget {
@@ -34,7 +33,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   List<Map<String, dynamic>> _motos = [];
   Map<String, UbicacionMotorizado> _ubicaciones = {};
   int _peticion = 0;
-  RealtimeChannel? _canal;
 
   @override
   void initState() {
@@ -42,8 +40,9 @@ class _HomePageState extends ConsumerState<HomePage> {
     SyncBus.pedidos.addListener(_onBus);
     SyncBus.dinero.addListener(_onBus);
     SyncBus.ubicaciones.addListener(_onBus);
+    SyncBus.movimientos.addListener(_onBus);
+    SyncBus.rendiciones.addListener(_onBus);
     _cargar();
-    _escuchar();
   }
 
   @override
@@ -51,60 +50,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     SyncBus.pedidos.removeListener(_onBus);
     SyncBus.dinero.removeListener(_onBus);
     SyncBus.ubicaciones.removeListener(_onBus);
-    _canal?.unsubscribe();
+    SyncBus.movimientos.removeListener(_onBus);
+    SyncBus.rendiciones.removeListener(_onBus);
     super.dispose();
   }
 
   void _onBus() {
     if (mounted) _cargar();
-  }
-
-  void _escuchar() {
-    try {
-      _canal = sb
-          .channel('admin-actividad-vivo')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'pedidos',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'gastos',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'pagos',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'ubicaciones_motorizado',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'fondo_vuelto',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .subscribe();
-    } catch (_) {}
   }
 
   Future<void> _cargar() async {
@@ -188,6 +140,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
+              const EstadoConexion(),
               Row(
                 children: [
                   Expanded(
@@ -215,7 +168,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 icon: const Icon(Icons.add, size: 26),
                 label: const Padding(
                   padding: EdgeInsets.symmetric(vertical: 10),
-                  child: Text('＋ NUEVO PEDIDO', style: TextStyle(fontSize: 18)),
+                  child: Text('NUEVO PEDIDO', style: TextStyle(fontSize: 18)),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppTheme.primary,
@@ -225,7 +178,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               const SizedBox(height: 16),
               _acceso(
                 icono: Icons.local_shipping_outlined,
-                titulo: '📞 PEDIDOS DE HOY',
+                titulo: 'Pedidos de hoy',
                 detalle: _cargando
                     ? '...'
                     : '$_pendientes pendientes · $_enCamino en camino',
@@ -235,7 +188,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               const SizedBox(height: 8),
               _acceso(
                 icono: Icons.delivery_dining_outlined,
-                titulo: '🛵 MOTORIZADOS',
+                titulo: 'Motorizados',
                 detalle: 'Actividad, ubicación y estado de cada uno',
                 color: AppTheme.info,
                 onTap: () => context.push('/motorizados-actividad'),
@@ -243,7 +196,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               const SizedBox(height: 8),
               _acceso(
                 icono: Icons.point_of_sale_outlined,
-                titulo: '💰 CAJA',
+                titulo: 'Caja',
                 detalle: 'Ingresos, egresos y cierre del día',
                 color: AppTheme.success,
                 onTap: () => context.push('/caja'),
@@ -251,7 +204,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               const SizedBox(height: 8),
               _acceso(
                 icono: Icons.assignment_turned_in_outlined,
-                titulo: '📊 RENDICIONES',
+                titulo: 'Rendiciones',
                 detalle: 'Fondo, efectivo, Yape, deuda y diferencia',
                 color: AppTheme.primary,
                 onTap: () => context.push('/rendicion'),
@@ -260,7 +213,14 @@ class _HomePageState extends ConsumerState<HomePage> {
               OutlinedButton.icon(
                 onPressed: () => context.push('/mas'),
                 icon: const Icon(Icons.settings_outlined),
-                label: const Text('⚙ CONFIGURACIÓN'),
+                label: const Text('Configuración'),
+                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => context.push('/movimientos'),
+                icon: const Icon(Icons.timeline),
+                label: const Text('Movimientos'),
                 style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
               ),
               const SizedBox(height: 20),

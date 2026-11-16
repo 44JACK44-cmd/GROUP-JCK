@@ -37,11 +37,11 @@ class _PagoSheetState extends State<_PagoSheet> {
   String _metodo = 'EFECTIVO';
 
   static const _metodos = {
-    'EFECTIVO': '💵 Efectivo',
-    'YAPE': '📱 Yape',
-    'PLIN': '📱 Plin',
-    'TRANSFERENCIA': '🏦 Transferencia',
-    'OTRO': '💳 Otro',
+    'EFECTIVO': 'Efectivo',
+    'YAPE': 'Yape',
+    'PLIN': 'Plin',
+    'TRANSFERENCIA': 'Transferencia',
+    'OTRO': 'Otro',
   };
 
   @override

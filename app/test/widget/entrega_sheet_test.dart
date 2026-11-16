@@ -64,7 +64,7 @@ void main() {
       tester,
       total: 45,
       interaccion: (t) async {
-        await _tocar(t, '🟠 Quedó debiendo');
+        await _tocar(t, 'Quedó debiendo');
         await _tocar(t, 'Finalizar entrega');
       },
     );
@@ -96,7 +96,7 @@ void main() {
       tester,
       total: 45,
       interaccion: (t) async {
-        await _tocar(t, '📱 Yape');
+        await _tocar(t, 'Yape');
         await _tocar(t, 'Finalizar entrega');
         // Sin foto se pide confirmación explícita.
         await _tocar(t, 'Continuar sin foto');
@@ -113,7 +113,7 @@ void main() {
       tester,
       total: 45,
       interaccion: (t) async {
-        await _tocar(t, '📱 Yape');
+        await _tocar(t, 'Yape');
         expect(find.text('Tomar foto'), findsOneWidget);
         expect(find.text('Galería'), findsOneWidget);
         expect(find.text('Finalizar entrega'), findsOneWidget);

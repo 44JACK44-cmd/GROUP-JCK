@@ -16,6 +16,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/caja_ingreso.dart';
+import '../data/sb.dart';
 import '../state/bus.dart';
 
 class Outbox {
@@ -167,13 +168,18 @@ class Outbox {
   }
 
   /// Encola un gasto registrado sin conexión (Mi registro).
-  static Future<void> encolarGasto({required Map<String, dynamic> gasto}) async {
+  static Future<void> encolarGasto({
+    required Map<String, dynamic> gasto,
+    String? comprobanteLocalPath,
+  }) async {
     gasto['uuid_offline'] ??= _uuid.v4();
     final ops = await _leer();
     ops.add({
       'tipo': 'gasto',
       'uuid_offline': gasto['uuid_offline'],
       'gasto': gasto,
+      'comprobante_local_path': comprobanteLocalPath ??
+          gasto['comprobante_local_path'] as String?,
       'fecha': DateTime.now().toIso8601String(),
     });
     await _escribir(ops);
@@ -182,6 +188,7 @@ class Outbox {
   /// Encola una incidencia registrada sin conexión.
   static Future<void> encolarIncidencia({
     required Map<String, dynamic> incidencia,
+    String? comprobanteLocalPath,
   }) async {
     incidencia['uuid_offline'] ??= _uuid.v4();
     final ops = await _leer();
@@ -189,6 +196,8 @@ class Outbox {
       'tipo': 'incidencia',
       'uuid_offline': incidencia['uuid_offline'],
       'incidencia': incidencia,
+      'comprobante_local_path': comprobanteLocalPath ??
+          incidencia['comprobante_local_path'] as String?,
       'fecha': DateTime.now().toIso8601String(),
     });
     await _escribir(ops);
@@ -686,6 +695,9 @@ class Outbox {
 
   static Future<void> _insertarGasto(Map<String, dynamic> op) async {
     final gasto = Map<String, dynamic>.from(op['gasto'] as Map);
+    final comprobanteLocalPath = op['comprobante_local_path'] as String?;
+    // Esta clave es solo de la cola: nunca es una columna de `gastos`.
+    gasto.remove('comprobante_local_path');
     final uuid = gasto['uuid_offline'] as String?;
     // Idempotencia: si la base ya tiene `uuid_offline`, se comprueba; si la
     // migración aún no está, se evita duplicar por descripción+monto+fecha.
@@ -708,9 +720,19 @@ class Outbox {
         if (ya != null) return;
       }
     }
+    if (comprobanteLocalPath != null) {
+      final url = await _subirComprobante(comprobanteLocalPath);
+      if (url != null) gasto['comprobante_url'] = url;
+    }
     try {
       await _sb.from('gastos').insert(gasto);
-    } catch (_) {
+    } catch (e) {
+      if (gasto.containsKey('comprobante_url') && esColumnaAusente(e)) {
+        final sinFoto = Map<String, dynamic>.from(gasto)
+          ..remove('comprobante_url');
+        await _sb.from('gastos').insert(sinFoto);
+        return;
+      }
       if (!gasto.containsKey('uuid_offline')) rethrow;
       final sinUuid = Map<String, dynamic>.from(gasto)..remove('uuid_offline');
       await _sb.from('gastos').insert(sinUuid);
@@ -719,12 +741,29 @@ class Outbox {
 
   static Future<void> _insertarIncidencia(Map<String, dynamic> op) async {
     final inc = Map<String, dynamic>.from(op['incidencia'] as Map);
+    final comprobanteLocalPath = op['comprobante_local_path'] as String?;
+    inc.remove('comprobante_local_path');
     final ya = await _sb
         .from('incidencias')
         .select('id')
         .eq('uuid_offline', inc['uuid_offline'])
         .maybeSingle();
-    if (ya == null) await _sb.from('incidencias').insert(inc);
+    if (ya != null) return;
+    if (comprobanteLocalPath != null) {
+      final url = await _subirComprobante(comprobanteLocalPath);
+      if (url != null) inc['comprobante_url'] = url;
+    }
+    try {
+      await _sb.from('incidencias').insert(inc);
+    } catch (e) {
+      if (inc.containsKey('comprobante_url') && esColumnaAusente(e)) {
+        await _sb
+            .from('incidencias')
+            .insert(Map<String, dynamic>.from(inc)..remove('comprobante_url'));
+        return;
+      }
+      rethrow;
+    }
   }
 
   static Future<void> _insertarDevolucion(Map<String, dynamic> op) async {

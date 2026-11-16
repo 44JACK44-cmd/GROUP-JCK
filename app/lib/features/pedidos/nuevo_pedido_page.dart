@@ -94,9 +94,9 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
   bool _guardando = false;
 
   static const _formasPago = [
-    ('EFECTIVO', '💵', 'Efectivo'),
-    ('YAPE', '📱', 'Yape'),
-    ('DEUDA', '🟠', 'Queda debiendo'),
+    ('EFECTIVO', Icons.payments_outlined, 'Efectivo'),
+    ('YAPE', Icons.account_balance_wallet_outlined, 'Yape'),
+    ('DEUDA', Icons.assignment_outlined, 'Queda debiendo'),
   ];
 
   @override
@@ -499,10 +499,10 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
   }
 
   String _etiquetaPago(String v) => switch (v) {
-        'EFECTIVO' => '💵 Efectivo',
-        'YAPE' => '📱 Yape',
-        'DEUDA' => '🟠 Queda debiendo',
-        _ => '💳 Otro',
+        'EFECTIVO' => 'Efectivo',
+        'YAPE' => 'Yape',
+        'DEUDA' => 'Queda debiendo',
+        _ => 'Otro',
       };
 
   void _aviso(String msg) {
@@ -696,7 +696,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
           onPressed: _marcarUbicacion,
           icon: const Icon(Icons.map_outlined),
           label: Text(
-            marcada || _direccion.isNotEmpty ? 'Cambiar ubicación' : '📍 Marcar ubicación',
+            marcada || _direccion.isNotEmpty ? 'Cambiar ubicación' : 'Marcar ubicación',
           ),
           style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
         ),
@@ -761,7 +761,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
             for (final f in _formasPago) ...[
               Expanded(
                 child: _BotonOpcion(
-                  emoji: f.$2,
+                  icono: f.$2,
                   etiqueta: f.$3,
                   seleccionado: _formaPago == f.$1,
                   color: f.$1 == 'DEUDA' ? AppTheme.warning : AppTheme.primary,
@@ -1046,14 +1046,14 @@ class _LineaCard extends StatelessWidget {
 
 /// Botón grande de forma de pago.
 class _BotonOpcion extends StatelessWidget {
-  final String emoji;
+  final IconData icono;
   final String etiqueta;
   final bool seleccionado;
   final Color color;
   final VoidCallback onTap;
 
   const _BotonOpcion({
-    required this.emoji,
+    required this.icono,
     required this.etiqueta,
     required this.seleccionado,
     required this.color,
@@ -1079,7 +1079,7 @@ class _BotonOpcion extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 16)),
+            Icon(icono, size: 22, color: seleccionado ? color : Colors.black54),
             const SizedBox(height: 2),
             Text(
               etiqueta,

@@ -6,7 +6,6 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/fondo_vuelto_repo.dart';
@@ -14,6 +13,7 @@ import '../../core/data/motorizados_repo.dart';
 import '../../core/data/rendicion_repo.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
+import '../../core/state/bus.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
@@ -45,68 +45,27 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
   String? _motorizadoId;
   Rendicion _rendicion = const Rendicion();
   bool _cargando = true;
-  RealtimeChannel? _canal;
 
   @override
   void initState() {
     super.initState();
+    SyncBus.dinero.addListener(_onBus);
+    SyncBus.movimientos.addListener(_onBus);
+    SyncBus.rendiciones.addListener(_onBus);
     _cargarMotorizados();
     _cargar();
-    _escucharRealtime();
   }
 
   @override
   void dispose() {
-    _canal?.unsubscribe();
+    SyncBus.dinero.removeListener(_onBus);
+    SyncBus.movimientos.removeListener(_onBus);
+    SyncBus.rendiciones.removeListener(_onBus);
     super.dispose();
   }
 
-  void _escucharRealtime() {
-    try {
-      _canal = sb
-          .channel('rendicion')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'pedidos',
-            callback: (_) {
-              if (mounted) _cargar(silencioso: true);
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'pagos',
-            callback: (_) {
-              if (mounted) _cargar(silencioso: true);
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'gastos',
-            callback: (_) {
-              if (mounted) _cargar(silencioso: true);
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'fondo_vuelto',
-            callback: (_) {
-              if (mounted) _cargar(silencioso: true);
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'rendiciones',
-            callback: (_) {
-              if (mounted) _cargar(silencioso: true);
-            },
-          )
-          .subscribe();
-    } catch (_) {}
+  void _onBus() {
+    if (mounted) _cargar(silencioso: true);
   }
 
   Future<void> _cargarMotorizados() async {
@@ -400,6 +359,8 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               FilaValor('Pedidos realizados', '${r.pedidosRealizados}'),
+                              FilaValor('Registrados por motorizado',
+                                  '${r.pedidosManuales}'),
                               FilaValor('Entregados', '${r.entregados}',
                                   color: AppTheme.success),
                               FilaValor('No entregados', '${r.noEntregados}',
@@ -463,6 +424,12 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                               FilaValor('Total gastos', dinero(r.gastosTotal),
                                   destacado: true,
                                   color: r.gastosTotal > 0 ? AppTheme.danger : null),
+                              if (r.incidencias > 0)
+                                FilaValor(
+                                  'Fallas (${r.incidencias})',
+                                  dinero(r.incidenciasTotal),
+                                  color: AppTheme.danger,
+                                ),
                             ],
                           ),
                         ),

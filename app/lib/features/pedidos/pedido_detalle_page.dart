@@ -16,10 +16,9 @@ import '../../core/data/sb.dart';
 import '../../core/domain/estado_pedido.dart';
 import '../../core/domain/formato.dart';
 import '../../core/domain/navegacion.dart';
-import '../../core/prefs/ajustes_prefs.dart';
+import '../../core/ui/estado_stepper.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
-import '../rutas/ruta_page.dart';
 import 'flujo_entrega.dart';
 
 class PedidoDetallePage extends ConsumerStatefulWidget {
@@ -176,7 +175,7 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
         final continuar = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('⚠ No suele trabajar hoy'),
+            title: const Text('No suele trabajar hoy'),
             content: Text(
               '${elegido['nombre'] ?? 'Este motorizado'} normalmente no trabaja '
               'este día. ¿Quieres asignar el pedido excepcionalmente?',
@@ -305,42 +304,23 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
     }
   }
 
-  /// Abre la ruta hasta el cliente.
-  ///
-  /// Si el cliente tiene coordenadas y el ajuste está activo, se navega dentro
-  /// de la app (Google Maps + indicaciones reales). Si no hay coordenadas o el
-  /// ajuste está desactivado, se abre Google Maps externo.
+  /// "Ir al cliente": abre Google Maps con la ubicación GUARDADA DEL CLIENTE
+  /// como destino. Nunca se usa la ubicación actual del motorizado como meta.
   Future<void> _abrirRuta() async {
     final cliente = widget.pedido['clientes'] as Map<String, dynamic>?;
     final lat = (cliente?['latitud'] as num?)?.toDouble();
     final lng = (cliente?['longitud'] as num?)?.toDouble();
     final direccion = cliente?['direccion'] as String? ?? '';
 
-    if (lat == null || lng == null) {
-      final abierto = await navegarACliente(direccion: direccion);
-      if (!abierto && mounted) {
-        _error('El cliente no tiene ubicación guardada. Edita su ficha para marcarla en el mapa.');
-      }
-      return;
-    }
-
-    final dentro = await AjustesPrefs.mapaDentroDeApp();
-    if (!mounted) return;
-    if (!dentro) {
-      await navegarACliente(latitud: lat, longitud: lng, direccion: direccion);
-      return;
-    }
-
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => RutaPage(
-          latitud: lat,
-          longitud: lng,
-          clienteNombre: cliente?['nombre'] as String?,
-          direccion: direccion.isEmpty ? null : direccion,
-        ),
-      ),
+    final abierto = await navegarACliente(
+      latitud: lat,
+      longitud: lng,
+      direccion: direccion.isEmpty ? null : direccion,
     );
+    if (!abierto && mounted) {
+      _error('No se pudo abrir Google Maps. Revisa que esté instalado y que el '
+          'cliente tenga una dirección o ubicación guardada.');
+    }
   }
 
   Future<void> _entregar() async {
@@ -489,7 +469,7 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                                         fontWeight: FontWeight.bold, fontSize: 17),
                                   ),
                                   if (_motorizadoNombre != null)
-                                    Text('🛵 $_motorizadoNombre',
+                                    Text(_motorizadoNombre ?? '',
                                         style: const TextStyle(
                                             color: Colors.black54, fontSize: 13)),
                                 ],
@@ -602,6 +582,11 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                         if (_detalles.isEmpty)
                           const Text('Sin productos registrados.',
                               style: TextStyle(color: Colors.black54)),
+                        const Divider(height: 22),
+                        EstadoStepper(
+                          estado: p['estado'] as String? ?? 'NUEVO',
+                          pagado: _entrega?['estado_pago'] == 'PAGADO',
+                        ),
                         const Divider(height: 22),
                         FilaValor(
                           'Cobrar',

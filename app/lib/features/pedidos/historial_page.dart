@@ -9,7 +9,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/actividad_repo.dart';
@@ -39,44 +38,26 @@ class _HistorialPageState extends ConsumerState<HistorialPage> {
 
   /// Descarta respuestas viejas: si dos cargas se cruzan, solo pinta la última.
   int _peticion = 0;
-  RealtimeChannel? _canal;
 
   @override
   void initState() {
     super.initState();
     SyncBus.pedidos.addListener(_onBus);
     SyncBus.dinero.addListener(_onBus);
+    SyncBus.movimientos.addListener(_onBus);
     _cargar();
-    _escuchar();
   }
 
   @override
   void dispose() {
     SyncBus.pedidos.removeListener(_onBus);
     SyncBus.dinero.removeListener(_onBus);
-    _canal?.unsubscribe();
+    SyncBus.movimientos.removeListener(_onBus);
     super.dispose();
   }
 
   void _onBus() {
     if (mounted) _cargar();
-  }
-
-  void _escuchar() {
-    final auth = ref.read(authProvider);
-    try {
-      _canal = sb
-          .channel('historial-${auth.usuarioId ?? 'admin'}')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'pedidos',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .subscribe();
-    } catch (_) {}
   }
 
   Future<void> _cargar() async {

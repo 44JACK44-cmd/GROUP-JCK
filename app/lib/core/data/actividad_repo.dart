@@ -75,7 +75,9 @@ class ActividadRepo {
         .then((v) => List<Map<String, dynamic>>.from(v as List));
 
     try {
-      return await consultar('id, descripcion, monto, categoria, fecha, medio_pago');
+      return await consultar(
+        'id, descripcion, monto, categoria, fecha, medio_pago, comprobante_url',
+      );
     } catch (_) {
       try {
         return await consultar('id, descripcion, monto, categoria, fecha');
@@ -94,7 +96,7 @@ class ActividadRepo {
     try {
       final data = await sb
           .from('incidencias')
-          .select('id, tipo, descripcion, monto, fecha')
+          .select('id, tipo, descripcion, monto, fecha, comprobante_url')
           .eq('usuario_id', usuarioId)
           .gte('fecha', desde.toIso8601String())
           .lte('fecha', hasta.toIso8601String())
@@ -228,6 +230,84 @@ class ActividadRepo {
     }
   }
 
+  /// Línea de tiempo de TODA la empresa (solo ADMIN por RLS).
+  /// Reutiliza las mismas tablas: pedidos, pagos, gastos e incidencias.
+  Future<List<MovimientoActividad>> movimientosDeTodos({
+    required DateTime desde,
+    required DateTime hasta,
+  }) async {
+    final res = await Future.wait([
+      sb
+          .from('pedidos')
+          .select(
+            'id, numero, fecha, total, estado, forma_pago, origen, '
+            'clientes(nombre)',
+          )
+          .gte('fecha', desde.toIso8601String())
+          .lte('fecha', hasta.toIso8601String())
+          .order('fecha', ascending: false)
+          .limit(400),
+      sb
+          .from('gastos')
+          .select('descripcion, monto, categoria, fecha, medio_pago')
+          .gte('fecha', desde.toIso8601String())
+          .lte('fecha', hasta.toIso8601String())
+          .order('fecha', ascending: false)
+          .limit(400),
+      sb
+          .from('incidencias')
+          .select('tipo, descripcion, monto, fecha')
+          .gte('fecha', desde.toIso8601String())
+          .lte('fecha', hasta.toIso8601String())
+          .order('fecha', ascending: false)
+          .limit(400),
+    ]);
+
+    final items = <MovimientoActividad>[];
+    for (final p in res[0] as List) {
+      final pedido = p as Map<String, dynamic>;
+      final cliente =
+          (pedido['clientes'] as Map?)?['nombre'] as String? ?? 'Cliente';
+      final estado = pedido['estado'] as String? ?? '';
+      items.add(MovimientoActividad(
+        fecha: parseFecha(pedido['fecha']) ?? DateTime.now(),
+        tipo: 'PEDIDO',
+        titulo: estado == 'ENTREGADO'
+            ? 'Pedido entregado a $cliente'
+            : 'Pedido #${pedido['numero'] ?? ''} · $cliente',
+        detalle: pedido['origen'] == 'MOTORIZADO'
+            ? 'Registrado por motorizado'
+            : 'Pedido de recepción',
+        monto: (pedido['total'] as num? ?? 0).toDouble(),
+        estado: estado,
+        metodo: pedido['forma_pago'] as String?,
+      ));
+    }
+    for (final g in res[1] as List) {
+      final gasto = g as Map<String, dynamic>;
+      items.add(MovimientoActividad(
+        fecha: parseFecha(gasto['fecha']) ?? DateTime.now(),
+        tipo: 'GASTO',
+        titulo: 'Gasto: ${gasto['categoria'] ?? 'gasto'}',
+        detalle: gasto['descripcion'] as String? ?? '',
+        monto: (gasto['monto'] as num? ?? 0).toDouble(),
+        metodo: gasto['medio_pago'] as String?,
+      ));
+    }
+    for (final i in res[2] as List) {
+      final inc = i as Map<String, dynamic>;
+      items.add(MovimientoActividad(
+        fecha: parseFecha(inc['fecha']) ?? DateTime.now(),
+        tipo: 'INCIDENCIA',
+        titulo: 'Falla: ${inc['tipo'] ?? ''}',
+        detalle: inc['descripcion'] as String? ?? '',
+        monto: (inc['monto'] as num? ?? 0).toDouble(),
+      ));
+    }
+    items.sort((a, b) => b.fecha.compareTo(a.fecha));
+    return items;
+  }
+
   String _textoPedido(String estado, Map<String, dynamic> p) {
     final cliente = (p['clientes'] as Map?)?['nombre'] as String? ?? 'Cliente';
     final monto = dinero((p['total'] as num? ?? 0).toDouble());
@@ -293,6 +373,7 @@ class ActividadRepo {
         detalle: g['descripcion'] as String? ?? '',
         monto: (g['monto'] as num? ?? 0).toDouble(),
         metodo: g['medio_pago'] as String?,
+        comprobanteUrl: g['comprobante_url'] as String?,
       ));
     }
     for (final i in res[1]) {
@@ -302,6 +383,7 @@ class ActividadRepo {
         titulo: 'Incidencia: ${i['tipo'] ?? ''}',
         detalle: i['descripcion'] as String? ?? '',
         monto: (i['monto'] as num? ?? 0).toDouble(),
+        comprobanteUrl: i['comprobante_url'] as String?,
       ));
     }
 

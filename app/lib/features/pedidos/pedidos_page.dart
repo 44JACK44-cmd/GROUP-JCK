@@ -9,12 +9,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/motorizados_repo.dart';
 import '../../core/data/pedidos_repo.dart';
 import '../../core/data/sb.dart';
+import '../../core/state/bus.dart';
 import '../../core/domain/resumen_pedido.dart';
 import '../../core/domain/estado_pedido.dart';
 import '../../core/domain/formato.dart';
@@ -34,39 +34,25 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
   GrupoPedido _grupo = GrupoPedido.pendientes;
   List<Map<String, dynamic>> _pedidos = [];
   bool _cargando = true;
-  RealtimeChannel? _canal;
   Map<String, String> _motorizadoNombre = {};
 
   @override
   void initState() {
     super.initState();
+    SyncBus.pedidos.addListener(_onBus);
+    SyncBus.movimientos.addListener(_onBus);
     _cargar();
-    _escucharRealtime();
   }
 
   @override
   void dispose() {
-    _canal?.unsubscribe();
+    SyncBus.pedidos.removeListener(_onBus);
+    SyncBus.movimientos.removeListener(_onBus);
     super.dispose();
   }
 
-  /// Actualiza la lista cuando el motorizado entrega o asigna un pedido.
-  void _escucharRealtime() {
-    try {
-      _canal = sb
-          .channel('pedidos-admin')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'pedidos',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .subscribe();
-    } catch (_) {
-      // Si Realtime no está disponible, la lista se actualiza al tirar hacia abajo.
-    }
+  void _onBus() {
+    if (mounted) _cargar();
   }
 
   Future<void> _cargar() async {

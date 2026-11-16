@@ -9,13 +9,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/actividad_repo.dart';
 import '../../core/data/motorizados_repo.dart';
 import '../../core/data/rendicion_repo.dart';
-import '../../core/data/sb.dart';
 import '../../core/data/ubicaciones_repo.dart';
 import '../../core/domain/formato.dart';
 import '../../core/state/bus.dart';
@@ -35,43 +33,26 @@ class _MotorizadosActividadPageState
   List<Map<String, dynamic>> _motorizados = [];
   Map<String, Rendicion> _resumen = {};
   bool _cargando = true;
-  RealtimeChannel? _canal;
 
   @override
   void initState() {
     super.initState();
+    SyncBus.pedidos.addListener(_onBus);
+    SyncBus.movimientos.addListener(_onBus);
+    SyncBus.rendiciones.addListener(_onBus);
     _cargar();
-    _escucharRealtime();
   }
 
   @override
   void dispose() {
-    _canal?.unsubscribe();
+    SyncBus.pedidos.removeListener(_onBus);
+    SyncBus.movimientos.removeListener(_onBus);
+    SyncBus.rendiciones.removeListener(_onBus);
     super.dispose();
   }
 
-  void _escucharRealtime() {
-    try {
-      _canal = sb
-          .channel('moto-actividad')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'pedidos',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'gastos',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .subscribe();
-    } catch (_) {}
+  void _onBus() {
+    if (mounted) _cargar();
   }
 
   Future<void> _cargar() async {
@@ -350,85 +331,30 @@ class _ActividadMotorizadoPageState
   UbicacionMotorizado? _ubicacion;
   bool _cargando = true;
   int _peticion = 0;
-  RealtimeChannel? _canal;
 
   @override
   void initState() {
     super.initState();
     SyncBus.pedidos.addListener(_onBus);
     SyncBus.dinero.addListener(_onBus);
+    SyncBus.ubicaciones.addListener(_onBus);
+    SyncBus.movimientos.addListener(_onBus);
+    SyncBus.rendiciones.addListener(_onBus);
     _cargar();
-    _escuchar();
   }
 
   @override
   void dispose() {
     SyncBus.pedidos.removeListener(_onBus);
     SyncBus.dinero.removeListener(_onBus);
-    _canal?.unsubscribe();
+    SyncBus.ubicaciones.removeListener(_onBus);
+    SyncBus.movimientos.removeListener(_onBus);
+    SyncBus.rendiciones.removeListener(_onBus);
     super.dispose();
   }
 
   void _onBus() {
     if (mounted) _cargar();
-  }
-
-  void _escuchar() {
-    try {
-      _canal = sb
-          .channel('moto-detalle-${widget.motorizadoId}')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'pedidos',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'repartidor_id',
-              value: widget.motorizadoId,
-            ),
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'gastos',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'usuario_id',
-              value: widget.motorizadoId,
-            ),
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'ubicaciones_motorizado',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'fondo_vuelto',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'rendiciones',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .subscribe();
-    } catch (_) {}
   }
 
   Future<void> _cargar() async {
@@ -562,6 +488,8 @@ class _ActividadMotorizadoPageState
                         color: r.tieneDiferencia ? AppTheme.danger : AppTheme.success,
                       ),
                     ],
+                    FilaValor('Pedidos por motorizado', '${r.pedidosManuales}'),
+                    FilaValor('Fallas', '${r.incidencias}'),
                     FilaValor('Balones entregados', '${r.balonesEntregados}'),
                     FilaValor('Balones devueltos', '${r.balonesDevueltos}'),
                     const Divider(height: 18),

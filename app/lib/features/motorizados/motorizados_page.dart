@@ -110,7 +110,7 @@ class _MotorizadosPageState extends ConsumerState<MotorizadosPage> {
                           subtitle: Text(
                             [
                               if (m['telefono'] != null) m['telefono'],
-                              if (vehiculo != null) '🚚 $vehiculo',
+                              if (vehiculo != null) vehiculo,
                             ].join('  ·  '),
                           ),
                           trailing: Row(

@@ -23,6 +23,7 @@ import '../../core/audio/voz_service.dart';
 import '../../core/config.dart';
 import '../../core/domain/navegacion.dart';
 import '../../core/maps/ruta_service.dart';
+import '../../core/ui/aviso_maps.dart';
 
 class RutaPage extends StatefulWidget {
   final double latitud;
@@ -280,6 +281,12 @@ class _RutaPageState extends State<RutaPage> {
       body: Stack(
         children: [
           _mapa(),
+          const Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: AvisoGoogleMaps(),
+          ),
           if (_cargandoUbicacion || _cargandoRuta)
             const Positioned.fill(
               child: ColoredBox(

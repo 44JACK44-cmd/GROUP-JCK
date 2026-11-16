@@ -16,7 +16,6 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
 import '../../core/config.dart';
@@ -26,6 +25,7 @@ import '../../core/data/ubicaciones_repo.dart';
 import '../../core/domain/formato.dart';
 import '../../core/maps/ruta_service.dart';
 import '../../core/state/bus.dart';
+import '../../core/ui/aviso_maps.dart';
 import '../../core/ui/widgets.dart';
 import '../rutas/ruta_page.dart';
 
@@ -50,7 +50,6 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
   bool _cargando = true;
 
   int _peticion = 0;
-  RealtimeChannel? _canal;
   Timer? _reloj;
 
   static const _centroInicial = LatLng(-16.4090, -71.5375); // Arequipa
@@ -61,7 +60,6 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
     SyncBus.ubicaciones.addListener(_onBus);
     SyncBus.pedidos.addListener(_onBus);
     _cargar();
-    _escuchar();
     // Recalcula "hace X" aunque no llegue ningún cambio.
     _reloj = Timer.periodic(const Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
@@ -73,36 +71,11 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
     SyncBus.ubicaciones.removeListener(_onBus);
     SyncBus.pedidos.removeListener(_onBus);
     _reloj?.cancel();
-    _canal?.unsubscribe();
     super.dispose();
   }
 
   void _onBus() {
     if (mounted) _cargar();
-  }
-
-  void _escuchar() {
-    try {
-      _canal = sb
-          .channel('seguimiento-admin')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'ubicaciones_motorizado',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'pedidos',
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .subscribe();
-    } catch (_) {}
   }
 
   Future<void> _cargar() async {
@@ -329,9 +302,15 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
                   child: Stack(
                     children: [
                       _construirMapa(),
+                      const Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: AvisoGoogleMaps(),
+                      ),
                       Positioned(
                         left: 12,
-                        top: 12,
+                        top: 52,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 6),

@@ -10,7 +10,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/actividad_repo.dart';
@@ -38,89 +37,28 @@ class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
 
   /// Descarta respuestas viejas cuando se cambia de día o llegan avisos.
   int _peticion = 0;
-  RealtimeChannel? _canal;
 
   @override
   void initState() {
     super.initState();
     SyncBus.pedidos.addListener(_onBus);
     SyncBus.dinero.addListener(_onBus);
+    SyncBus.movimientos.addListener(_onBus);
+    SyncBus.rendiciones.addListener(_onBus);
     _cargar();
-    _escuchar();
   }
 
   @override
   void dispose() {
     SyncBus.pedidos.removeListener(_onBus);
     SyncBus.dinero.removeListener(_onBus);
-    _canal?.unsubscribe();
+    SyncBus.movimientos.removeListener(_onBus);
+    SyncBus.rendiciones.removeListener(_onBus);
     super.dispose();
   }
 
   void _onBus() {
     if (mounted) _cargar();
-  }
-
-  void _escuchar() {
-    final uid = ref.read(authProvider).usuarioId;
-    if (uid == null) return;
-    try {
-      _canal = sb
-          .channel('mi-registro-$uid')
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'pedidos',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'repartidor_id',
-              value: uid,
-            ),
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'gastos',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'usuario_id',
-              value: uid,
-            ),
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'fondo_vuelto',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'motorizado_id',
-              value: uid,
-            ),
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .onPostgresChanges(
-            event: PostgresChangeEvent.all,
-            schema: 'public',
-            table: 'rendiciones',
-            filter: PostgresChangeFilter(
-              type: PostgresChangeFilterType.eq,
-              column: 'motorizado_id',
-              value: uid,
-            ),
-            callback: (_) {
-              if (mounted) _cargar();
-            },
-          )
-          .subscribe();
-    } catch (_) {}
   }
 
   Future<void> _cargar() async {

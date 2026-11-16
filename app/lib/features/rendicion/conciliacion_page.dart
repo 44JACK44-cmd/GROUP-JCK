@@ -198,7 +198,7 @@ class _ConciliacionPageState extends ConsumerState<ConciliacionPage> {
                             title: Text((p['clientes'] as Map?)?['nombre'] as String? ?? 'Cliente',
                                 style: const TextStyle(fontWeight: FontWeight.w600)),
                             subtitle: Text(
-                              '🟠 Registrado por motorizado · ${metodoPago(p['forma_pago'] as String?)}',
+                              'Registrado por motorizado · ${metodoPago(p['forma_pago'] as String?)}',
                               style: const TextStyle(color: AppTheme.warning, fontSize: 12),
                             ),
                             trailing: Text(dinero((p['total'] as num? ?? 0).toDouble()),
