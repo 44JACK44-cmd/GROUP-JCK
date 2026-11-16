@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/pedidos_repo.dart';
+import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
@@ -23,6 +24,7 @@ class HistorialPage extends ConsumerStatefulWidget {
 class _HistorialPageState extends ConsumerState<HistorialPage> {
   List<Map<String, dynamic>> _pedidos = [];
   bool _cargando = true;
+  String? _error;
 
   @override
   void initState() {
@@ -42,10 +44,14 @@ class _HistorialPageState extends ConsumerState<HistorialPage> {
       setState(() {
         _pedidos = data;
         _cargando = false;
+        _error = null;
       });
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
-      setState(() => _cargando = false);
+      setState(() {
+        _cargando = false;
+        _error = traducirError(e, contexto: 'No pudimos cargar el historial').mensaje;
+      });
     }
   }
 
@@ -60,10 +66,12 @@ class _HistorialPageState extends ConsumerState<HistorialPage> {
   Map<String, List<Map<String, dynamic>>> _porDia() {
     final grupos = <String, List<Map<String, dynamic>>>{};
     for (final p in _pedidos) {
-      final fecha = parseFecha(p['fecha']);
-      if (fecha == null) continue;
-      final dia = fechaRelativa(fecha);
-      grupos.putIfAbsent(dia, () => []).add(p);
+      try {
+        final fecha = parseFecha(p['fecha']);
+        if (fecha == null) continue;
+        final dia = fechaRelativa(fecha);
+        grupos.putIfAbsent(dia, () => []).add(p);
+      } catch (_) {}
     }
     return grupos;
   }
@@ -75,7 +83,23 @@ class _HistorialPageState extends ConsumerState<HistorialPage> {
       appBar: AppBar(title: const Text('Mis pedidos realizados')),
       body: _cargando
           ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : _pedidos.isEmpty
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline, size: 40, color: AppTheme.danger),
+                        const SizedBox(height: 12),
+                        Text(_error!, textAlign: TextAlign.center),
+                        const SizedBox(height: 12),
+                        FilledButton(onPressed: _cargar, child: const Text('Reintentar')),
+                      ],
+                    ),
+                  ),
+                )
+              : _pedidos.isEmpty
               ? const EstadoVacio(
                   icono: Icons.history,
                   titulo: 'Todavía no has entregado pedidos',

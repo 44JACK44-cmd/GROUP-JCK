@@ -1,6 +1,4 @@
 /// Inicio del administrador.
-///
-/// Responde de inmediato: "¿qué tengo que hacer ahora?".
 library;
 
 import 'package:flutter/material.dart';
@@ -44,14 +42,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         balonesRepo.pendientesBalones(),
       ]);
       if (!mounted) return;
-      final deudas = (res[2] as Map<String, double>).values.fold<double>(
-        0,
-        (s, v) => s + v,
-      );
-      final balones = (res[3] as List).fold<int>(
-        0,
-        (s, p) => s + (p.cantidad as int),
-      );
+      final deudas = (res[2] as Map<String, double>).values.fold<double>(0, (s, v) => s + v);
+      final balones = (res[3] as List).fold<int>(0, (s, p) => s + (p.cantidad as int));
       setState(() {
         _pendientes = res[0] as int;
         _enCamino = res[1] as int;
@@ -69,7 +61,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
     final hora = DateTime.now().hour;
-    final saludo = hora < 12 ? 'Buenos días' : (hora < 19 ? 'Buenas tardes' : 'Buenas noches');
+    final saludo = hora < 12 ? 'Buenos dias' : (hora < 19 ? 'Buenas tardes' : 'Buenas noches');
 
     return Scaffold(
       body: SafeArea(
@@ -101,52 +93,23 @@ class _HomePageState extends ConsumerState<HomePage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('$saludo 👋', style: Theme.of(context).textTheme.titleLarge),
-                        Text(
-                          auth.empresaNombre ?? '',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: AppTheme.primary, fontWeight: FontWeight.w600),
-                        ),
-                        Text(
-                          auth.nombre ?? '',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(color: Colors.black54),
-                        ),
+                        Text('$saludo, ${auth.nombre ?? ''}',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        Text(auth.empresaNombre ?? '',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppTheme.primary, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
                   IconButton(
-                    tooltip: 'Cerrar sesión',
+                    tooltip: 'Cerrar sesion',
                     onPressed: () => ref.read(authProvider.notifier).logout(),
                     icon: const Icon(Icons.logout),
                   ),
                 ],
               ),
               const SizedBox(height: 20),
-
-              // Acción principal
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () => context.push('/pedidos/nuevo'),
-                  icon: const Icon(Icons.add_circle_outline, size: 28),
-                  label: const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text('NUEVO PEDIDO', style: TextStyle(fontSize: 18)),
-                  ),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    minimumSize: const Size.fromHeight(60),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              Text('¿Qué necesitas ver?', style: Theme.of(context).textTheme.titleMedium),
+              Text('Que necesitas ver?', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 10),
               GridView.count(
                 crossAxisCount: 2,
@@ -158,28 +121,28 @@ class _HomePageState extends ConsumerState<HomePage> {
                 children: [
                   TarjetaMetrica(
                     titulo: 'Pedidos pendientes',
-                    valor: _cargando ? '…' : '$_pendientes',
+                    valor: _cargando ? '...' : '$_pendientes',
                     icono: Icons.pending_actions_outlined,
                     color: AppTheme.warning,
                     onTap: () => context.go('/pedidos'),
                   ),
                   TarjetaMetrica(
                     titulo: 'Entregas en curso',
-                    valor: _cargando ? '…' : '$_enCamino',
+                    valor: _cargando ? '...' : '$_enCamino',
                     icono: Icons.route_outlined,
                     color: AppTheme.info,
                     onTap: () => context.go('/pedidos'),
                   ),
                   TarjetaMetrica(
                     titulo: 'Deudas pendientes',
-                    valor: _cargando ? '…' : dinero(_deudas, conDecimales: false),
+                    valor: _cargando ? '...' : dinero(_deudas, conDecimales: false),
                     icono: Icons.account_balance_wallet_outlined,
                     color: _deudas > 0 ? AppTheme.danger : AppTheme.success,
                     onTap: () => context.push('/deudas'),
                   ),
                   TarjetaMetrica(
                     titulo: 'Balones pendientes',
-                    valor: _cargando ? '…' : '$_balonesPendientes',
+                    valor: _cargando ? '...' : '$_balonesPendientes',
                     icono: Icons.local_fire_department_outlined,
                     color: AppTheme.warning,
                     onTap: () => context.push('/balones'),
@@ -205,13 +168,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                 childAspectRatio: 1.7,
                 children: [
                   _Acceso(icono: Icons.point_of_sale_outlined, titulo: 'Caja', onTap: () => context.push('/caja')),
-                  _Acceso(icono: Icons.assignment_turned_in_outlined, titulo: 'Rendición', onTap: () => context.push('/rendicion')),
+                  _Acceso(icono: Icons.assignment_turned_in_outlined, titulo: 'Rendicion', onTap: () => context.push('/rendicion')),
                   _Acceso(icono: Icons.bar_chart_outlined, titulo: 'Reportes', onTap: () => context.push('/reportes')),
                   _Acceso(icono: Icons.delivery_dining_outlined, titulo: 'Motorizados', onTap: () => context.push('/motorizados-actividad')),
                 ],
               ),
               const SizedBox(height: 20),
-              Text('Accesos rápidos', style: Theme.of(context).textTheme.titleMedium),
+              Text('Accesos rapidos', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 10),
               GridView.count(
                 crossAxisCount: 2,
@@ -224,8 +187,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   _Acceso(icono: Icons.people_outline, titulo: 'Clientes', onTap: () => context.go('/clientes')),
                   _Acceso(icono: Icons.calendar_month_outlined, titulo: 'Calendario', onTap: () => context.push('/calendario')),
                   _Acceso(icono: Icons.payments_outlined, titulo: 'Cobros', onTap: () => context.go('/cobros')),
-                  _Acceso(icono: Icons.compare_arrows, titulo: 'Conciliación', onTap: () => context.push('/conciliacion')),
-                  _Acceso(icono: Icons.grid_view_outlined, titulo: 'Más', onTap: () => context.go('/mas')),
+                  _Acceso(icono: Icons.compare_arrows, titulo: 'Conciliacion', onTap: () => context.push('/conciliacion')),
+                  _Acceso(icono: Icons.grid_view_outlined, titulo: 'Mas', onTap: () => context.go('/mas')),
                 ],
               ),
             ],
@@ -250,14 +213,14 @@ class _Acceso extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
+          padding: const EdgeInsets.all(12),
+          child: Row(
             children: [
-              Icon(icono, size: 26, color: AppTheme.primary),
-              const SizedBox(height: 6),
-              Text(titulo, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Icon(icono, color: AppTheme.primary),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(titulo, style: const TextStyle(fontWeight: FontWeight.w600)),
+              ),
             ],
           ),
         ),
