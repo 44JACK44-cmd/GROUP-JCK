@@ -8,6 +8,7 @@ library;
 import 'package:uuid/uuid.dart';
 
 import '../domain/deuda.dart';
+import '../state/bus.dart';
 import 'auditoria_repo.dart';
 import 'sb.dart';
 
@@ -96,6 +97,7 @@ class BalonesRepo {
       usuarioId: usuarioId,
       detalle: {'cantidad': cantidad, if (pedidoId != null) 'pedido_id': pedidoId},
     );
+    SyncBus.pedidoYdinero();
   }
 
   /// Registra la devolución de un fierro / soporte.
@@ -124,6 +126,7 @@ class BalonesRepo {
       usuarioId: usuarioId,
       detalle: {'cantidad': cantidad, if (pedidoId != null) 'pedido_id': pedidoId},
     );
+    SyncBus.pedidoYdinero();
   }
 
   /// Movimientos recientes de balones (para el historial).

@@ -38,6 +38,7 @@ import 'features/rendicion/conciliacion_page.dart';
 import 'features/rendicion/declarar_rendicion_page.dart';
 import 'features/rendicion/rendicion_page.dart';
 import 'features/reportes/reportes_page.dart';
+import 'features/seguimiento/seguimiento_page.dart';
 import 'features/shell/app_shell.dart';
 
 Future<void> main() async {
@@ -66,6 +67,8 @@ class GasApp extends ConsumerStatefulWidget {
     '/conciliacion',
     '/reportes',
     '/motorizados',
+    '/motorizados-actividad',
+    '/seguimiento',
     '/aprobacion-rendiciones',
     '/cierre-diario',
     '/combustible',
@@ -245,6 +248,8 @@ class _GasAppState extends ConsumerState<GasApp> {
             GoRoute(path: '/cobros', builder: (_, state) => const CobrosPage()),
             GoRoute(path: '/mas', builder: (_, state) => const MasPage()),
             GoRoute(path: '/mis-pedidos', builder: (_, state) => const MisPedidosPage()),
+            GoRoute(path: '/historial', builder: (_, state) => const HistorialPage()),
+            GoRoute(path: '/mi-registro', builder: (_, state) => const MiRegistroPage()),
             GoRoute(path: '/calendario', builder: (_, state) => const CalendarioPage()),
             GoRoute(path: '/mas-moto', builder: (_, state) => const MasMotoPage()),
           ],
@@ -265,8 +270,8 @@ class _GasAppState extends ConsumerState<GasApp> {
         GoRoute(path: '/reportes', builder: (_, state) => const ReportesPage()),
         GoRoute(path: '/motorizados', builder: (_, state) => const MotorizadosPage()),
 GoRoute(path: '/motorizados-actividad', builder: (_, state) => const MotorizadosActividadPage()),
+        GoRoute(path: '/seguimiento', builder: (_, state) => const SeguimientoPage()),
         GoRoute(path: '/combustible', builder: (_, state) => const CombustiblePage()),
-        GoRoute(path: '/mi-registro', builder: (_, state) => const MiRegistroPage()),
         GoRoute(path: '/mi-registro/pedido', builder: (_, state) => const RegistroPedidoPage()),
         GoRoute(path: '/mi-registro/gasto', builder: (_, state) => const RegistroGastoPage()),
         GoRoute(path: '/mi-registro/incidencia', builder: (_, state) => const RegistroIncidenciaPage()),

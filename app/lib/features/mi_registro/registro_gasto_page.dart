@@ -3,9 +3,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/sb.dart';
+import '../../core/offline/outbox.dart';
+import '../../core/state/bus.dart';
 import '../auth/auth_controller.dart';
 
 class RegistroGastoPage extends ConsumerStatefulWidget {
@@ -63,6 +66,7 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
 
     setState(() => _guardando = true);
     final auth = ref.read(authProvider);
+    final uuid = const Uuid().v4();
     final datos = <String, dynamic>{
       'empresa_id': auth.empresaId,
       'descripcion': descripcionCompleta,
@@ -70,23 +74,41 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
       'categoria': _categoria,
       'usuario_id': auth.usuarioId,
       'medio_pago': _medioPago,
+      'fecha': DateTime.now().toIso8601String(),
+      'uuid_offline': uuid,
     };
     try {
       try {
         await sb.from('gastos').insert(datos);
       } catch (e) {
-        // Si la migración de `medio_pago` todavía no está aplicada, se guarda
-        // igual sin ese dato (no se pierde el gasto).
-        if (!esColumnaAusente(e)) rethrow;
-        datos.remove('medio_pago');
-        await sb.from('gastos').insert(datos);
+        if (esErrorDeRed(e)) rethrow;
+        // Si la migración de `medio_pago`/`uuid_offline` todavía no está
+        // aplicada, se guarda igual sin ese dato (no se pierde el gasto).
+        if (!esColumnaAusente(e) && !esValorInvalido(e)) rethrow;
+        final reintento = Map<String, dynamic>.from(datos)
+          ..remove('medio_pago')
+          ..remove('uuid_offline');
+        await sb.from('gastos').insert(reintento);
       }
+      SyncBus.dineroCambio();
       if (!mounted) return;
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Gasto registrado.')),
       );
     } catch (e) {
+      if (esErrorDeRed(e)) {
+        // Sin conexión: el gasto queda en la cola y se envía solo. No se pierde.
+        await Outbox.encolarGasto(gasto: datos);
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sin conexión: el gasto quedó guardado y se enviará solo.'),
+          ),
+        );
+        return;
+      }
       if (!mounted) return;
       setState(() => _guardando = false);
       ScaffoldMessenger.of(context).showSnackBar(

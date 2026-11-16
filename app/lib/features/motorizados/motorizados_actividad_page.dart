@@ -9,17 +9,17 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
+import '../../core/data/actividad_repo.dart';
 import '../../core/data/motorizados_repo.dart';
-import '../../core/data/pedidos_repo.dart';
 import '../../core/data/rendicion_repo.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
+import '../../core/state/bus.dart';
+import '../../core/ui/actividad_tile.dart';
 import '../../core/ui/widgets.dart';
-import '../auth/auth_controller.dart';
 
 class MotorizadosActividadPage extends ConsumerStatefulWidget {
   const MotorizadosActividadPage({super.key});
@@ -323,8 +323,11 @@ class _Mini extends StatelessWidget {
   }
 }
 
-/// Detalle de actividad de un motorizado (pedidos + gastos de hoy).
-class _ActividadMotorizadoPage extends StatefulWidget {
+
+/// Detalle de actividad de un motorizado: resumen, pedidos, gastos,
+/// incidencias y fotos de Yape. Realtime + bus para que el admin vea lo mismo
+/// que el motorizado, sin volver a entrar a la pantalla.
+class _ActividadMotorizadoPage extends ConsumerStatefulWidget {
   final String motorizadoId;
   final String nombre;
 
@@ -334,181 +337,215 @@ class _ActividadMotorizadoPage extends StatefulWidget {
   });
 
   @override
-  State<_ActividadMotorizadoPage> createState() => _ActividadMotorizadoPageState();
+  ConsumerState<_ActividadMotorizadoPage> createState() =>
+      _ActividadMotorizadoPageState();
 }
 
-class _ActividadMotorizadoPageState extends State<_ActividadMotorizadoPage> {
-  List<Map<String, dynamic>> _pedidos = [];
-  List<Map<String, dynamic>> _gastos = [];
-  Map<String, String> _comprobantes = {};
+class _ActividadMotorizadoPageState
+    extends ConsumerState<_ActividadMotorizadoPage> {
+  DateTime _dia = inicioHoy();
+  Rendicion _resumen = const Rendicion();
+  List<MovimientoActividad> _movimientos = [];
   bool _cargando = true;
+  int _peticion = 0;
+  RealtimeChannel? _canal;
 
   @override
   void initState() {
     super.initState();
+    SyncBus.pedidos.addListener(_onBus);
+    SyncBus.dinero.addListener(_onBus);
     _cargar();
+    _escuchar();
+  }
+
+  @override
+  void dispose() {
+    SyncBus.pedidos.removeListener(_onBus);
+    SyncBus.dinero.removeListener(_onBus);
+    _canal?.unsubscribe();
+    super.dispose();
+  }
+
+  void _onBus() {
+    if (mounted) _cargar();
+  }
+
+  void _escuchar() {
+    try {
+      _canal = sb
+          .channel('moto-detalle-${widget.motorizadoId}')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'pedidos',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'repartidor_id',
+              value: widget.motorizadoId,
+            ),
+            callback: (_) {
+              if (mounted) _cargar();
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'gastos',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'usuario_id',
+              value: widget.motorizadoId,
+            ),
+            callback: (_) {
+              if (mounted) _cargar();
+            },
+          )
+          .subscribe();
+    } catch (_) {}
   }
 
   Future<void> _cargar() async {
+    final miPeticion = ++_peticion;
+    final hasta = _dia.add(const Duration(days: 1));
     try {
-      final inicio = inicioHoy();
-      final fin = DateTime.now().add(const Duration(minutes: 1));
-      final pedidos = await pedidosRepo.listar(
-        repartidorId: widget.motorizadoId,
-        desde: inicio,
-        hasta: fin,
-        limite: 200,
-        masAntigosPrimero: false,
-      );
-      // Gastos del motorizado: consulta directa (no hay repositorio dedicado).
-      List<Map<String, dynamic>> gastos = [];
-      try {
-        final data = await sb
-            .from('gastos')
-            .select('id, tipo, descripcion, monto, medio_pago, fecha, usuario_id')
-            .eq('usuario_id', widget.motorizadoId)
-            .gte('fecha', inicio.toIso8601String())
-            .lte('fecha', fin.toIso8601String())
-            .order('fecha', ascending: false)
-            .limit(100);
-        gastos = List<Map<String, dynamic>>.from(data);
-      } catch (_) {}
-      // Comprobantes Yape por pedido.
-      final comp = <String, String>{};
-      try {
-        if (pedidos.isNotEmpty) {
-          final ids = pedidos.map((p) => p['id']).toList();
-          final pagos = await sb
-              .from('pagos')
-              .select('pedido_id, comprobante_url')
-              .inFilter('pedido_id', ids);
-          for (final pg in (pagos as List)) {
-            final pid = pg['pedido_id'] as String?;
-            final url = pg['comprobante_url'] as String?;
-            if (pid != null && url != null && url.isNotEmpty) {
-              comp[pid] = url;
-            }
-          }
-        }
-      } catch (_) {}
-      if (!mounted) return;
+      final res = await Future.wait([
+        rendicionRepo.calcular(
+          desde: _dia,
+          hasta: hasta,
+          motorizadoId: widget.motorizadoId,
+        ),
+        actividadRepo.movimientosDe(
+          motorizadoId: widget.motorizadoId,
+          desde: _dia,
+          hasta: hasta,
+        ),
+      ]);
+      if (!mounted || miPeticion != _peticion) return;
       setState(() {
-        _pedidos = pedidos;
-        _gastos = gastos;
-        _comprobantes = comp;
+        _resumen = res[0] as Rendicion;
+        _movimientos = res[1] as List<MovimientoActividad>;
         _cargando = false;
       });
     } catch (_) {
-      if (!mounted) return;
+      if (!mounted || miPeticion != _peticion) return;
       setState(() => _cargando = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Mezclar pedidos y gastos por fecha.
-    final items = <_ItemActividad>[];
-    for (final p in _pedidos) {
-      items.add(_ItemActividad(
-        fecha: parseFecha(p['fecha']) ?? DateTime.now(),
-        titulo: 'Pedido #${p['numero'] ?? ''}',
-        subtitulo: '${(p['clientes'] as Map?)?['nombre'] ?? ''} · ${dinero((p['total'] as num? ?? 0).toDouble())}',
-        detalle: p['forma_pago'] as String? ?? '',
-        esGasto: false,
-        estado: p['estado'] as String? ?? '',
-        pedidoId: p['id'] as String?,
-      ));
-    }
-    for (final g in _gastos) {
-      items.add(_ItemActividad(
-        fecha: parseFecha(g['fecha']) ?? DateTime.now(),
-        titulo: 'Gasto: ${g['tipo'] ?? g['descripcion'] ?? 'Gasto'}',
-        subtitulo: dinero((g['monto'] as num? ?? 0).toDouble()),
-        detalle: g['medio_pago'] as String? ?? '',
-        esGasto: true,
-        estado: '',
-      ));
-    }
-    items.sort((a, b) => b.fecha.compareTo(a.fecha));
-
-    return Scaffold(
-      appBar: AppBar(title: Text(widget.nombre)),
-      body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
-          : RefreshIndicator(
-              onRefresh: _cargar,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                children: [
-                  if (items.isEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 40),
-                      child: EstadoVacio(
-                        icono: Icons.history_outlined,
-                        titulo: 'Sin actividad hoy',
-                      ),
-                    )
-                  else
-                    for (final it in items)
-                      Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          leading: Icon(
-                            it.esGasto ? Icons.money_off_outlined : Icons.receipt_long_outlined,
-                            color: it.esGasto ? AppTheme.warning : AppTheme.primary,
-                          ),
-                          title: Text(it.titulo, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text('${it.subtitulo}\n${_hora(it.fecha)}${it.detalle.isNotEmpty ? ' · ${it.detalle}' : ''}'),
-                          isThreeLine: true,
-                          trailing: it.esGasto
-                              ? null
-                              : Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (_comprobantes.containsKey(it.pedidoId))
-                                      Padding(
-                                        padding: const EdgeInsets.only(right: 6),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(6),
-                                          child: Image.network(
-                                            _comprobantes[it.pedidoId]!,
-                                            width: 36,
-                                            height: 36,
-                                            fit: BoxFit.cover,
-                                          ),
-                                        ),
-                                      ),
-                                    EstadoBadge(it.estado, compacto: true),
-                                  ],
-                                ),
-                        ),
-                      ),
-                ],
-              ),
-            ),
-    );
+  void _cambiarDia(int dias) {
+    final nuevo = _dia.add(Duration(days: dias));
+    if (nuevo.isAfter(inicioHoy())) return;
+    setState(() {
+      _dia = nuevo;
+      _cargando = true;
+    });
+    _cargar();
   }
 
-  String _hora(DateTime d) =>
-      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
-}
+  String get _tituloDia {
+    final hoy = inicioHoy();
+    if (_dia == hoy) return 'Hoy';
+    if (_dia == hoy.subtract(const Duration(days: 1))) return 'Ayer';
+    return fechaCorta(_dia);
+  }
 
-class _ItemActividad {
-  final DateTime fecha;
-  final String titulo;
-  final String subtitulo;
-  final String detalle;
-  final bool esGasto;
-  final String estado;
-  final String? pedidoId;
-
-  _ItemActividad({
-    required this.fecha,
-    required this.titulo,
-    required this.subtitulo,
-    required this.detalle,
-    required this.esGasto,
-    required this.estado,
-    this.pedidoId,
-  });
+  @override
+  Widget build(BuildContext context) {
+    final r = _resumen;
+    final esHoy = _dia == inicioHoy();
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(widget.nombre),
+            Text(
+              'Actividad · $_tituloDia',
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+            ),
+          ],
+        ),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _cargar,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  tooltip: 'Día anterior',
+                  onPressed: () => _cambiarDia(-1),
+                  icon: const Icon(Icons.chevron_left),
+                ),
+                Expanded(
+                  child: Center(
+                    child: Text(_tituloDia,
+                        style: Theme.of(context).textTheme.titleMedium),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Día siguiente',
+                  onPressed: esHoy ? null : () => _cambiarDia(1),
+                  icon: const Icon(Icons.chevron_right),
+                ),
+              ],
+            ),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        _Mini('Pedidos', '${r.pedidosRealizados}'),
+                        _Mini('Entregados', '${r.entregados}',
+                            color: AppTheme.success),
+                        _Mini('Ventas', dinero(r.totalACobrar)),
+                        _Mini('Cobrado', dinero(r.cobrado)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        _Mini('Efectivo', dinero(r.efectivo)),
+                        _Mini('Yape', dinero(r.yape), color: AppTheme.info),
+                        _Mini('Gastos', dinero(r.gastosTotal),
+                            color: r.gastosTotal > 0 ? AppTheme.warning : null),
+                        _Mini('Deudas', dinero(r.pendiente),
+                            color: r.pendiente > 0 ? AppTheme.danger : null),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('Movimientos', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 8),
+            if (_cargando)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 28),
+                child: Center(
+                  child: CircularProgressIndicator(color: AppTheme.primary),
+                ),
+              )
+            else if (_movimientos.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 24),
+                child: EstadoVacio(
+                  icono: Icons.history_outlined,
+                  titulo: 'Sin actividad en este día',
+                ),
+              )
+            else
+              for (final m in _movimientos) ActividadTile(movimiento: m),
+          ],
+        ),
+      ),
+    );
+  }
 }

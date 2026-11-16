@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../domain/estado_pedido.dart';
+import '../state/bus.dart';
 import 'auditoria_repo.dart';
 import 'sb.dart';
 
@@ -105,6 +106,37 @@ class PedidosRepo {
       (select) => sb.from('pedidos').select(select).eq('id', pedidoId).maybeSingle(),
     );
     return data == null ? null : Map<String, dynamic>.from(data);
+  }
+
+  /// Estado real leído de la base de datos (fuente de verdad de la UI).
+  Future<String?> estadoActual(String pedidoId) async {
+    final fila = await sb.from('pedidos').select('estado').eq('id', pedidoId).maybeSingle();
+    return fila?['estado'] as String?;
+  }
+
+  /// Deja el pedido en ENTREGADO y **comprueba** que la base lo guardó.
+  ///
+  /// Sirve de cierre para cualquier flujo de entrega (detalle, tarjeta,
+  /// offline). Nunca devuelve `true` si el estado real no es ENTREGADO.
+  Future<bool> asegurarEntregado(String pedidoId) async {
+    if (await estadoActual(pedidoId) == 'ENTREGADO') return true;
+
+    try {
+      final filas = await sb
+          .from('pedidos')
+          .update({'estado': 'ENTREGADO'})
+          .eq('id', pedidoId)
+          .select('id');
+      if (List<Map<String, dynamic>>.from(filas).isEmpty) return false;
+    } catch (_) {
+      // Puede ser el guard de estados o RLS; se confirma leyendo.
+    }
+
+    final confirmado = await estadoActual(pedidoId) == 'ENTREGADO';
+    if (confirmado) {
+      SyncBus.pedidoYdinero();
+    }
+    return confirmado;
   }
 
   /// Detalle de productos del pedido.
@@ -221,6 +253,7 @@ class PedidosRepo {
       },
     );
 
+    SyncBus.pedidosCambiaron();
     return pedidoId;
   }
 
@@ -305,6 +338,8 @@ class PedidosRepo {
       usuarioId: usuarioId,
       detalle: {'motorizado': nombreRepartidor ?? repartidorId},
     );
+
+    SyncBus.pedidosCambiaron();
   }
 
   /// El motorizado toma un pedido libre (sin asignar).
@@ -315,7 +350,12 @@ class PedidosRepo {
   Future<void> tomarPedido({required String pedidoId, String? nombreRepartidor}) async {
     try {
       await sb.rpc('tomar_pedido', params: {'p_pedido_id': pedidoId});
-      return;
+      // La función del servidor pudo no cambiar nada; se confirma leyendo.
+      final estado = await estadoActual(pedidoId);
+      if (estado == 'ASIGNADO' || estado == 'EN_CAMINO') {
+        SyncBus.pedidosCambiaron();
+        return;
+      }
     } catch (e) {
       if (!esFuncionAusente(e)) rethrow;
     }
@@ -334,6 +374,8 @@ class PedidosRepo {
     if (List<Map<String, dynamic>>.from(filas).isEmpty) {
       throw Exception('Ese pedido ya no está disponible. Actualiza la lista.');
     }
+
+    SyncBus.pedidosCambiaron();
   }
 
   /// Libera el pedido: queda sin motorizado y vuelve a `NUEVO`.
@@ -362,6 +404,8 @@ class PedidosRepo {
       usuarioId: usuarioId,
       detalle: const {'motorizado': null},
     );
+
+    SyncBus.pedidosCambiaron();
   }
 
   /// Cambia el estado del pedido validando la transición.
@@ -380,7 +424,15 @@ class PedidosRepo {
       throw Exception(estadoActual.mensajeTransicionInvalida(destino));
     }
 
-    await sb.from('pedidos').update({'estado': destino.db}).eq('id', pedidoId);
+    final filas = await sb
+        .from('pedidos')
+        .update({'estado': destino.db})
+        .eq('id', pedidoId)
+        .select('id');
+
+    if (List<Map<String, dynamic>>.from(filas).isEmpty) {
+      throw Exception('No se pudo cambiar el estado: ya no existe o no tienes permiso.');
+    }
 
     await auditoriaRepo.registrar(
       empresaId: empresaId,
@@ -394,6 +446,8 @@ class PedidosRepo {
         if (motivo != null && motivo.isNotEmpty) 'motivo': motivo,
       },
     );
+
+    SyncBus.pedidoYdinero();
   }
 
   /// Cancela el pedido guardando el motivo (queda en el pedido y en auditoría).
@@ -415,10 +469,14 @@ class PedidosRepo {
         ? 'Cancelado: $motivo'
         : '$obsActual\nCancelado: $motivo';
 
-    await sb.from('pedidos').update({
+    final filas = await sb.from('pedidos').update({
       'estado': 'CANCELADO',
       'observaciones': observaciones,
-    }).eq('id', pedidoId);
+    }).eq('id', pedidoId).select('id');
+
+    if (List<Map<String, dynamic>>.from(filas).isEmpty) {
+      throw Exception('No se pudo cancelar: ya no existe o no tienes permiso.');
+    }
 
     await auditoriaRepo.registrar(
       empresaId: empresaId,
@@ -428,6 +486,8 @@ class PedidosRepo {
       usuarioId: usuarioId,
       detalle: {'motivo': motivo},
     );
+
+    SyncBus.pedidosCambiaron();
   }
 
   /// Reactiva un pedido cerrado (entregado, cancelado o no entregado).
@@ -444,6 +504,11 @@ class PedidosRepo {
         'p_pedido_id': pedidoId,
         'p_motivo': 'Reactivado por el administrador',
       });
+      // Confirmar que el pedido salió del estado cerrado.
+      final estado = await estadoActual(pedidoId);
+      if (estado != 'ENTREGADO' && estado != 'CANCELADO') {
+        SyncBus.pedidoYdinero();
+      }
       return;
     } catch (e) {
       if (!esFuncionAusente(e)) rethrow;
@@ -467,6 +532,8 @@ class PedidosRepo {
       usuarioId: usuarioId,
       detalle: const {'motivo': 'Reactivado por el administrador'},
     );
+
+    SyncBus.pedidoYdinero();
   }
 
   /// ¿El servidor ya tiene `pedidos.origen`? (migración v7)

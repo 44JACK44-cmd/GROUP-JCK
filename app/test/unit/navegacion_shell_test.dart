@@ -48,21 +48,25 @@ void main() {
       );
     });
 
-    test('mis pedidos e historial sí se resaltan', () {
+    test('mis pedidos, mi registro e historial se resaltan', () {
       expect(
         indicePestanaActiva(pestanasMotorizado, '/mis-pedidos', esAdmin: false),
         1,
       );
       expect(
-        indicePestanaActiva(pestanasMotorizado, '/historial', esAdmin: false),
+        indicePestanaActiva(pestanasMotorizado, '/mi-registro', esAdmin: false),
         2,
+      );
+      expect(
+        indicePestanaActiva(pestanasMotorizado, '/historial', esAdmin: false),
+        3,
       );
     });
 
     test('el menú del motorizado es su propio "Más"', () {
       expect(
         indicePestanaActiva(pestanasMotorizado, '/mas-moto', esAdmin: false),
-        3,
+        4,
       );
     });
   });

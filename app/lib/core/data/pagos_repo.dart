@@ -7,6 +7,7 @@ library;
 
 import 'package:uuid/uuid.dart';
 
+import '../state/bus.dart';
 import 'auditoria_repo.dart';
 import 'caja_ingreso.dart';
 import 'sb.dart';
@@ -31,21 +32,30 @@ class PagosRepo {
   }) async {
     if (monto <= 0) throw Exception('El monto debe ser mayor a cero.');
 
-    final data = await sb
-        .from('pagos')
-        .insert({
-          'empresa_id': empresaId,
-          'pedido_id': pedidoId,
-          'cliente_id': clienteId,
-          'monto': monto,
-          'metodo': metodo,
-          'registrado_por': usuarioId,
-          'uuid_offline': uuidOffline ?? const Uuid().v4(),
-          if (comprobanteUrl != null && comprobanteUrl.isNotEmpty)
-            'comprobante_url': comprobanteUrl,
-        })
-        .select('id')
-        .single();
+    final fila = <String, dynamic>{
+      'empresa_id': empresaId,
+      'pedido_id': pedidoId,
+      'cliente_id': clienteId,
+      'monto': monto,
+      'metodo': metodo,
+      'registrado_por': usuarioId,
+      'uuid_offline': uuidOffline ?? const Uuid().v4(),
+      if (comprobanteUrl != null && comprobanteUrl.isNotEmpty)
+        'comprobante_url': comprobanteUrl,
+    };
+
+    Map<String, dynamic> data;
+    try {
+      data = await sb.from('pagos').insert(fila).select('id').single();
+    } catch (e) {
+      // Base sin `pagos.comprobante_url`: el cobro se guarda igual.
+      if (!fila.containsKey('comprobante_url')) rethrow;
+      data = await sb
+          .from('pagos')
+          .insert(Map<String, dynamic>.from(fila)..remove('comprobante_url'))
+          .select('id')
+          .single();
+    }
 
     final pagoId = data['id'] as String;
 
@@ -72,6 +82,7 @@ class PagosRepo {
       },
     );
 
+    SyncBus.pedidoYdinero();
     return pagoId;
   }
 

@@ -9,6 +9,7 @@ library;
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../state/bus.dart';
 import 'sb.dart';
 
 /// Resumen de caja de un periodo.
@@ -166,6 +167,7 @@ class CajaRepo {
       'movimiento_caja_id': mov['id'],
       'medio_pago': medioPago,
     });
+    SyncBus.dineroCambio();
   }
 
   /// Resumen de caja.

@@ -51,7 +51,6 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
   List<Map<String, dynamic>> _productos = [];
   bool _cargandoProductos = true;
   String? _productoSeleccionadoId;
-  String _productoSeleccionadoNombre = '';
 
   String _formaPago = 'EFECTIVO';
   bool _balonDejado = false;
@@ -100,7 +99,6 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
         _cargandoProductos = false;
         if (data.isNotEmpty && _productoSeleccionadoId == null) {
           _productoSeleccionadoId = data.first['id'] as String;
-          _productoSeleccionadoNombre = _nombreProducto(data.first);
           final sugerido = (data.first['precio_base'] as num?)?.toDouble();
           if (sugerido != null && sugerido > 0) {
             _precioCtrl.text = PrecioLibre.paraEditar(sugerido);
@@ -423,7 +421,6 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                   'metodo': formaPago,
                   'registrado_por': usuarioId,
                   'empresa_id': empresaId,
-                  'comprobante_local_path': _fotoPath,
                 }
               : null,
           balon: balonDejado
@@ -595,7 +592,6 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                               onSelected: (_) {
                                 setState(() {
                                   _productoSeleccionadoId = p['id'] as String;
-                                  _productoSeleccionadoNombre = _nombreProducto(p);
                                 });
                                 final sug = (p['precio_base'] as num?)?.toDouble();
                                 if (sug != null && sug > 0 && _precioCtrl.text.isEmpty) {

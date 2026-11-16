@@ -16,6 +16,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../data/caja_ingreso.dart';
+import '../state/bus.dart';
 
 class Outbox {
   static const _key = 'gasapp_outbox_v1';
@@ -154,6 +155,34 @@ class Outbox {
     await _escribir(ops);
   }
 
+  /// Encola un gasto registrado sin conexión (Mi registro).
+  static Future<void> encolarGasto({required Map<String, dynamic> gasto}) async {
+    gasto['uuid_offline'] ??= _uuid.v4();
+    final ops = await _leer();
+    ops.add({
+      'tipo': 'gasto',
+      'uuid_offline': gasto['uuid_offline'],
+      'gasto': gasto,
+      'fecha': DateTime.now().toIso8601String(),
+    });
+    await _escribir(ops);
+  }
+
+  /// Encola una incidencia registrada sin conexión.
+  static Future<void> encolarIncidencia({
+    required Map<String, dynamic> incidencia,
+  }) async {
+    incidencia['uuid_offline'] ??= _uuid.v4();
+    final ops = await _leer();
+    ops.add({
+      'tipo': 'incidencia',
+      'uuid_offline': incidencia['uuid_offline'],
+      'incidencia': incidencia,
+      'fecha': DateTime.now().toIso8601String(),
+    });
+    await _escribir(ops);
+  }
+
   /// Reintenta todas las operaciones pendientes. Devuelve cuántas se sincronizaron.
   /// Se detiene en el primer fallo de red para no gastar batería ni datos,
   /// conservando TODAS las operaciones pendientes.
@@ -176,6 +205,8 @@ class Outbox {
     if (sincronizadas > 0) {
       final restantes = ops.skip(sincronizadas).toList();
       await _escribir(restantes);
+      // Todo lo que se acaba de subir ya es dato real: avisar a las pantallas.
+      SyncBus.pedidoYdinero();
     }
     return sincronizadas;
   }
@@ -197,6 +228,12 @@ class Outbox {
       case 'devolucion':
         await _insertarDevolucion(op);
         break;
+      case 'gasto':
+        await _insertarGasto(op);
+        break;
+      case 'incidencia':
+        await _insertarIncidencia(op);
+        break;
       default:
         // Tipo desconocido: se ignora (no se bloquea la cola).
         break;
@@ -213,7 +250,8 @@ class Outbox {
     final entrega = Map<String, dynamic>.from(op['entrega'] as Map);
     final pago = op['pago'] == null ? null : Map<String, dynamic>.from(op['pago'] as Map);
     final balon = op['balon'] == null ? null : Map<String, dynamic>.from(op['balon'] as Map);
-    final comprobanteLocalPath = op['comprobante_local_path'] as String?;
+    final comprobanteLocalPath = op['comprobante_local_path'] as String? ??
+        (pago?['comprobante_local_path'] as String?);
     final uuid = op['uuid_offline'] as String?;
 
     // 1) Cliente.
@@ -313,7 +351,7 @@ class Outbox {
         if (comprobanteLocalPath != null) {
           comprobanteUrl = await _subirComprobante(comprobanteLocalPath);
         }
-        final pagoRow = Map<String, dynamic>.from(pago);
+        final pagoRow = _limpiarPago(pago);
         pagoRow['pedido_id'] = pedidoId;
         pagoRow['cliente_id'] = clienteId;
         pagoRow['uuid_offline'] ??= _uuid.v4();
@@ -325,9 +363,7 @@ class Outbox {
             .eq('uuid_offline', pagoRow['uuid_offline'])
             .maybeSingle();
         if (yaPago == null) {
-          try {
-            await _sb.from('pagos').insert(pagoRow);
-          } catch (_) {}
+          await _insertarPagoConRespaldo(pagoRow);
         }
       }
     }
@@ -371,6 +407,34 @@ class Outbox {
       return _sb.storage.from('comprobantes').getPublicUrl(path);
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Quita del pago las claves que no son columnas de `pagos`.
+  ///
+  /// El bug original: `pedido_completo` metía `comprobante_local_path` dentro
+  /// del mapa del pago. PostgREST rechazaba la fila entera y el cobro se
+  /// perdía en silencio. Ahora se limpia antes de insertar.
+  static Map<String, dynamic> _limpiarPago(Map source) {
+    final fila = Map<String, dynamic>.from(source);
+    fila.remove('comprobante_local_path');
+    return fila;
+  }
+
+  /// Inserta el pago. Si la base todavía no tiene `pagos.comprobante_url`
+  /// (migración pendiente), reintenta sin la columna para no perder el cobro.
+  static Future<void> _insertarPagoConRespaldo(Map<String, dynamic> pagoRow) async {
+    try {
+      await _sb.from('pagos').insert(pagoRow).select('id').single();
+    } catch (e) {
+      if (pagoRow.containsKey('comprobante_url')) {
+        final sinFoto = Map<String, dynamic>.from(pagoRow)..remove('comprobante_url');
+        try {
+          await _sb.from('pagos').insert(sinFoto).select('id').single();
+          return;
+        } catch (_) {}
+      }
+      rethrow;
     }
   }
 
@@ -481,22 +545,24 @@ class Outbox {
     }
 
     if (pago != null) {
+      final pagoRow = _limpiarPago(pago);
       final yaHay = await _sb
           .from('pagos')
           .select('id')
-          .eq('uuid_offline', pago['uuid_offline'])
+          .eq('uuid_offline', pagoRow['uuid_offline'])
           .maybeSingle();
       var pagoId = yaHay?['id'] as String?;
       if (pagoId == null) {
-        final insertado = await _sb.from('pagos').insert(pago).select('id').single();
+        final insertado =
+            await _sb.from('pagos').insert(pagoRow).select('id').single();
         pagoId = insertado['id'] as String;
       }
       await asegurarIngresoCaja(
         pagoId,
-        empresaId: pago['empresa_id'] as String?,
-        monto: (pago['monto'] as num?)?.toDouble(),
-        usuarioId: pago['registrado_por'] as String?,
-        metodo: pago['metodo'] as String?,
+        empresaId: pagoRow['empresa_id'] as String?,
+        monto: (pagoRow['monto'] as num?)?.toDouble(),
+        usuarioId: pagoRow['registrado_por'] as String?,
+        metodo: pagoRow['metodo'] as String?,
       );
     }
 
@@ -534,7 +600,7 @@ class Outbox {
   }
 
   static Future<void> _insertarPago(Map<String, dynamic> op) async {
-    final pago = Map<String, dynamic>.from(op['pago'] as Map);
+    final pago = _limpiarPago(op['pago'] as Map);
     final yaHay = await _sb
         .from('pagos')
         .select('id')
@@ -552,6 +618,49 @@ class Outbox {
       usuarioId: pago['registrado_por'] as String?,
       metodo: pago['metodo'] as String?,
     );
+  }
+
+  static Future<void> _insertarGasto(Map<String, dynamic> op) async {
+    final gasto = Map<String, dynamic>.from(op['gasto'] as Map);
+    final uuid = gasto['uuid_offline'] as String?;
+    // Idempotencia: si la base ya tiene `uuid_offline`, se comprueba; si la
+    // migración aún no está, se evita duplicar por descripción+monto+fecha.
+    if (uuid != null) {
+      try {
+        final ya = await _sb
+            .from('gastos')
+            .select('id')
+            .eq('uuid_offline', uuid)
+            .maybeSingle();
+        if (ya != null) return;
+      } catch (_) {
+        final ya = await _sb
+            .from('gastos')
+            .select('id')
+            .eq('descripcion', gasto['descripcion'] as String? ?? '')
+            .eq('monto', gasto['monto'])
+            .eq('fecha', gasto['fecha'])
+            .maybeSingle();
+        if (ya != null) return;
+      }
+    }
+    try {
+      await _sb.from('gastos').insert(gasto);
+    } catch (_) {
+      if (!gasto.containsKey('uuid_offline')) rethrow;
+      final sinUuid = Map<String, dynamic>.from(gasto)..remove('uuid_offline');
+      await _sb.from('gastos').insert(sinUuid);
+    }
+  }
+
+  static Future<void> _insertarIncidencia(Map<String, dynamic> op) async {
+    final inc = Map<String, dynamic>.from(op['incidencia'] as Map);
+    final ya = await _sb
+        .from('incidencias')
+        .select('id')
+        .eq('uuid_offline', inc['uuid_offline'])
+        .maybeSingle();
+    if (ya == null) await _sb.from('incidencias').insert(inc);
   }
 
   static Future<void> _insertarDevolucion(Map<String, dynamic> op) async {

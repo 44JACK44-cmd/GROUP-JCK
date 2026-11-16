@@ -59,6 +59,11 @@ const List<Pestana> pestanasMotorizado = [
       icono: Icons.delivery_dining_outlined,
       iconoActivo: Icons.delivery_dining),
   Pestana(
+      ruta: '/mi-registro',
+      label: 'Mi registro',
+      icono: Icons.edit_note_outlined,
+      iconoActivo: Icons.edit_note),
+  Pestana(
       ruta: '/historial',
       label: 'Historial',
       icono: Icons.history_outlined,

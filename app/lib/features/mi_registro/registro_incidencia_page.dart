@@ -3,9 +3,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/sb.dart';
+import '../../core/offline/outbox.dart';
+import '../../core/state/bus.dart';
 import '../auth/auth_controller.dart';
 
 class RegistroIncidenciaPage extends ConsumerStatefulWidget {
@@ -50,24 +53,38 @@ class _RegistroIncidenciaPageState extends ConsumerState<RegistroIncidenciaPage>
 
     setState(() => _guardando = true);
     final auth = ref.read(authProvider);
+    final datos = <String, dynamic>{
+      'empresa_id': auth.empresaId,
+      'usuario_id': auth.usuarioId,
+      'tipo': _tipo,
+      'descripcion': descripcion,
+      'monto': monto,
+      'uuid_offline': const Uuid().v4(),
+    };
     try {
-      await sb.from('incidencias').insert({
-        'empresa_id': auth.empresaId,
-        'usuario_id': auth.usuarioId,
-        'tipo': _tipo,
-        'descripcion': descripcion,
-        'monto': monto,
-      });
+      await sb.from('incidencias').insert(datos);
+      SyncBus.dineroCambio();
       if (!mounted) return;
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Incidencia registrada.')),
       );
     } catch (e) {
+      if (esErrorDeRed(e)) {
+        await Outbox.encolarIncidencia(incidencia: datos);
+        if (!mounted) return;
+        Navigator.of(context).pop(true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Sin conexión: la incidencia quedó guardada y se enviará sola.'),
+          ),
+        );
+        return;
+      }
       if (!mounted) return;
       setState(() => _guardando = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No pudimos registrar: $e')),
+        SnackBar(content: Text(traducirError(e, contexto: 'No pudimos registrar').mensaje)),
       );
     }
   }

@@ -7,6 +7,7 @@ library;
 import 'package:uuid/uuid.dart';
 
 import '../domain/estado_pedido.dart';
+import '../state/bus.dart';
 import 'auditoria_repo.dart';
 import 'caja_ingreso.dart';
 import 'sb.dart';
@@ -134,21 +135,26 @@ class EntregasRepo {
     //    cobro: el pago nace con el id del pedido.
     String? pagoId;
     if (datos.montoCobrado > 0.009) {
-      final pago = await sb
-          .from('pagos')
-          .insert({
-            'empresa_id': empresaId,
-            'pedido_id': pedidoId,
-            'cliente_id': clienteId,
-            'monto': datos.montoCobrado,
-            'metodo': datos.metodo,
-            'registrado_por': usuarioId,
-            'uuid_offline': const Uuid().v4(),
-            if (comprobanteUrl != null && comprobanteUrl.isNotEmpty)
-              'comprobante_url': comprobanteUrl,
-          })
-          .select('id')
-          .single();
+      final filaPago = {
+        'empresa_id': empresaId,
+        'pedido_id': pedidoId,
+        'cliente_id': clienteId,
+        'monto': datos.montoCobrado,
+        'metodo': datos.metodo,
+        'registrado_por': usuarioId,
+        'uuid_offline': const Uuid().v4(),
+        if (comprobanteUrl != null && comprobanteUrl.isNotEmpty)
+          'comprobante_url': comprobanteUrl,
+      };
+      Map<String, dynamic> pago;
+      try {
+        pago = await sb.from('pagos').insert(filaPago).select('id').single();
+      } catch (e) {
+        // Base sin la columna `comprobante_url`: el cobro no se pierde.
+        if (!filaPago.containsKey('comprobante_url')) rethrow;
+        final sinFoto = Map<String, dynamic>.from(filaPago)..remove('comprobante_url');
+        pago = await sb.from('pagos').insert(sinFoto).select('id').single();
+      }
       pagoId = pago['id'] as String;
       await asegurarIngresoCaja(
         pagoId,
@@ -207,8 +213,27 @@ class EntregasRepo {
       }
     }
 
-    // 5. Cerrar el pedido.
-    await sb.from('pedidos').update({'estado': 'ENTREGADO'}).eq('id', pedidoId);
+    // 5. Cerrar el pedido. Se confirma que la base lo guardó: si no, la
+    //    entrega y el pago ya existen y hay que dejar rastro del fallo.
+    final cerrado = await sb
+        .from('pedidos')
+        .update({'estado': 'ENTREGADO'})
+        .eq('id', pedidoId)
+        .select('id');
+
+    final estadoFinal = await sb
+        .from('pedidos')
+        .select('estado')
+        .eq('id', pedidoId)
+        .maybeSingle();
+
+    if (List<Map<String, dynamic>>.from(cerrado).isEmpty ||
+        estadoFinal?['estado'] != 'ENTREGADO') {
+      throw Exception(
+        'La entrega y el cobro se guardaron, pero el pedido no quedó como '
+        'ENTREGADO. Abre el pedido y vuelve a intentarlo.',
+      );
+    }
 
     // 6. Auditoría.
     await auditoriaRepo.registrar(
@@ -230,6 +255,7 @@ class EntregasRepo {
       },
     );
 
+    SyncBus.pedidoYdinero();
     return pagoId;
   }
 
@@ -280,6 +306,8 @@ class EntregasRepo {
       usuarioId: usuarioId,
       detalle: {'motivo': motivo},
     );
+
+    SyncBus.pedidosCambiaron();
   }
 
   /// Calcula cuánto se ha cobrado de un pedido y cuánto debe.

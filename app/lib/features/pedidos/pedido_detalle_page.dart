@@ -16,12 +16,10 @@ import '../../core/data/sb.dart';
 import '../../core/domain/estado_pedido.dart';
 import '../../core/domain/formato.dart';
 import '../../core/domain/navegacion.dart';
-import '../../core/offline/outbox.dart';
 import '../../core/prefs/ajustes_prefs.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 import '../rutas/ruta_page.dart';
-import 'entrega_sheet.dart';
 import 'flujo_entrega.dart';
 
 class PedidoDetallePage extends ConsumerStatefulWidget {
@@ -294,14 +292,6 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
     _huboCambios = true;
     await _cargar();
     if (mounted) Navigator.of(context).pop(true);
-  }
-
-  String _mensajeEntrega(datos, double total) {
-    if (datos.montoCobrado <= 0.009) return 'Entregado. Quedó una deuda de ${dinero(total)}.';
-    if (datos.montoCobrado + 0.009 < total) {
-      return 'Entregado. Cobraste ${dinero(datos.montoCobrado)}, debe ${dinero(total - datos.montoCobrado)}.';
-    }
-    return 'Entregado. Cobraste ${dinero(datos.montoCobrado)}.';
   }
 
   Future<void> _cancelar() async {

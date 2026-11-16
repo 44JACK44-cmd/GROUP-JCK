@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config.dart';
 import '../../core/data/sb.dart';
+import '../../core/location/ubicacion_service.dart';
 
 enum AuthStatus { cargando, autenticado, noAutenticado }
 
@@ -140,6 +141,10 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   Future<void> logout() async {
+    // Cortar el GPS antes de perder la sesión (así también se borra la fila).
+    try {
+      await UbicacionService.instance.desactivar();
+    } catch (_) {}
     await _sb.auth.signOut();
     state = const AuthState(status: AuthStatus.noAutenticado);
   }

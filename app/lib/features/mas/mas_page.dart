@@ -25,6 +25,7 @@ class MasPage extends StatelessWidget {
           _Tile(icono: Icons.account_balance_wallet_outlined, titulo: 'Deudas', subtitulo: 'Clientes que deben', color: AppTheme.danger, onTap: () => context.push('/deudas')),
           _Tile(icono: Icons.local_fire_department_outlined, titulo: 'Balones', subtitulo: 'Vacíos pendientes y devoluciones', color: AppTheme.warning, onTap: () => context.push('/balones')),
           _Tile(icono: Icons.delivery_dining_outlined, titulo: 'Motorizados', subtitulo: 'Tu equipo de reparto', color: AppTheme.primary, onTap: () => context.push('/motorizados-actividad')),
+          _Tile(icono: Icons.map_outlined, titulo: 'Seguimiento GPS', subtitulo: 'Dónde está cada motorizado', color: AppTheme.info, onTap: () => context.push('/seguimiento')),
           _Tile(icono: Icons.local_gas_station_outlined, titulo: 'Combustible', subtitulo: 'Gastos de gasolina por vehículo', color: AppTheme.warning, onTap: () => context.push('/combustible')),
           _seccion('Control'),
           _Tile(icono: Icons.point_of_sale_outlined, titulo: 'Caja', subtitulo: 'Dinero del día', color: AppTheme.success, onTap: () => context.push('/caja')),

@@ -119,4 +119,51 @@ union all
 select 'columna perfiles.dias_trabajo',
        case when exists (select 1 from information_schema.columns
                           where table_schema = 'public' and table_name = 'perfiles'
-                            and column_name = 'dias_trabajo') then 'OK' else 'FALTA' end;
+                            and column_name = 'dias_trabajo') then 'OK' else 'FALTA' end
+union all
+select 'columna gastos.uuid_offline',
+       case when exists (select 1 from information_schema.columns
+                          where table_schema = 'public' and table_name = 'gastos'
+                            and column_name = 'uuid_offline') then 'OK' else 'FALTA' end
+union all
+select 'permiso gastos del motorizado',
+       case when exists (select 1 from pg_policies
+                          where schemaname = 'public' and tablename = 'gastos'
+                            and policyname = 'gastos_moto_insert')
+            then 'OK' else 'FALTA' end
+union all
+select 'permiso lectura gastos',
+       case when exists (select 1 from pg_policies
+                          where schemaname = 'public' and tablename = 'gastos'
+                            and policyname = 'gastos_select')
+            then 'OK' else 'FALTA' end
+union all
+select 'tabla ubicaciones_motorizado',
+       case when to_regclass('public.ubicaciones_motorizado') is not null
+            then 'OK' else 'FALTA' end
+union all
+select 'realtime pagos',
+       case when exists (select 1 from pg_publication_tables
+                          where pubname = 'supabase_realtime'
+                            and schemaname = 'public' and tablename = 'pagos')
+            then 'OK' else 'FALTA' end
+union all
+select 'realtime gastos',
+       case when exists (select 1 from pg_publication_tables
+                          where pubname = 'supabase_realtime'
+                            and schemaname = 'public' and tablename = 'gastos')
+            then 'OK' else 'FALTA' end
+union all
+select 'realtime ubicaciones',
+       case when exists (select 1 from pg_publication_tables
+                          where pubname = 'supabase_realtime'
+                            and schemaname = 'public' and tablename = 'ubicaciones_motorizado')
+            then 'OK' else 'FALTA' end
+union all
+select 'pedidos entregados sin estado viejo',
+       case when not exists (
+              select 1
+                from public.pedidos p
+               where p.estado in ('NUEVO','ASIGNADO','EN_CAMINO','NO_ENTREGADO')
+                 and exists (select 1 from public.entregas e where e.pedido_id = p.id)
+            ) then 'OK' else 'PENDIENTE' end;
