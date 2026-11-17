@@ -27,6 +27,7 @@ const _adminEmail = String.fromEnvironment('TEST_ADMIN_EMAIL');
 const _adminPassword = String.fromEnvironment('TEST_ADMIN_PASSWORD');
 const _motoEmail = String.fromEnvironment('TEST_MOTO_EMAIL');
 const _motoPassword = String.fromEnvironment('TEST_MOTO_PASSWORD');
+const _serviceKey = String.fromEnvironment('TEST_SERVICE_KEY');
 
 final _configurado = _url.isNotEmpty &&
     _anonKey.isNotEmpty &&
@@ -86,7 +87,7 @@ void main() {
   if (!_configurado) {
     test('Prueba de integración (flujo de pedidos)', () {
       print(
-        '⏭  Saltada: faltan las variables TEST_SUPABASE_URL / TEST_SUPABASE_ANON_KEY / '
+        'Saltada: faltan las variables TEST_SUPABASE_URL / TEST_SUPABASE_ANON_KEY / '
         'TEST_ADMIN_EMAIL / TEST_ADMIN_PASSWORD. '
         'Ver la cabecera del archivo para ejecutarla.',
       );
@@ -96,6 +97,7 @@ void main() {
 
   late Api admin;
   late Api moto;
+  Api? svc;
   late String adminId;
   late String motoId;
   late String empresaId;
@@ -112,6 +114,7 @@ void main() {
     expect(tokenMoto, isNotNull, reason: 'El MOTORIZADO debe poder iniciar sesión');
     admin = Api(tokenAdmin!);
     moto = Api(tokenMoto!);
+    if (_serviceKey.isNotEmpty) svc = Api(_serviceKey);
 
     final perfil = await admin.get('perfiles', query: {'id': 'eq.${_perfilIdDe(tokenAdmin)}'});
     expect(perfil.statusCode, 200);
@@ -133,17 +136,36 @@ void main() {
   });
 
   tearDownAll(() async {
+    // RLS no permite borrar pedidos/incidencias con token de usuario:
+    // si se pasa TEST_SERVICE_KEY se usa service_role solo para limpiar.
+    final cleanup = svc ?? admin;
     if (pedidoId != null) {
-      await admin.delete('detalle_pedido', 'pedido_id=eq.$pedidoId');
-      await admin.delete('entregas', 'pedido_id=eq.$pedidoId');
-      await admin.delete('pagos', 'pedido_id=eq.$pedidoId');
-      await admin.delete('movimiento_bal_on', 'pedido_id=eq.$pedidoId');
-      await admin.delete('pedidos', 'id=eq.$pedidoId');
+      final pagos = await cleanup.get('pagos', query: {
+        'pedido_id': 'eq.$pedidoId',
+        'select': 'id',
+      });
+      for (final p in jsonDecode(pagos.body) as List) {
+        await cleanup.delete('movimiento_caja', 'referencia_id=eq.${p['id']}');
+      }
+      await cleanup.delete('pagos', 'pedido_id=eq.$pedidoId');
+      await cleanup.delete('entregas', 'pedido_id=eq.$pedidoId');
+      await cleanup.delete('movimiento_bal_on', 'pedido_id=eq.$pedidoId');
+      await cleanup.delete('movimiento_fierro', 'pedido_id=eq.$pedidoId');
+      await cleanup.delete('detalle_pedido', 'pedido_id=eq.$pedidoId');
+      await cleanup.delete('pedidos', 'id=eq.$pedidoId');
     }
     if (clienteId != null) {
-      await admin.delete('movimiento_bal_on', 'cliente_id=eq.$clienteId');
-      await admin.delete('pagos', 'cliente_id=eq.$clienteId');
-      await admin.delete('clientes', 'id=eq.$clienteId');
+      final pagos = await cleanup.get('pagos', query: {
+        'cliente_id': 'eq.$clienteId',
+        'select': 'id',
+      });
+      for (final p in jsonDecode(pagos.body) as List) {
+        await cleanup.delete('movimiento_caja', 'referencia_id=eq.${p['id']}');
+      }
+      await cleanup.delete('pagos', 'cliente_id=eq.$clienteId');
+      await cleanup.delete('movimiento_bal_on', 'cliente_id=eq.$clienteId');
+      await cleanup.delete('movimiento_fierro', 'cliente_id=eq.$clienteId');
+      await cleanup.delete('clientes', 'id=eq.$clienteId');
     }
   });
 
@@ -261,7 +283,7 @@ void main() {
     // El ADMIN limpia el pedido de prueba.
     if (pedidoMoto.statusCode == 200 || pedidoMoto.statusCode == 201) {
       final creado = (jsonDecode(pedidoMoto.body) as List).first;
-      await admin.delete('pedidos', 'id=eq.${creado['id']}');
+      await (svc ?? admin).delete('pedidos', 'id=eq.${creado['id']}');
     }
 
     // Un cliente nuevo de su empresa sí es parte del cuaderno.
@@ -273,7 +295,7 @@ void main() {
         reason: 'El motorizado debe poder registrar un cliente de su empresa');
     if (cliente.statusCode == 200 || cliente.statusCode == 201) {
       final creadoCliente = (jsonDecode(cliente.body) as List).first;
-      await admin.delete('clientes', 'id=eq.${creadoCliente['id']}');
+      await (svc ?? admin).delete('clientes', 'id=eq.${creadoCliente['id']}');
     }
   });
 
