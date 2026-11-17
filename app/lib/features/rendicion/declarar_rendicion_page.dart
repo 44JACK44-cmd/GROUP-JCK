@@ -12,6 +12,7 @@ import '../../app/theme.dart';
 import '../../core/data/rendicion_repo.dart';
 import '../../core/data/rendiciones_repo.dart';
 import '../../core/domain/formato.dart';
+import '../../core/ui/app_bar_volver.dart';
 import '../../core/ui/diseno.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
@@ -163,7 +164,7 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
   Widget build(BuildContext context) {
     final r = _rendicionCalculada;
     return Scaffold(
-      appBar: AppBar(title: const Text('Mi rendición')),
+      appBar: const AppBarVolver(titulo: 'Mi rendición'),
       body: _cargando
           ? const LoadingState()
           : ListView(

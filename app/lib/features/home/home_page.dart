@@ -12,6 +12,7 @@ import '../../app/theme.dart';
 import '../../core/data/actividad_repo.dart';
 import '../../core/data/motorizados_repo.dart';
 import '../../core/data/pedidos_repo.dart';
+import '../../core/data/rendiciones_repo.dart';
 import '../../core/data/ubicaciones_repo.dart';
 import '../../core/domain/formato.dart';
 import '../../core/state/bus.dart';
@@ -34,6 +35,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   Map<String, ResumenVivo> _vivo = {};
   List<Map<String, dynamic>> _motos = [];
   Map<String, UbicacionMotorizado> _ubicaciones = {};
+  List<Map<String, dynamic>> _rendicionesPendientes = [];
   int _peticion = 0;
 
   @override
@@ -70,6 +72,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         actividadRepo.resumenVivoHoy(),
         motorizadosRepo.listar(),
         ubicacionesRepo.listar(),
+        rendicionesRepo.listar(estado: EstadoRendicion.pendiente),
       ]);
       if (!mounted || miPeticion != _peticion) return;
       final ubicaciones = <String, UbicacionMotorizado>{
@@ -81,6 +84,7 @@ class _HomePageState extends ConsumerState<HomePage> {
         _vivo = res[2] as Map<String, ResumenVivo>;
         _motos = res[3] as List<Map<String, dynamic>>;
         _ubicaciones = ubicaciones;
+        _rendicionesPendientes = res[5] as List<Map<String, dynamic>>;
         _cargando = false;
       });
     } catch (_) {
@@ -123,6 +127,61 @@ class _HomePageState extends ConsumerState<HomePage> {
               Icon(Icons.chevron_right, color: AppColors.textoMuted),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _panelRendiciones() {
+    final nombres = {
+      for (final m in _motos) m['id'] as String: m['nombre'] as String? ?? '',
+    };
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.assignment_outlined,
+                    size: 20, color: AppTheme.warning),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Rendiciones pendientes: ${_rendicionesPendientes.length}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => context.push('/rendicion'),
+                  child: const Text('VER TODAS'),
+                ),
+              ],
+            ),
+            if (_rendicionesPendientes.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 6),
+                child: Text('No hay rendiciones por revisar.',
+                    style: TextStyle(color: Colors.black54)),
+              )
+            else
+              for (final r in _rendicionesPendientes.take(3))
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(
+                    nombres[r['motorizado_id'] as String?] ?? 'Motorizado',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    'Declarado ${dinero((r['efectivo_declarado'] as num? ?? 0).toDouble())}'
+                    ' · ${r['estado'] ?? ''}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  onTap: () => context.push('/aprobacion-rendiciones'),
+                ),
+          ],
         ),
       ),
     );
@@ -244,6 +303,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 label: Text('Movimientos'),
                 style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(48)),
               ),
+              SizedBox(height: 16),
+              _panelRendiciones(),
               SizedBox(height: 16),
               Text('Acciones directas',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),

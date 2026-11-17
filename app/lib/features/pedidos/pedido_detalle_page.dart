@@ -22,6 +22,7 @@ import '../../core/data/sb.dart';
 import '../../core/domain/estado_pedido.dart';
 import '../../core/domain/formato.dart';
 import '../../core/domain/navegacion.dart';
+import '../../core/ui/app_bar_volver.dart';
 import '../../core/ui/estado_stepper.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
@@ -465,7 +466,7 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
         Navigator.of(context).pop(_huboCambios);
       },
       child: Scaffold(
-        appBar: AppBar(title: Text('Pedido #${p['numero']}')),
+        appBar: AppBarVolver(titulo: 'Pedido #${p['numero']}'),
         body: _cargando
           ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : ListView(

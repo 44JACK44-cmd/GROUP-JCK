@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
+import '../../core/navegacion/navegacion_service.dart';
 import '../auth/auth_controller.dart';
 
 /// Una pestaña de la barra inferior.
@@ -79,6 +80,9 @@ class AppShell extends ConsumerWidget {
     final pestanas = auth.esMotorizado ? pestanasMotorizado : pestanasAdmin;
 
     final index = indicePestanaActiva(pestanas, location, esAdmin: auth.esAdmin);
+    if (NavegacionService.ruta.value != location) {
+      NavegacionService.ruta.value = location;
+    }
 
     return Scaffold(
       body: child,

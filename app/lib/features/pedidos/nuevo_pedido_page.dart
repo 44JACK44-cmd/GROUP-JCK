@@ -80,7 +80,6 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
   Map<String, double> _preciosCliente = {};
 
   List<LineaRapida> _lineas = [];
-  String _formaPago = 'EFECTIVO';
 
   List<Map<String, dynamic>> _motorizados = [];
   Map<String, int> _enRuta = {};
@@ -93,12 +92,6 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
   bool _ubicacionCambiada = false;
 
   bool _guardando = false;
-
-  static const _formasPago = [
-    ('EFECTIVO', Icons.payments_outlined, 'Efectivo'),
-    ('YAPE', Icons.account_balance_wallet_outlined, 'Yape'),
-    ('DEUDA', Icons.assignment_outlined, 'Queda debiendo'),
-  ];
 
   @override
   void initState() {
@@ -334,7 +327,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
                 destacado: true,
                 color: AppTheme.primary,
               ),
-              _FilaResumen('Pago', _etiquetaPago(_formaPago)),
+              _FilaResumen('Pago', 'Se define en la entrega'),
               _FilaResumen(
                 'Ubicación',
                 _direccion.isEmpty ? 'Sin marcar' : _direccion,
@@ -430,7 +423,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
         usuarioId: usuarioId,
         lineas: lineas,
         total: total,
-        formaPago: _formaPago,
+        // La forma de pago se define en la entrega, no al crear el pedido.
         observaciones: nota,
         repartidorId: _motorizadoId,
         uuidOffline: uuid,
@@ -467,7 +460,6 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
             'empresa_id': empresaId,
             'cliente_id': _cliente?['id'],
             'creado_por': usuarioId,
-            'forma_pago': _formaPago,
             'observaciones': nota.isEmpty ? null : nota,
             'total': total,
             'uuid_offline': uuid,
@@ -498,13 +490,6 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
       _aviso(traducirError(e, contexto: 'No pudimos crear el pedido').mensaje);
     }
   }
-
-  String _etiquetaPago(String v) => switch (v) {
-        'EFECTIVO' => 'Efectivo',
-        'YAPE' => 'Yape',
-        'DEUDA' => 'Queda debiendo',
-        _ => 'Otro',
-      };
 
   void _aviso(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -753,34 +738,23 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
   }
 
   Widget _seccionPago() {
+    // El método de pago NO se decide al crear el pedido: se define en la entrega.
     return _seccion(
-      titulo: '¿Cómo paga?',
+      titulo: 'Pago',
       icono: Icons.payments_outlined,
       hijos: [
         Row(
           children: [
-            for (final f in _formasPago) ...[
-              Expanded(
-                child: _BotonOpcion(
-                  icono: f.$2,
-                  etiqueta: f.$3,
-                  seleccionado: _formaPago == f.$1,
-                  color: f.$1 == 'DEUDA' ? AppTheme.warning : AppTheme.primary,
-                  onTap: () => setState(() => _formaPago = f.$1),
-                ),
+            Icon(Icons.info_outline, size: 18, color: AppTheme.info),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'La forma de pago se registra cuando se entregue el pedido.',
+                style: TextStyle(fontSize: 13, color: AppColors.textoSecundario),
               ),
-              if (f != _formasPago.last) SizedBox(width: 8),
-            ],
+            ),
           ],
         ),
-        if (_formaPago == 'DEUDA')
-          Padding(
-            padding: EdgeInsets.only(top: 8),
-            child: Text(
-              'Quedará como deuda del cliente.',
-              style: TextStyle(fontSize: 12.5, color: AppColors.textoSecundario),
-            ),
-          ),
       ],
     );
   }
@@ -1042,59 +1016,6 @@ class _LineaCard extends StatelessWidget {
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Botón grande de forma de pago.
-class _BotonOpcion extends StatelessWidget {
-  final IconData icono;
-  final String etiqueta;
-  final bool seleccionado;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _BotonOpcion({
-    required this.icono,
-    required this.etiqueta,
-    required this.seleccionado,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        height: 62,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: seleccionado ? color.withValues(alpha: 0.14) : AppColors.superficie,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: seleccionado ? color : AppColors.borde,
-            width: seleccionado ? 1.6 : 1,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icono, size: 22, color: seleccionado ? color : AppColors.textoSecundario),
-            SizedBox(height: 2),
-            Text(
-              etiqueta,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 12.5,
-                color: seleccionado ? color : AppColors.textoPrincipal,
-                fontWeight: seleccionado ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

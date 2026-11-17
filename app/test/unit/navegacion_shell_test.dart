@@ -5,9 +5,27 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gas_app/core/navegacion/navegacion_service.dart';
 import 'package:gas_app/features/shell/app_shell.dart';
 
 void main() {
+  group('botón atrás global', () {
+    test('solo Inicio/Login se consideran raíz', () {
+      expect(NavegacionService.esInicio('/inicio'), isTrue);
+      expect(NavegacionService.esInicio('/login'), isTrue);
+      expect(NavegacionService.esInicio('/pedidos'), isFalse);
+      expect(NavegacionService.esInicio('/pedidos/nuevo'), isFalse);
+      expect(NavegacionService.esInicio('/rendicion'), isFalse);
+    });
+
+    test('el aviso interno se puede mostrar y limpiar', () {
+      NavegacionService.mostrarAviso('Nuevo pedido asignado');
+      expect(NavegacionService.aviso.value, 'Nuevo pedido asignado');
+      NavegacionService.limpiarAviso();
+      expect(NavegacionService.aviso.value, isNull);
+    });
+  });
+
   group('pestañas del administrador', () {
     test('una subpantalla resalta su sección', () {
       expect(

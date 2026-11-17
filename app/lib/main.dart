@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/theme.dart';
 import 'core/config.dart';
+import 'core/navegacion/navegacion_service.dart';
 import 'core/offline/sync_service.dart';
 import 'core/realtime/realtime_service.dart';
 import 'core/state/tema.dart';
@@ -214,6 +216,9 @@ class _GasAppState extends ConsumerState<GasApp> {
       initialLocation: '/login',
       redirect: (context, state) {
         final loc = state.matchedLocation;
+        if (NavegacionService.ruta.value != loc) {
+          NavegacionService.ruta.value = loc;
+        }
         switch (auth.status) {
           case AuthStatus.cargando:
             return loc == '/splash' ? null : '/splash';
@@ -300,17 +305,56 @@ GoRoute(path: '/motorizados-actividad', builder: (_, state) => MotorizadosActivi
       ],
     );
 
-    return ValueListenableBuilder<ThemeMode>(
-      valueListenable: TemaApp.modo,
-      builder: (context, modo, _) => MaterialApp.router(
-        title: 'GasApp',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.light(),
-        darkTheme: AppTheme.dark(),
-        themeMode: modo,
-        themeAnimationDuration: AppTheme.normal,
-        themeAnimationCurve: Curves.easeInOut,
-        routerConfig: router,
+    return PopScope<Object?>(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final navigator = _rootNavigatorKey.currentState;
+        // 1) Si hay stack interno, regresar a la pantalla anterior.
+        if (navigator != null && navigator.canPop()) {
+          navigator.pop();
+          return;
+        }
+        // 2) Si no hay stack pero no estamos en Inicio, ir al Inicio.
+        final ruta = NavegacionService.ruta.value;
+        if (!NavegacionService.esInicio(ruta)) {
+          router.go('/inicio');
+          return;
+        }
+        // 3) En Inicio: confirmación controlada, nunca cierre accidental.
+        final ctx = _rootNavigatorKey.currentContext;
+        if (ctx == null || !ctx.mounted) return;
+        final salir = await showDialog<bool>(
+          context: ctx,
+          builder: (dialogCtx) => AlertDialog(
+            title: const Text('Salir de GasApp'),
+            content: const Text('¿Quieres cerrar la aplicación?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogCtx).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogCtx).pop(true),
+                child: const Text('Salir'),
+              ),
+            ],
+          ),
+        );
+        if (salir == true) SystemNavigator.pop();
+      },
+      child: ValueListenableBuilder<ThemeMode>(
+        valueListenable: TemaApp.modo,
+        builder: (context, modo, _) => MaterialApp.router(
+          title: 'GasApp',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.light(),
+          darkTheme: AppTheme.dark(),
+          themeMode: modo,
+          themeAnimationDuration: AppTheme.normal,
+          themeAnimationCurve: Curves.easeInOut,
+          routerConfig: router,
+        ),
       ),
     );
   }

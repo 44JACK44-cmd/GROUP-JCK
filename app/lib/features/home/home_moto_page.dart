@@ -16,6 +16,7 @@ import '../../core/data/pedidos_repo.dart';
 import '../../core/data/rendicion_repo.dart';
 import '../../core/domain/formato.dart';
 import '../../core/location/ubicacion_service.dart';
+import '../../core/navegacion/navegacion_service.dart';
 import '../../core/state/bus.dart';
 import '../../core/ui/acciones_rapidas.dart';
 import '../../core/ui/estado_conexion.dart';
@@ -32,6 +33,7 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
   Rendicion _hoy = Rendicion();
   int _porEntregar = 0;
   bool _cargando = true;
+  int? _ultimoConteo;
 
   @override
   void initState() {
@@ -78,9 +80,14 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
         ),
       ]);
       if (!mounted) return;
+      final conteo = (res[1] as List).length;
+      if (_ultimoConteo != null && conteo > _ultimoConteo!) {
+        NavegacionService.mostrarAviso('Nuevo pedido asignado');
+      }
+      _ultimoConteo = conteo;
       setState(() {
         _hoy = res[0] as Rendicion;
-        _porEntregar = (res[1] as List).length;
+        _porEntregar = conteo;
         _cargando = false;
       });
     } catch (_) {
@@ -239,6 +246,34 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
             padding: EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
               EstadoConexion(),
+              ValueListenableBuilder<String?>(
+                valueListenable: NavegacionService.aviso,
+                builder: (context, aviso, _) {
+                  if (aviso == null) return const SizedBox.shrink();
+                  return Card(
+                    color: AppTheme.success.withValues(alpha: 0.10),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.notifications_active_outlined,
+                              color: AppTheme.success, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(aviso,
+                              style: const TextStyle(fontWeight: FontWeight.w600))),
+                          TextButton(
+                            onPressed: () {
+                              NavegacionService.limpiarAviso();
+                              context.push('/mis-pedidos');
+                            },
+                            child: const Text('VER'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
               SizedBox(height: 4),
               Text('Acciones directas',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
