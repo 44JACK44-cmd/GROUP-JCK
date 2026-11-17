@@ -570,13 +570,16 @@ begin
       'ubicaciones_motorizado', 'rendiciones', 'fondo_vuelto'
     ]
     loop
-      if not exists (
-        select 1
-          from pg_publication_tables
-         where pubname = 'supabase_realtime'
-           and schemaname = 'public'
-           and tablename = t
-      ) then
+      -- Solo publicar tablas que realmente existen. Si el editor ejecutó
+      -- este bloque antes que el CREATE TABLE, se omite en vez de abortar.
+      if to_regclass(format('public.%I', t)) is not null
+         and not exists (
+           select 1
+             from pg_publication_tables
+            where pubname = 'supabase_realtime'
+              and schemaname = 'public'
+              and tablename = t
+         ) then
         execute format(
           'alter publication supabase_realtime add table public.%I', t
         );

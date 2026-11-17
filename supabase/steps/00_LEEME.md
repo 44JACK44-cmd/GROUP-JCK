@@ -28,6 +28,7 @@ Repetir en orden, uno por uno, esperando `Success` antes de pasar al siguiente.
 | 13 | `v7_13_dias_trabajo.sql` | Columna `perfiles.dias_trabajo` (días de trabajo del motorizado) |
 | 14 | `v7_14_sincronizacion.sql` | Gastos del motorizado + Realtime de pagos/gastos/entregas + tabla `ubicaciones_motorizado` (GPS) + reconciliación de pedidos entregados |
 | 15 | `v7_15_flujo_simple.sql` | **IMPORTANTE — aplicar este paso sí o sí.** Repone TODAS las políticas del motorizado (corrige "No autorizado"), crea `fondo_vuelto`, añade columnas aditivas y publica Realtime. Es autónomo: se puede ejecutar aunque los pasos 10–14 no estén aplicados. |
+| 15b | `v7_15b_republicar_realtime.sql` | Reparación: si el paso 15 falló con `42P01: relation "public.ubicaciones_motorizado" does not exist`, ejecuta este archivo y vuelve a correr el 15. |
 | 16 | `v7_16_comprobantes_gasto_falla.sql` | Foto opcional del comprobante en gastos y fallas (`comprobante_url`). Aditivo y reejecutable. |
 
 Después: `99_verificar.sql` — todo debe salir en `OK`.
