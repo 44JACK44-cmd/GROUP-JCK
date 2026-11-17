@@ -134,6 +134,21 @@ class _HomePageState extends ConsumerState<HomePage> {
     final saludo = hora < 12 ? 'Buenos días' : (hora < 19 ? 'Buenas tardes' : 'Buenas noches');
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Inicio'),
+        actions: [
+          IconButton(
+            tooltip: 'Más opciones',
+            onPressed: () => context.push('/mas'),
+            icon: const Icon(Icons.more_horiz),
+          ),
+          IconButton(
+            tooltip: 'Cerrar sesión',
+            onPressed: () => ref.read(authProvider.notifier).logout(),
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _cargar,
@@ -142,26 +157,30 @@ class _HomePageState extends ConsumerState<HomePage> {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
               const EstadoConexion(),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('$saludo, ${auth.nombre ?? ''}',
-                            style: Theme.of(context).textTheme.titleLarge),
-                        Text(auth.empresaNombre ?? '',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: AppTheme.primary, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => context.go('/inicio'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('$saludo, ${auth.nombre ?? ''}',
+                                style: Theme.of(context).textTheme.titleLarge),
+                            Text(auth.empresaNombre ?? '',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.home_outlined,
+                          size: 18, color: Colors.black45),
+                    ],
                   ),
-                  IconButton(
-                    tooltip: 'Cerrar sesión',
-                    onPressed: () => ref.read(authProvider.notifier).logout(),
-                    icon: const Icon(Icons.logout),
-                  ),
-                ],
+                ),
               ),
               const SizedBox(height: 16),
               FilledButton.icon(
@@ -212,7 +231,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: () => context.push('/mas'),
+                onPressed: () => context.push('/ajustes'),
                 icon: const Icon(Icons.settings_outlined),
                 label: const Text('Configuración'),
                 style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),

@@ -22,14 +22,14 @@ class MasPage extends StatelessWidget {
         children: [
           _seccion('Operación'),
           _Tile(icono: Icons.people_outline, titulo: 'Clientes', subtitulo: 'Directorio de clientes', color: AppTheme.primary, onTap: () => context.go('/clientes')),
-          _Tile(icono: Icons.account_balance_wallet_outlined, titulo: 'Deudas', subtitulo: 'Clientes que deben', color: AppTheme.danger, onTap: () => context.push('/deudas')),
-          _Tile(icono: Icons.local_fire_department_outlined, titulo: 'Balones', subtitulo: 'Vacíos pendientes y devoluciones', color: AppTheme.warning, onTap: () => context.push('/balones')),
-          _Tile(icono: Icons.delivery_dining_outlined, titulo: 'Motorizados', subtitulo: 'Tu equipo de reparto', color: AppTheme.primary, onTap: () => context.push('/motorizados-actividad')),
-          _Tile(icono: Icons.map_outlined, titulo: 'Seguimiento GPS', subtitulo: 'Dónde está cada motorizado', color: AppTheme.info, onTap: () => context.push('/seguimiento')),
-          _Tile(icono: Icons.local_gas_station_outlined, titulo: 'Combustible', subtitulo: 'Gastos de gasolina por vehículo', color: AppTheme.warning, onTap: () => context.push('/combustible')),
+          _Tile(icono: Icons.account_balance_wallet_outlined, titulo: 'Historial de deudas', subtitulo: 'Detalle por cliente y abonos', color: AppTheme.danger, onTap: () => context.push('/deudas')),
+          _Tile(icono: Icons.local_fire_department_outlined, titulo: 'Control de balones', subtitulo: 'Inventario y devoluciones', color: AppTheme.warning, onTap: () => context.push('/balones')),
+          _Tile(icono: Icons.delivery_dining_outlined, titulo: 'Equipo y días de trabajo', subtitulo: 'Gestionar motorizados', color: AppTheme.primary, onTap: () => context.push('/motorizados-actividad')),
+          _Tile(icono: Icons.map_outlined, titulo: 'Mapa de motorizados', subtitulo: 'Ubicación y estado en ruta', color: AppTheme.info, onTap: () => context.push('/seguimiento')),
+          _Tile(icono: Icons.local_gas_station_outlined, titulo: 'Registro de combustible', subtitulo: 'Carga por vehículo', color: AppTheme.warning, onTap: () => context.push('/combustible')),
           _seccion('Control'),
-          _Tile(icono: Icons.point_of_sale_outlined, titulo: 'Caja', subtitulo: 'Dinero del día', color: AppTheme.success, onTap: () => context.push('/caja')),
-          _Tile(icono: Icons.receipt_long_outlined, titulo: 'Rendición', subtitulo: 'Cuentas por motorizado', color: AppTheme.info, onTap: () => context.push('/rendicion')),
+          _Tile(icono: Icons.point_of_sale_outlined, titulo: 'Historial de caja', subtitulo: 'Ingresos y egresos del día', color: AppTheme.success, onTap: () => context.push('/caja')),
+          _Tile(icono: Icons.receipt_long_outlined, titulo: 'Rendiciones por motorizado', subtitulo: 'Comparación y aprobación', color: AppTheme.info, onTap: () => context.push('/rendicion')),
           _Tile(icono: Icons.compare_arrows_outlined, titulo: 'Conciliación', subtitulo: 'Recepción vs motorizado', color: AppTheme.warning, onTap: () => context.push('/conciliacion')),
           _Tile(icono: Icons.verified_outlined, titulo: 'Aprobar rendiciones', subtitulo: 'Revisar declaraciones', color: AppTheme.success, onTap: () => context.push('/aprobacion-rendiciones')),
           _Tile(icono: Icons.lock_outlined, titulo: 'Cierre diario', subtitulo: 'Cerrar la jornada', color: AppTheme.danger, onTap: () => context.push('/cierre-diario')),
@@ -53,11 +53,11 @@ class MasMotoPage extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           _seccion('Mi trabajo'),
-          _Tile(icono: Icons.edit_note_outlined, titulo: 'Mi registro', subtitulo: 'Pedidos, gastos y fallas del día', color: AppTheme.primary, onTap: () => context.push('/mi-registro')),
-          _Tile(icono: Icons.local_fire_department_outlined, titulo: 'Balones', subtitulo: 'Vacíos pendientes y devoluciones', color: AppTheme.warning, onTap: () => context.push('/balones')),
-          _Tile(icono: Icons.account_balance_wallet_outlined, titulo: 'Deudas', subtitulo: 'Clientes que te deben', color: AppTheme.danger, onTap: () => context.push('/deudas')),
-          _Tile(icono: Icons.payments_outlined, titulo: 'Cobros', subtitulo: 'Registro de cobros', color: AppTheme.info, onTap: () => context.push('/cobros')),
-          _Tile(icono: Icons.account_balance_outlined, titulo: 'Declarar rendición', subtitulo: 'Entregar dinero de la jornada', color: AppTheme.success, onTap: () => context.push('/declarar-rendicion')),
+          _Tile(icono: Icons.edit_note_outlined, titulo: 'Historial de mi registro', subtitulo: 'Pedidos, gastos y fallas anteriores', color: AppTheme.primary, onTap: () => context.push('/mi-registro')),
+          _Tile(icono: Icons.local_fire_department_outlined, titulo: 'Control de balones', subtitulo: 'Vacíos pendientes y devoluciones', color: AppTheme.warning, onTap: () => context.push('/balones')),
+          _Tile(icono: Icons.account_balance_wallet_outlined, titulo: 'Detalle de deudas', subtitulo: 'Clientes que te deben', color: AppTheme.danger, onTap: () => context.push('/deudas')),
+          _Tile(icono: Icons.payments_outlined, titulo: 'Historial de cobros', subtitulo: 'Cobros ya registrados', color: AppTheme.info, onTap: () => context.push('/cobros')),
+          _Tile(icono: Icons.account_balance_outlined, titulo: 'Detalle de mi rendición', subtitulo: 'Revisar lo declarado', color: AppTheme.success, onTap: () => context.push('/declarar-rendicion')),
           _seccion('Sistema'),
           const _UpdateTile(),
         ],
@@ -68,7 +68,15 @@ class MasMotoPage extends StatelessWidget {
 
 Widget _seccion(String titulo) => Padding(
       padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
-      child: Text(titulo, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.black45, letterSpacing: 0.6)),
+      child: Text(
+        titulo,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: Colors.black45,
+          letterSpacing: 0.6,
+        ),
+      ),
     );
 
 class _Tile extends StatelessWidget {

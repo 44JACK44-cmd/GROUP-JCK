@@ -166,6 +166,8 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
                     const Divider(height: 18),
                     FilaValor('Efectivo esperado', dinero(r.efectivoEsperado),
                         destacado: true),
+                    FilaValor('Total (efectivo + Yape)', dinero(r.totalEsperado),
+                        destacado: true, color: AppTheme.info),
                     FilaValor('Balones entregados', '${r.balonesEntregados}'),
                     FilaValor('Balones devueltos', '${r.balonesDevueltos}'),
                   ],

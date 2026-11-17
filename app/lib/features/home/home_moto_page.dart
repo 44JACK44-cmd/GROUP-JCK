@@ -221,6 +221,16 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
     final saludo = hora < 12 ? 'Buenos días' : (hora < 19 ? 'Buenas tardes' : 'Buenas noches');
 
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('Inicio'),
+        actions: [
+          IconButton(
+            tooltip: 'Cerrar sesión',
+            onPressed: () => ref.read(authProvider.notifier).logout(),
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: _cargar,
@@ -267,33 +277,37 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                 ],
               ),
               const SizedBox(height: 18),
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('$saludo, ${auth.nombre ?? ''}',
-                            style: Theme.of(context).textTheme.titleLarge),
-                        const SizedBox(height: 2),
-                        Text(
-                          _porEntregar > 0
-                              ? 'Jornada activa · $_porEntregar pedido(s) por entregar'
-                              : 'Jornada activa · sin pedidos por entregar',
-                          style: const TextStyle(
-                            color: AppTheme.success,
-                            fontWeight: FontWeight.w600,
-                          ),
+              InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => context.go('/inicio'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('$saludo, ${auth.nombre ?? ''}',
+                                style: Theme.of(context).textTheme.titleLarge),
+                            const SizedBox(height: 2),
+                            Text(
+                              _porEntregar > 0
+                                  ? 'Jornada activa · $_porEntregar pedido(s) por entregar'
+                                  : 'Jornada activa · sin pedidos por entregar',
+                              style: const TextStyle(
+                                color: AppTheme.success,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const Icon(Icons.home_outlined,
+                          size: 18, color: Colors.black45),
+                    ],
                   ),
-                  IconButton(
-                    tooltip: 'Cerrar sesión',
-                    onPressed: () => ref.read(authProvider.notifier).logout(),
-                    icon: const Icon(Icons.logout),
-                  ),
-                ],
+                ),
               ),
               const SizedBox(height: 16),
               _seccion(

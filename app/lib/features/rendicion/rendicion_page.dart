@@ -431,6 +431,10 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                                   color: r.gastosEfectivo > 0 ? AppTheme.danger : null),
                               FilaValor('Efectivo esperado', dinero(r.efectivoEsperado),
                                   destacado: true),
+                              FilaValor('Total a entregar (efectivo + Yape)',
+                                  dinero(r.totalEsperado),
+                                  destacado: true,
+                                  color: AppTheme.info),
                               if (r.hayDeclaracion) ...[
                                 FilaValor('Efectivo declarado',
                                     dinero(r.efectivoDeclarado)),

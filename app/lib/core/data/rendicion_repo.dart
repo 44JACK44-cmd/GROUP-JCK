@@ -63,6 +63,10 @@ class Rendicion {
   /// Fondo enviado por YAPE (no se mezcla con el efectivo físico).
   final double fondoYape;
   final double efectivoEsperado;
+
+  /// Total de dinero de la jornada: efectivo esperado + Yape cobrado.
+  /// Se muestra aparte del efectivo para no mezclar conceptos.
+  final double totalEsperado;
   final double efectivoDeclarado;
   final double diferencia;
   final bool hayDeclaracion;
@@ -96,6 +100,7 @@ class Rendicion {
     this.fondoInicial = 0,
     this.fondoYape = 0,
     this.efectivoEsperado = 0,
+    this.totalEsperado = 0,
     this.efectivoDeclarado = 0,
     this.diferencia = 0,
     this.hayDeclaracion = false,
@@ -462,6 +467,7 @@ class RendicionRepo {
       fondoInicial: fondoInicial,
       fondoYape: fondoYape,
       efectivoEsperado: efectivoEsperado,
+      totalEsperado: efectivoEsperado + yape,
       efectivoDeclarado: efectivoDeclarado,
       diferencia: diferencia,
       hayDeclaracion: hayDeclaracion,

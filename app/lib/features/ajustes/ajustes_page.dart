@@ -17,6 +17,7 @@ import '../../core/audio/voz_service.dart';
 import '../../core/config.dart';
 import '../../core/offline/sync_service.dart';
 import '../../core/prefs/ajustes_prefs.dart';
+import '../../core/state/tema.dart';
 import '../../core/update/app_update_service.dart';
 import '../clientes/mapa_selector_page.dart';
 
@@ -414,6 +415,26 @@ class _AjustesPageState extends State<AjustesPage> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _seccion(
+            context,
+            titulo: 'Apariencia',
+            icono: Icons.palette_outlined,
+            hijo: ValueListenableBuilder<ThemeMode>(
+              valueListenable: TemaApp.modo,
+              builder: (context, modo, _) => SegmentedButton<ThemeMode>(
+                segments: const [
+                  ButtonSegment(value: ThemeMode.light, label: Text('Claro'),
+                      icon: Icon(Icons.light_mode_outlined)),
+                  ButtonSegment(value: ThemeMode.dark, label: Text('Oscuro'),
+                      icon: Icon(Icons.dark_mode_outlined)),
+                  ButtonSegment(value: ThemeMode.system, label: Text('Sistema'),
+                      icon: Icon(Icons.brightness_auto_outlined)),
+                ],
+                selected: {modo},
+                onSelectionChanged: (s) => TemaApp.guardar(s.first),
+              ),
+            ),
+          ),
           _seccion(
             context,
             titulo: 'Conexión con el servidor',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../app/theme.dart';
 import 'auth_controller.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -66,14 +67,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Icon(Icons.local_fire_department,
-                  size: 72, color: Color(0xFF146B5D)),
+                  size: 72, color: AppTheme.primary),
               const SizedBox(height: 12),
               Text(
                 'GasApp',
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF146B5D),
+                      color: AppTheme.primary,
                     ),
               ),
               const SizedBox(height: 8),
@@ -116,7 +117,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 onPressed: _cargando ? null : _entrar,
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(52),
-                  backgroundColor: const Color(0xFF146B5D),
+                  backgroundColor: AppTheme.primary,
                 ),
                 child: _cargando
                     ? const SizedBox(
@@ -128,8 +129,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () => context.go('/welcome'),
-                child: const Text('¿No tienes cuenta? Regresa al inicio'),
+                onPressed: () => context.push('/registro-empresa'),
+                child: const Text('¿No tienes empresa? Regístrala aquí'),
               ),
             ],
           ),

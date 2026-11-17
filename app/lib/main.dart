@@ -7,6 +7,7 @@ import 'app/theme.dart';
 import 'core/config.dart';
 import 'core/offline/sync_service.dart';
 import 'core/realtime/realtime_service.dart';
+import 'core/state/tema.dart';
 import 'core/update/app_update_service.dart';
 import 'features/ajustes/ajustes_page.dart';
 import 'features/auth/auth_controller.dart';
@@ -47,6 +48,7 @@ import 'features/shell/app_shell.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseAnonKey);
+  await TemaApp.cargar();
   runApp(const ProviderScope(child: GasApp()));
 }
 
@@ -208,14 +210,14 @@ class _GasAppState extends ConsumerState<GasApp> {
 
     final router = GoRouter(
       navigatorKey: _rootNavigatorKey,
-      initialLocation: '/welcome',
+      initialLocation: '/login',
       redirect: (context, state) {
         final loc = state.matchedLocation;
         switch (auth.status) {
           case AuthStatus.cargando:
             return loc == '/splash' ? null : '/splash';
           case AuthStatus.noAutenticado:
-            return GasApp._rutasPublicas.contains(loc) ? null : '/welcome';
+            return GasApp._rutasPublicas.contains(loc) ? null : '/login';
           case AuthStatus.autenticado:
             // /ajustes es de dispositivo: se puede abrir con o sin sesión.
             if ((GasApp._rutasPublicas.contains(loc) && loc != '/ajustes') ||
@@ -289,11 +291,16 @@ GoRoute(path: '/motorizados-actividad', builder: (_, state) => const Motorizados
       ],
     );
 
-    return MaterialApp.router(
-      title: 'GasApp',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.light(),
-      routerConfig: router,
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: TemaApp.modo,
+      builder: (context, modo, _) => MaterialApp.router(
+        title: 'GasApp',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
+        themeMode: modo,
+        routerConfig: router,
+      ),
     );
   }
 }

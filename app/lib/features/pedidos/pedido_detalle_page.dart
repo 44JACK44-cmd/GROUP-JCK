@@ -4,8 +4,13 @@
 /// las acciones: asignar, tomar, iniciar ruta, entregar, cancelar.
 library;
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../app/theme.dart';
@@ -93,6 +98,24 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
     return d > 0.009 ? d : 0;
   }
 
+  /// Comparte la foto del comprobante (WhatsApp u otra app instalada).
+  /// Si no se puede descargar, se comparte el enlace como respaldo.
+  Future<void> _compartirComprobante(String url) async {
+    try {
+      final respuesta = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 20));
+      if (respuesta.statusCode != 200) throw Exception('No se pudo descargar');
+      final dir = await getTemporaryDirectory();
+      final archivo = File('${dir.path}/comprobante-yape-${DateTime.now().millisecondsSinceEpoch}.jpg');
+      await archivo.writeAsBytes(respuesta.bodyBytes);
+      await Share.shareXFiles(
+        [XFile(archivo.path, mimeType: 'image/jpeg')],
+        text: 'Comprobante de Yape del pedido',
+      );
+    } catch (_) {
+      await Share.share('Comprobante de Yape: $url');
+    }
+  }
+
   /// Muestra el comprobante de Yape guardado en Supabase Storage.
   void _verComprobante(String url) {
     showDialog<void>(
@@ -115,6 +138,11 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                 ),
               ),
               const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: () => _compartirComprobante(url),
+                icon: const Icon(Icons.share_outlined),
+                label: const Text('Compartir foto'),
+              ),
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
                 child: const Text('Cerrar'),
