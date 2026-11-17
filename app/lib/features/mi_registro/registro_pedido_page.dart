@@ -6,6 +6,7 @@
 /// caja, el recepcionista y el admin lo ven automáticamente.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -29,7 +30,7 @@ import '../auth/auth_controller.dart';
 import '../clientes/mapa_selector_page.dart';
 
 class RegistroPedidoPage extends ConsumerStatefulWidget {
-  const RegistroPedidoPage({super.key});
+  RegistroPedidoPage({super.key});
 
   @override
   ConsumerState<RegistroPedidoPage> createState() => _RegistroPedidoPageState();
@@ -92,7 +93,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
 
   Future<void> _cargarProductos() async {
     try {
-      final data = await const ProductosRepo().vendibles();
+      final data = await ProductosRepo().vendibles();
       if (!mounted) return;
       setState(() {
         _productos = data;
@@ -169,7 +170,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
       final dir = await getApplicationDocumentsDirectory();
       final destino = Directory('${dir.path}/comprobantes');
       if (!await destino.exists()) await destino.create(recursive: true);
-      final archivo = File('${destino.path}/${const Uuid().v4()}.jpg');
+      final archivo = File('${destino.path}/${Uuid().v4()}.jpg');
       await File(x.path).copy(archivo.path);
       if (!mounted) return;
       setState(() => _fotoPath = archivo.path);
@@ -186,16 +187,16 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Tomar foto'),
+              leading: Icon(Icons.camera_alt_outlined),
+              title: Text('Tomar foto'),
               onTap: () {
                 Navigator.of(ctx).pop();
                 _tomarFoto(ImageSource.camera);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Elegir de la galería'),
+              leading: Icon(Icons.photo_library_outlined),
+              title: Text('Elegir de la galería'),
               onTap: () {
                 Navigator.of(ctx).pop();
                 _tomarFoto(ImageSource.gallery);
@@ -203,8 +204,8 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
             ),
             if (_fotoPath != null)
               ListTile(
-                leading: const Icon(Icons.delete_outline, color: AppTheme.danger),
-                title: const Text('Quitar foto'),
+                leading: Icon(Icons.delete_outline, color: AppTheme.danger),
+                title: Text('Quitar foto'),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   setState(() => _fotoPath = null);
@@ -244,14 +245,14 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
       final continuar = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Sin comprobante'),
-          content: const Text(
+          title: Text('Sin comprobante'),
+          content: Text(
             'Registraste un cobro por Yape sin foto del comprobante. '
             '¿Deseas continuar de todas formas?',
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Agregar foto')),
-            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Continuar')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text('Agregar foto')),
+            FilledButton(onPressed: () => Navigator.of(ctx).pop(true), child: Text('Continuar')),
           ],
         ),
       );
@@ -263,7 +264,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
     final empresaId = auth.empresaId!;
     final usuarioId = auth.usuarioId!;
     final total = precio * cantidad;
-    final uuid = const Uuid().v4();
+    final uuid = Uuid().v4();
     final telefono = _telefonoCtrl.text.trim();
     final direccion = _direccionCtrl.text.trim();
     final referencia = _referenciaCtrl.text.trim();
@@ -424,7 +425,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
         if (!mounted) return;
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Sin conexión: el registro quedó guardado y se enviará solo.'),
           ),
         );
@@ -451,11 +452,11 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nuevo registro')),
+      appBar: AppBar(title: Text('Nuevo registro')),
       body: _cargandoProductos
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 120),
               children: [
                 _seccion(
                   titulo: '¿A dónde lo llevaste?',
@@ -465,19 +466,19 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                       controller: _nombreCtrl,
                       textCapitalization: TextCapitalization.words,
                       onChanged: _buscarCliente,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Cliente',
                         hintText: 'Juan Pérez',
                         prefixIcon: Icon(Icons.badge_outlined),
                       ),
                     ),
                     if (_buscandoCliente)
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 6),
                         child: LinearProgressIndicator(minHeight: 2),
                       ),
                     if (_sugerencias.isNotEmpty) ...[
-                      const SizedBox(height: 6),
+                      SizedBox(height: 6),
                       for (final s in _sugerencias)
                         ListTile(
                           dense: true,
@@ -487,88 +488,88 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                           onTap: () => _usarCliente(s),
                         ),
                     ],
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     TextField(
                       controller: _telefonoCtrl,
                       keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Teléfono (opcional)',
                         prefixIcon: Icon(Icons.phone_outlined),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     TextField(
                       controller: _direccionCtrl,
                       textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Dirección',
                         prefixIcon: Icon(Icons.signpost_outlined),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     TextField(
                       controller: _referenciaCtrl,
                       textCapitalization: TextCapitalization.sentences,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Referencia (opcional)',
                         prefixIcon: Icon(Icons.info_outline),
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     OutlinedButton.icon(
                       onPressed: _marcarUbicacion,
-                      icon: const Icon(Icons.map_outlined),
+                      icon: Icon(Icons.map_outlined),
                       label: Text(
                         _latitud != null ? 'Cambiar ubicación' : 'Marcar ubicación',
                       ),
-                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                      style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(46)),
                     ),
                     if (_latitud != null)
                       Padding(
-                        padding: const EdgeInsets.only(top: 4),
+                        padding: EdgeInsets.only(top: 4),
                         child: Text(
                           '${_latitud!.toStringAsFixed(5)}, ${_longitud!.toStringAsFixed(5)}',
-                          style: const TextStyle(fontSize: 11.5, color: Colors.black45),
+                          style: TextStyle(fontSize: 11.5, color: AppColors.textoMuted),
                         ),
                       ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _seccion(
                   titulo: 'Hora del pedido',
                   icono: Icons.schedule_outlined,
                   hijos: [
                     Row(
                       children: [
-                        const Icon(Icons.access_time, size: 18, color: Colors.black45),
-                        const SizedBox(width: 8),
+                        Icon(Icons.access_time, size: 18, color: AppColors.textoMuted),
+                        SizedBox(width: 8),
                         Text(
                           '${_hora.hour.toString().padLeft(2, '0')}:${_hora.minute.toString().padLeft(2, '0')}'
                           '  ·  ${_hora.day}/${_hora.month}/${_hora.year}',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    const Text(
+                    SizedBox(height: 4),
+                    Text(
                       'La hora la registra el sistema automáticamente.',
-                      style: TextStyle(fontSize: 12, color: Colors.black45),
+                      style: TextStyle(fontSize: 12, color: AppColors.textoMuted),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _seccion(
                   titulo: '¿Qué llevaste?',
                   icono: Icons.propane_tank_outlined,
                   hijos: [
                     if (_cargandoProductos)
-                      const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                      Center(child: CircularProgressIndicator(strokeWidth: 2))
                     else if (_productos.length == 1)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
+                        padding: EdgeInsets.only(bottom: 4),
                         child: Text(
                           'Producto: ${_nombreProducto(_productos.first)}',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          style: TextStyle(fontWeight: FontWeight.w600),
                         ),
                       )
                     else
@@ -592,11 +593,11 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                             ),
                         ],
                       ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     Row(
                       children: [
-                        const Text('Cantidad', style: TextStyle(fontWeight: FontWeight.w600)),
-                        const Spacer(),
+                        Text('Cantidad', style: TextStyle(fontWeight: FontWeight.w600)),
+                        Spacer(),
                         IconButton.filledTonal(
                           onPressed: (int.tryParse(_cantidadCtrl.text) ?? 1) > 1
                               ? () => setState(() {
@@ -604,14 +605,14 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                                     _cantidadCtrl.text = '$n';
                                   })
                               : null,
-                          icon: const Icon(Icons.remove, size: 18),
+                          icon: Icon(Icons.remove, size: 18),
                         ),
                         SizedBox(
                           width: 34,
                           child: Text(
                             _cantidadCtrl.text,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                           ),
                         ),
                         IconButton.filledTonal(
@@ -619,17 +620,17 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                             final n = (int.tryParse(_cantidadCtrl.text) ?? 0) + 1;
                             _cantidadCtrl.text = '$n';
                           }),
-                          icon: const Icon(Icons.add, size: 18),
+                          icon: Icon(Icons.add, size: 18),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     TextField(
                       controller: _precioCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      decoration: const InputDecoration(
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                      decoration: InputDecoration(
                         prefixText: 'S/ ',
                         labelText: '¿Cuánto cobraste?',
                         hintText: '50',
@@ -637,7 +638,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _seccion(
                   titulo: '¿Cómo pagó?',
                   icono: Icons.payments_outlined,
@@ -654,26 +655,26 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                               onTap: () => setState(() => _formaPago = f.$1),
                             ),
                           ),
-                          if (f != _formasPago.last) const SizedBox(width: 8),
+                          if (f != _formasPago.last) SizedBox(width: 8),
                         ],
                       ],
                     ),
                     if (_formaPago == 'YAPE') ...[
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       OutlinedButton.icon(
                         onPressed: _subiendoFoto ? null : _mostrarOpcionesFoto,
                         icon: _subiendoFoto
-                            ? const SizedBox(
+                            ? SizedBox(
                                 width: 16,
                                 height: 16,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Icon(Icons.camera_alt_outlined),
+                            : Icon(Icons.camera_alt_outlined),
                         label: Text(_fotoPath == null ? 'Tomar foto del comprobante' : 'Cambiar foto'),
-                        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                        style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(46)),
                       ),
                       if (_fotoPath != null) ...[
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8),
                         ClipRRect(
                           borderRadius: BorderRadius.circular(12),
                           child: Image.file(
@@ -686,16 +687,16 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                       ],
                     ],
                     if (_formaPago == 'DEUDA')
-                      const Padding(
+                      Padding(
                         padding: EdgeInsets.only(top: 8),
                         child: Text(
                           'Quedará como deuda del cliente (no se cuenta como dinero recibido).',
-                          style: TextStyle(fontSize: 12.5, color: Colors.black54),
+                          style: TextStyle(fontSize: 12.5, color: AppColors.textoSecundario),
                         ),
                       ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 _seccion(
                   titulo: '¿Dejó balón vacío?',
                   icono: Icons.recycling_outlined,
@@ -711,7 +712,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                             onTap: () => setState(() => _balonDejado = true),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: _BotonOpcion(
                             icono: Icons.cancel_outlined,
@@ -725,12 +726,12 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 TextField(
                   controller: _observacionesCtrl,
                   maxLines: 2,
                   textCapitalization: TextCapitalization.sentences,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Observación (opcional)',
                     hintText: 'Casa azul, paga mañana…',
                     prefixIcon: Icon(Icons.notes_outlined),
@@ -739,10 +740,10 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
               ],
             ),
       bottomSheet: Container(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
-        decoration: const BoxDecoration(
+        padding: EdgeInsets.fromLTRB(20, 10, 20, 16),
+        decoration: BoxDecoration(
           color: Colors.white,
-          border: Border(top: BorderSide(color: Color(0xFFE6E8E5))),
+          border: Border(top: BorderSide(color: AppColors.borde)),
         ),
         child: SafeArea(
           top: false,
@@ -752,14 +753,14 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
                 child: FilledButton.icon(
                   onPressed: _guardando ? null : _guardar,
                   icon: _guardando
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 18,
                           height: 18,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
-                      : const Icon(Icons.check),
+                      : Icon(Icons.check),
                   label: Text(_guardando ? 'Guardando…' : 'REGISTRAR'),
-                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                  style: FilledButton.styleFrom(minimumSize: Size.fromHeight(52)),
                 ),
               ),
             ],
@@ -777,18 +778,18 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 Icon(icono, size: 20, color: AppTheme.primary),
-                const SizedBox(width: 8),
-                Text(titulo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                SizedBox(width: 8),
+                Text(titulo, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             ...hijos,
           ],
         ),
@@ -824,21 +825,21 @@ class _BotonOpcion extends StatelessWidget {
           color: seleccionado ? color.withValues(alpha: 0.14) : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: seleccionado ? color : const Color(0xFFDADDD9),
+            color: seleccionado ? color : AppColors.borde,
             width: seleccionado ? 1.6 : 1,
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icono, size: 22, color: seleccionado ? color : Colors.black54),
-            const SizedBox(height: 2),
+            Icon(icono, size: 22, color: seleccionado ? color : AppColors.textoSecundario),
+            SizedBox(height: 2),
             Text(
               etiqueta,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12.5,
-                color: seleccionado ? color : Colors.black87,
+                color: seleccionado ? color : AppColors.textoPrincipal,
                 fontWeight: seleccionado ? FontWeight.w700 : FontWeight.w500,
               ),
             ),

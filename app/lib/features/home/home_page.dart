@@ -1,6 +1,7 @@
 /// Inicio del administrador: seis tareas reales y actividad en vivo honesta.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -19,7 +20,7 @@ import '../../core/ui/estado_conexion.dart';
 import '../auth/auth_controller.dart';
 
 class HomePage extends ConsumerStatefulWidget {
-  const HomePage({super.key});
+  HomePage({super.key});
 
   @override
   ConsumerState<HomePage> createState() => _HomePageState();
@@ -100,26 +101,26 @@ class _HomePageState extends ConsumerState<HomePage> {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14),
           child: Row(
             children: [
               Icon(icono, color: color, size: 26),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(titulo,
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 16, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(detalle,
-                        style: const TextStyle(
-                            fontSize: 12, color: Colors.black54)),
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textoSecundario)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.black45),
+              Icon(Icons.chevron_right, color: AppColors.textoMuted),
             ],
           ),
         ),
@@ -135,17 +136,17 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inicio'),
+        title: Text('Inicio'),
         actions: [
           IconButton(
             tooltip: 'Más opciones',
             onPressed: () => context.push('/mas'),
-            icon: const Icon(Icons.more_horiz),
+            icon: Icon(Icons.more_horiz),
           ),
           IconButton(
             tooltip: 'Cerrar sesión',
             onPressed: () => ref.read(authProvider.notifier).logout(),
-            icon: const Icon(Icons.logout),
+            icon: Icon(Icons.logout),
           ),
         ],
       ),
@@ -153,15 +154,15 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: RefreshIndicator(
           onRefresh: _cargar,
           child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            physics: AlwaysScrollableScrollPhysics(),
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
-              const EstadoConexion(),
+              EstadoConexion(),
               InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () => context.go('/inicio'),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  padding: EdgeInsets.symmetric(vertical: 2),
                   child: Row(
                     children: [
                       Expanded(
@@ -176,26 +177,26 @@ class _HomePageState extends ConsumerState<HomePage> {
                           ],
                         ),
                       ),
-                      const Icon(Icons.home_outlined,
-                          size: 18, color: Colors.black45),
+                      Icon(Icons.home_outlined,
+                          size: 18, color: AppColors.textoMuted),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: () => context.push('/pedidos/nuevo'),
-                icon: const Icon(Icons.add, size: 26),
-                label: const Padding(
+                icon: Icon(Icons.add, size: 26),
+                label: Padding(
                   padding: EdgeInsets.symmetric(vertical: 10),
                   child: Text('NUEVO PEDIDO', style: TextStyle(fontSize: 18)),
                 ),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppTheme.primary,
-                  minimumSize: const Size.fromHeight(60),
+                  minimumSize: Size.fromHeight(60),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _acceso(
                 icono: Icons.local_shipping_outlined,
                 titulo: 'Pedidos de hoy',
@@ -205,7 +206,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 color: AppTheme.warning,
                 onTap: () => context.push('/pedidos'),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               _acceso(
                 icono: Icons.delivery_dining_outlined,
                 titulo: 'Motorizados',
@@ -213,7 +214,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 color: AppTheme.info,
                 onTap: () => context.push('/motorizados-actividad'),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               _acceso(
                 icono: Icons.point_of_sale_outlined,
                 titulo: 'Caja',
@@ -221,7 +222,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 color: AppTheme.success,
                 onTap: () => context.push('/caja'),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               _acceso(
                 icono: Icons.assignment_turned_in_outlined,
                 titulo: 'Rendiciones',
@@ -229,24 +230,24 @@ class _HomePageState extends ConsumerState<HomePage> {
                 color: AppTheme.primary,
                 onTap: () => context.push('/rendicion'),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: () => context.push('/ajustes'),
-                icon: const Icon(Icons.settings_outlined),
-                label: const Text('Configuración'),
-                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                icon: Icon(Icons.settings_outlined),
+                label: Text('Configuración'),
+                style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(48)),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               OutlinedButton.icon(
                 onPressed: () => context.push('/movimientos'),
-                icon: const Icon(Icons.timeline),
-                label: const Text('Movimientos'),
-                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                icon: Icon(Icons.timeline),
+                label: Text('Movimientos'),
+                style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(48)),
               ),
-              const SizedBox(height: 16),
-              const Text('Acciones directas',
+              SizedBox(height: 16),
+              Text('Acciones directas',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               AccionesDirectas(
                 acciones: [
                   AccionDirecta(
@@ -281,7 +282,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               Row(
                 children: [
                   Expanded(
@@ -290,17 +291,17 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                   TextButton(
                     onPressed: () => context.push('/seguimiento'),
-                    child: const Text('Mapa GPS'),
+                    child: Text('Mapa GPS'),
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               if (_motos.isEmpty)
-                const Card(
+                Card(
                   child: Padding(
                     padding: EdgeInsets.all(16),
                     child: Text('No hay motorizados registrados.',
-                        style: TextStyle(color: Colors.black54)),
+                        style: TextStyle(color: AppColors.textoSecundario)),
                   ),
                 )
               else
@@ -342,17 +343,17 @@ class _LiveMotoTile extends StatelessWidget {
     final colorUbi = switch (estadoUbi) {
       EstadoUbicacion.activo => AppTheme.success,
       EstadoUbicacion.reciente => AppTheme.warning,
-      _ => Colors.black45,
+      _ => AppColors.textoMuted,
     };
     final textoUbi = u == null ? 'Sin ubicación compartida' : '${estadoUbi.label} · ${u.haceTexto}';
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -362,19 +363,19 @@ class _LiveMotoTile extends StatelessWidget {
                     backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
                     child: Text(
                       nombre.isEmpty ? '?' : nombre[0].toUpperCase(),
-                      style: const TextStyle(color: AppTheme.primary),
+                      style: TextStyle(color: AppTheme.primary),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        Text(nombre, style: TextStyle(fontWeight: FontWeight.bold)),
                         Row(
                           children: [
                             Icon(Icons.circle, size: 9, color: colorUbi),
-                            const SizedBox(width: 5),
+                            SizedBox(width: 5),
                             Expanded(
                               child: Text(
                                 textoUbi,
@@ -387,30 +388,30 @@ class _LiveMotoTile extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right, color: Colors.black45),
+                  Icon(Icons.chevron_right, color: AppColors.textoMuted),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(
                 resumen != null && !resumen!.sinActividad
                     ? ActividadRepo.resumenCorto(resumen!)
                     : 'Sin actividad hoy',
-                style: const TextStyle(fontSize: 12.5, color: Colors.black87),
+                style: TextStyle(fontSize: 12.5, color: AppColors.textoPrincipal),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
               if (resumen != null && resumen!.pedidos > 0) ...[
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Row(
                   children: [
                     Text('${resumen!.pedidos} pedidos',
-                        style: const TextStyle(fontSize: 11, color: Colors.black45)),
-                    const SizedBox(width: 10),
+                        style: TextStyle(fontSize: 11, color: AppColors.textoMuted)),
+                    SizedBox(width: 10),
                     Text('${resumen!.entregados} entregados',
-                        style: const TextStyle(fontSize: 11, color: Colors.black45)),
-                    const SizedBox(width: 10),
+                        style: TextStyle(fontSize: 11, color: AppColors.textoMuted)),
+                    SizedBox(width: 10),
                     Text(dinero(resumen!.ventas),
-                        style: const TextStyle(fontSize: 11, color: Colors.black45)),
+                        style: TextStyle(fontSize: 11, color: AppColors.textoMuted)),
                   ],
                 ),
               ],

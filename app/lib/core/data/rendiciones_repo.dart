@@ -51,7 +51,7 @@ class CierreCalculado {
   final int pedidosPendientes;
   final int rendicionesPendientes;
 
-  const CierreCalculado({
+  CierreCalculado({
     this.totalVentas = 0,
     this.efectivoEsperado = 0,
     this.yapeTotal = 0,
@@ -69,7 +69,7 @@ class CierreCalculado {
 
 /// Cálculo puro del cierre diario (sin base de datos, fácil de probar).
 class CalculoCierre {
-  const CalculoCierre._();
+  CalculoCierre._();
 
   static CierreCalculado calcular({
     required List<Map<String, dynamic>> pedidos,
@@ -152,7 +152,7 @@ class RendicionesRepo {
     String? observaciones,
     String? uuidOffline,
   }) async {
-    final uuid = uuidOffline ?? const Uuid().v4();
+    final uuid = uuidOffline ?? Uuid().v4();
 
     // Verificar que no exista ya una rendición para hoy
     final existente = await sb
@@ -326,7 +326,7 @@ class RendicionesRepo {
     // Calcular totales del día. El "día" es local (Perú) y se convierte a UTC
     // para no correr la ventana 5 horas.
     final inicioLocal = DateTime(fecha.year, fecha.month, fecha.day);
-    final finLocal = inicioLocal.add(const Duration(days: 1));
+    final finLocal = inicioLocal.add(Duration(days: 1));
     final inicioIso = inicioLocal.toUtc().toIso8601String();
     final finIso = finLocal.toUtc().toIso8601String();
 

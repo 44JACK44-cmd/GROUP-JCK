@@ -106,7 +106,7 @@ class FondoVueltoRepo {
     if (medioPago != 'EFECTIVO' && medioPago != 'YAPE') {
       throw Exception('El fondo solo puede ser EFECTIVO o YAPE.');
     }
-    final uuid = uuidOffline ?? const Uuid().v4();
+    final uuid = uuidOffline ?? Uuid().v4();
 
     final existente = await sb
         .from('fondo_vuelto')

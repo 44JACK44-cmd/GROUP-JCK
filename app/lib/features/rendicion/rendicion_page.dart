@@ -4,6 +4,7 @@
 /// pedidos, cobros, deudas y balones.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -25,13 +26,13 @@ enum PeriodoRendicion {
   mes('Este mes'),
   personalizado('Personalizado');
 
-  const PeriodoRendicion(this.label);
+  PeriodoRendicion(this.label);
 
   final String label;
 }
 
 class RendicionPage extends ConsumerStatefulWidget {
-  const RendicionPage({super.key});
+  RendicionPage({super.key});
 
   @override
   ConsumerState<RendicionPage> createState() => _RendicionPageState();
@@ -43,7 +44,7 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
   DateTime? _hasta;
   List<Map<String, dynamic>> _motorizados = [];
   String? _motorizadoId;
-  Rendicion _rendicion = const Rendicion();
+  Rendicion _rendicion = Rendicion();
   bool _cargando = true;
 
   @override
@@ -82,18 +83,18 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
     final ahora = DateTime.now();
     switch (_periodo) {
       case PeriodoRendicion.hoy:
-        return (inicioHoy(ahora), ahora.add(const Duration(minutes: 1)));
+        return (inicioHoy(ahora), ahora.add(Duration(minutes: 1)));
       case PeriodoRendicion.ayer:
-        final ayer = inicioHoy(ahora).subtract(const Duration(days: 1));
-        return (ayer, ayer.add(const Duration(days: 1)));
+        final ayer = inicioHoy(ahora).subtract(Duration(days: 1));
+        return (ayer, ayer.add(Duration(days: 1)));
       case PeriodoRendicion.semana:
-        return (inicioSemana(ahora), ahora.add(const Duration(minutes: 1)));
+        return (inicioSemana(ahora), ahora.add(Duration(minutes: 1)));
       case PeriodoRendicion.mes:
-        return (inicioMes(ahora), ahora.add(const Duration(minutes: 1)));
+        return (inicioMes(ahora), ahora.add(Duration(minutes: 1)));
       case PeriodoRendicion.personalizado:
-        final d = _desde ?? inicioHoy(ahora).subtract(const Duration(days: 7));
+        final d = _desde ?? inicioHoy(ahora).subtract(Duration(days: 7));
         final h = _hasta ?? ahora;
-        return (d, h.add(const Duration(days: 1)));
+        return (d, h.add(Duration(days: 1)));
     }
   }
 
@@ -128,10 +129,10 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
   Future<void> _elegirFechas() async {
     final rango = await showDateRangePicker(
       context: context,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      firstDate: DateTime.now().subtract(Duration(days: 365)),
       lastDate: DateTime.now(),
       initialDateRange: DateTimeRange(
-        start: _desde ?? DateTime.now().subtract(const Duration(days: 7)),
+        start: _desde ?? DateTime.now().subtract(Duration(days: 7)),
         end: _hasta ?? DateTime.now(),
       ),
     );
@@ -150,7 +151,7 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
     final auth = ref.read(authProvider);
     if (_motorizados.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No hay motorizados registrados.')),
+        SnackBar(content: Text('No hay motorizados registrados.')),
       );
       return;
     }
@@ -163,14 +164,14 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDlg) => AlertDialog(
-          title: const Text('Entregar fondo de vuelto'),
+          title: Text('Entregar fondo de vuelto'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<String>(
                   initialValue: moto,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Motorizado',
                     prefixIcon: Icon(Icons.delivery_dining_outlined),
                   ),
@@ -183,41 +184,41 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                   ],
                   onChanged: (v) => setDlg(() => moto = v),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 TextField(
                   controller: montoCtrl,
                   keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
+                      TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(
                     labelText: 'Monto entregado',
                     prefixText: 'S/ ',
                     prefixIcon: Icon(Icons.payments_outlined),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 Row(
                   children: [
-                    const Icon(Icons.swap_horiz, size: 18, color: Colors.black45),
-                    const SizedBox(width: 8),
-                    const Text('Cómo se entrega',
+                    Icon(Icons.swap_horiz, size: 18, color: AppColors.textoMuted),
+                    SizedBox(width: 8),
+                    Text('Cómo se entrega',
                         style: TextStyle(fontWeight: FontWeight.w600)),
                   ],
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Wrap(
                   spacing: 8,
                   children: [
                     ChoiceChip(
-                      avatar: const Icon(Icons.payments_outlined, size: 17),
-                      label: const Text('Efectivo'),
+                      avatar: Icon(Icons.payments_outlined, size: 17),
+                      label: Text('Efectivo'),
                       selected: medio == 'EFECTIVO',
                       selectedColor: AppTheme.success.withValues(alpha: 0.12),
                       onSelected: (_) => setDlg(() => medio = 'EFECTIVO'),
                     ),
                     ChoiceChip(
-                      avatar: const Icon(Icons.account_balance_wallet_outlined,
+                      avatar: Icon(Icons.account_balance_wallet_outlined,
                           size: 17),
-                      label: const Text('Yape'),
+                      label: Text('Yape'),
                       selected: medio == 'YAPE',
                       selectedColor: AppTheme.info.withValues(alpha: 0.12),
                       onSelected: (_) => setDlg(() => medio = 'YAPE'),
@@ -225,7 +226,7 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                   ],
                 ),
                 if (medio == 'YAPE')
-                  const Padding(
+                  Padding(
                     padding: EdgeInsets.only(top: 8),
                     child: Text(
                       'El vuelto por Yape no se cuenta como efectivo físico '
@@ -233,10 +234,10 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                       style: TextStyle(fontSize: 12, color: AppTheme.info),
                     ),
                   ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
                 TextField(
                   controller: obsCtrl,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Observación (opcional)',
                     prefixIcon: Icon(Icons.notes_outlined),
                   ),
@@ -247,11 +248,11 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Cancelar'),
+              child: Text('Cancelar'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Entregar'),
+              child: Text('Entregar'),
             ),
           ],
         ),
@@ -262,7 +263,7 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
     final monto = double.tryParse(montoCtrl.text.replaceAll(',', '.')) ?? 0;
     if (monto <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Escribe un monto mayor a cero.')),
+        SnackBar(content: Text('Escribe un monto mayor a cero.')),
       );
       return;
     }
@@ -277,7 +278,7 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Fondo de vuelto registrado. Ya aparece en la rendición.'),
         ),
       );
@@ -302,17 +303,17 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Rendición'),
+        title: Text('Rendición'),
         actions: [
           TextButton.icon(
             onPressed: _entregarFondo,
-            icon: const Icon(Icons.money_outlined),
-            label: const Text('Fondo'),
+            icon: Icon(Icons.money_outlined),
+            label: Text('Fondo'),
           ),
           IconButton(
             tooltip: 'Actualizar',
             onPressed: _cargar,
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
           ),
         ],
       ),
@@ -321,7 +322,7 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
           // ---- Filtros ----
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Column(
               children: [
                 SingleChildScrollView(
@@ -330,13 +331,13 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                     children: [
                       for (final p in PeriodoRendicion.values)
                         Padding(
-                          padding: const EdgeInsets.only(right: 8),
+                          padding: EdgeInsets.only(right: 8),
                           child: ChoiceChip(
                             label: Text(p.label),
                             selected: _periodo == p,
                             selectedColor: AppTheme.primary.withValues(alpha: 0.15),
                             labelStyle: TextStyle(
-                              color: _periodo == p ? AppTheme.primary : Colors.black87,
+                              color: _periodo == p ? AppTheme.primary : AppColors.textoPrincipal,
                               fontWeight: _periodo == p ? FontWeight.w600 : FontWeight.normal,
                             ),
                             onSelected: (_) {
@@ -352,16 +353,16 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 DropdownButtonFormField<String?>(
                   initialValue: _motorizadoId,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Motorizado',
                     isDense: true,
                     prefixIcon: Icon(Icons.delivery_dining_outlined),
                   ),
                   items: [
-                    const DropdownMenuItem<String?>(
+                    DropdownMenuItem<String?>(
                       value: null,
                       child: Text('Toda la empresa'),
                     ),
@@ -379,23 +380,23 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
               ],
             ),
           ),
-          const Divider(height: 1),
+          Divider(height: 1),
           Expanded(
             child: _cargando
-                ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
                 : RefreshIndicator(
                     onRefresh: () => _cargar(silencioso: true),
                     child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                      physics: AlwaysScrollableScrollPhysics(),
+                      padding: EdgeInsets.fromLTRB(16, 12, 16, 24),
                       children: [
                       if (nombreMotorizado != null)
                         Text('Motorizado: $nombreMotorizado',
                             style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 10),
+                      SizedBox(height: 10),
                       Card(
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -409,18 +410,18 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                               FilaValor('Cancelados', '${r.cancelados}'),
                               FilaValor('Pendientes', '${r.pendientes}',
                                   color: AppTheme.warning),
-                              const Divider(height: 22),
+                              Divider(height: 22),
                               FilaValor('Total a cobrar', dinero(r.totalACobrar),
                                   destacado: true),
                               FilaValor('Cobrado', dinero(r.cobrado),
                                   color: AppTheme.success),
                               FilaValor('Pendiente', dinero(r.pendiente),
                                   color: r.pendiente > 0 ? AppTheme.danger : null),
-                              const Divider(height: 22),
+                              Divider(height: 22),
                               FilaValor('Yape', dinero(r.yape), color: AppTheme.info),
                               FilaValor('Efectivo', dinero(r.efectivo)),
                               if (r.otros > 0) FilaValor('Otros', dinero(r.otros)),
-                              const Divider(height: 22),
+                              Divider(height: 22),
                               FilaValor('Fondo en efectivo',
                                   dinero(r.fondoInicial), color: AppTheme.info),
                               if (r.fondoYape > 0)
@@ -447,10 +448,10 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                                   destacado: true,
                                 ),
                               ],
-                              const Divider(height: 22),
+                              Divider(height: 22),
                               FilaValor('Deudas generadas', dinero(r.deudasGeneradas),
                                   color: r.deudasGeneradas > 0 ? AppTheme.danger : null),
-                              const Divider(height: 22),
+                              Divider(height: 22),
                               FilaValor('Balones entregados', '${r.balonesEntregados}'),
                               FilaValor('Balones devueltos', '${r.balonesDevueltos}',
                                   color: AppTheme.success),
@@ -462,7 +463,7 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                               if (r.combustible > 0)
                                 FilaValor('Combustible', dinero(r.combustible),
                                     color: AppTheme.danger),
-                              const Divider(height: 22),
+                              Divider(height: 22),
                               FilaValor('Gastos en efectivo', dinero(r.gastosEfectivo),
                                   color: r.gastosEfectivo > 0 ? AppTheme.danger : null),
                               FilaValor('Gastos en Yape', dinero(r.gastosYape),
@@ -484,12 +485,12 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                         ),
                       ),
                       if (r.vacio)
-                        const Padding(
+                        Padding(
                           padding: EdgeInsets.only(top: 20),
                           child: Text(
                             'No hay movimientos en este periodo.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.black54),
+                            style: TextStyle(color: AppColors.textoSecundario),
                           ),
                         ),
                     ],

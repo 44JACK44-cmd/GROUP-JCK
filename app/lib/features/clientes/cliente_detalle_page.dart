@@ -4,6 +4,7 @@
 /// total de pedidos y el último pedido. Con acciones directas.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -24,7 +25,7 @@ import 'cliente_form_page.dart';
 class ClienteDetallePage extends ConsumerStatefulWidget {
   final Map<String, dynamic> cliente;
 
-  const ClienteDetallePage({super.key, required this.cliente});
+  ClienteDetallePage({super.key, required this.cliente});
 
   @override
   ConsumerState<ClienteDetallePage> createState() => _ClienteDetallePageState();
@@ -82,7 +83,7 @@ class _ClienteDetallePageState extends ConsumerState<ClienteDetallePage> {
       if (especiales.isNotEmpty) {
         return especiales.values.reduce((a, b) => a > b ? a : b);
       }
-      final productos = await const ProductosRepo().vendibles();
+      final productos = await ProductosRepo().vendibles();
       if (productos.isEmpty) return 0;
       return (productos.first['precio_base'] as num? ?? 0).toDouble();
     } catch (_) {
@@ -150,14 +151,14 @@ class _ClienteDetallePageState extends ConsumerState<ClienteDetallePage> {
         initialChildSize: 0.7,
         builder: (ctx, controller) => ListView(
           controller: controller,
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16),
           children: [
             Text('Pedidos de ${widget.cliente['nombre']}',
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            SizedBox(height: 12),
             if (data.isEmpty)
-              const Text('Sin pedidos registrados.',
-                  style: TextStyle(color: Colors.black54)),
+              Text('Sin pedidos registrados.',
+                  style: TextStyle(color: AppColors.textoSecundario)),
             for (final p in data)
               ListTile(
                 contentPadding: EdgeInsets.zero,
@@ -186,22 +187,22 @@ class _ClienteDetallePageState extends ConsumerState<ClienteDetallePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cliente'),
+        title: Text('Cliente'),
         actions: [
-          IconButton(tooltip: 'Editar', icon: const Icon(Icons.edit_outlined), onPressed: _editar),
+          IconButton(tooltip: 'Editar', icon: Icon(Icons.edit_outlined), onPressed: _editar),
         ],
       ),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : RefreshIndicator(
               onRefresh: _cargar,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 28),
                 children: [
                   // ---- Datos ----
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -220,49 +221,49 @@ class _ClienteDetallePageState extends ConsumerState<ClienteDetallePage> {
                             ],
                           ),
                           if (tel.isNotEmpty) ...[
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             InkWell(
                               onTap: () => llamar(tel),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.phone_outlined, size: 18, color: AppTheme.primary),
-                                  const SizedBox(width: 6),
-                                  Text(tel, style: const TextStyle(color: AppTheme.primary)),
+                                  Icon(Icons.phone_outlined, size: 18, color: AppTheme.primary),
+                                  SizedBox(width: 6),
+                                  Text(tel, style: TextStyle(color: AppTheme.primary)),
                                 ],
                               ),
                             ),
                           ],
                           if (direccion.isNotEmpty) ...[
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Icon(Icons.place_outlined, size: 18, color: Colors.black45),
-                                const SizedBox(width: 6),
+                                Icon(Icons.place_outlined, size: 18, color: AppColors.textoMuted),
+                                SizedBox(width: 6),
                                 Expanded(
                                   child: Text(direccion,
-                                      style: const TextStyle(fontSize: 15, height: 1.3)),
+                                      style: TextStyle(fontSize: 15, height: 1.3)),
                                 ),
                               ],
                             ),
                           ],
                           if (referencia.isNotEmpty)
                             Padding(
-                              padding: const EdgeInsets.only(left: 24, top: 2),
+                              padding: EdgeInsets.only(left: 24, top: 2),
                               child: Text('Referencia: $referencia',
-                                  style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                                  style: TextStyle(color: AppColors.textoSecundario, fontSize: 13)),
                             ),
                           if ((c['observaciones'] as String? ?? '').isNotEmpty)
                             Padding(
-                              padding: const EdgeInsets.only(top: 6),
+                              padding: EdgeInsets.only(top: 6),
                               child: Text(c['observaciones'] as String,
-                                  style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                                  style: TextStyle(color: AppColors.textoSecundario, fontSize: 13)),
                             ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
 
                   // ---- Números ----
                   Row(
@@ -275,21 +276,21 @@ class _ClienteDetallePageState extends ConsumerState<ClienteDetallePage> {
                           color: _deuda > 0 ? AppTheme.danger : AppTheme.success,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Expanded(
                         child: TarjetaMetrica(
                           titulo: 'Balones pendientes',
                           valor: '$_balonesPendientes',
                           icono: Icons.local_fire_department_outlined,
-                          color: _balonesPendientes > 0 ? AppTheme.warning : Colors.black54,
+                          color: _balonesPendientes > 0 ? AppTheme.warning : AppColors.textoSecundario,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16),
                       child: Column(
                         children: [
                           FilaValor(
@@ -310,22 +311,22 @@ class _ClienteDetallePageState extends ConsumerState<ClienteDetallePage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
 
                   // ---- Acciones ----
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
                       onPressed: _nuevoPedido,
-                      icon: const Icon(Icons.add_circle_outline),
-                      label: const Text('NUEVO PEDIDO'),
+                      icon: Icon(Icons.add_circle_outline),
+                      label: Text('NUEVO PEDIDO'),
                       style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
+                        minimumSize: Size.fromHeight(52),
                         backgroundColor: AppTheme.primary,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   Row(
                     children: [
                       Expanded(
@@ -335,46 +336,46 @@ class _ClienteDetallePageState extends ConsumerState<ClienteDetallePage> {
                               : () => (lat != null && lng != null)
                                   ? abrirMapaCliente(latitud: lat, longitud: lng)
                                   : abrirMapaPorDireccion(direccion),
-                          icon: const Icon(Icons.map_outlined),
-                          label: const Text('Ver ubicación'),
-                          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                          icon: Icon(Icons.map_outlined),
+                          label: Text('Ver ubicación'),
+                          style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(48)),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: _verHistorial,
-                          icon: const Icon(Icons.history_outlined),
-                          label: const Text('Historial'),
-                          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                          icon: Icon(Icons.history_outlined),
+                          label: Text('Historial'),
+                          style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(48)),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: _registrarPago,
-                      icon: const Icon(Icons.payments_outlined),
-                      label: const Text('Registrar pago'),
-                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                      icon: Icon(Icons.payments_outlined),
+                      label: Text('Registrar pago'),
+                      style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(48)),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
 
                   // ---- Últimos pedidos ----
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Últimos pedidos', style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           if (_pedidos.isEmpty)
-                            const Text('Sin pedidos registrados.',
-                                style: TextStyle(color: Colors.black54))
+                            Text('Sin pedidos registrados.',
+                                style: TextStyle(color: AppColors.textoSecundario))
                           else
                             for (final p in _pedidos) _FilaPedido(p),
                         ],
@@ -402,14 +403,14 @@ class _ChipTipo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: AppTheme.primary.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
         _labels[tipo] ?? tipo,
-        style: const TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.w600),
+        style: TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -424,26 +425,26 @@ class _FilaPedido extends StatelessWidget {
     final estado = EstadoPedido.desdeDb(pedido['estado']);
     final fecha = parseFecha(pedido['fecha'] as String?);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
           Icon(estado.icono, size: 18, color: estado.color),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Pedido #${pedido['numero']}',
-                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                    style: TextStyle(fontWeight: FontWeight.w600)),
                 Text(
                   fecha == null ? '' : fechaCorta(fecha),
-                  style: const TextStyle(color: Colors.black54, fontSize: 12),
+                  style: TextStyle(color: AppColors.textoSecundario, fontSize: 12),
                 ),
               ],
             ),
           ),
           Text(dinero((pedido['total'] as num? ?? 0)),
-              style: const TextStyle(fontWeight: FontWeight.w600)),
+              style: TextStyle(fontWeight: FontWeight.w600)),
         ],
       ),
     );

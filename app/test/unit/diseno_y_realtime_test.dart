@@ -4,7 +4,9 @@ library;
 
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:gas_app/app/theme.dart';
 import 'package:gas_app/core/state/bus.dart';
 import 'package:gas_app/core/ui/diseno.dart';
 
@@ -34,6 +36,20 @@ void main() {
       expect(SyncBus.sincronizando.value, isTrue);
       SyncBus.sincronizandoCambio(false);
       SyncBus.conexionCambio(true);
+    });
+  });
+
+  group('paleta del sistema', () {
+    test('el modo oscuro es negro neutro, no azul', () {
+      expect(AppTheme.dark().scaffoldBackgroundColor, const Color(0xFF0B0B0B));
+      expect(AppTheme.dark().colorScheme.surface, const Color(0xFF151515));
+      expect(AppTheme.dark().cardTheme.color, const Color(0xFF151515));
+      expect(AppTheme.dark().colorScheme.primary, AppTheme.primary);
+    });
+
+    test('el modo claro es gris claro con superficies blancas', () {
+      expect(AppTheme.light().scaffoldBackgroundColor, const Color(0xFFF7F7F7));
+      expect(AppTheme.light().colorScheme.surface, const Color(0xFFFFFFFF));
     });
   });
 

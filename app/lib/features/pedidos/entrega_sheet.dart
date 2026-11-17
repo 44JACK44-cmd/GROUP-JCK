@@ -5,6 +5,7 @@
 /// vacío → observaciones.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -140,19 +141,19 @@ class _EntregaSheetState extends State<_EntregaSheet> {
       final continuar = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Sin comprobante'),
-          content: const Text(
+          title: Text('Sin comprobante'),
+          content: Text(
             'Pagó con Yape pero no tomaste foto del comprobante. '
             '¿Quieres continuar así?',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Tomar foto'),
+              child: Text('Tomar foto'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Continuar sin foto'),
+              child: Text('Continuar sin foto'),
             ),
           ],
         ),
@@ -199,31 +200,31 @@ class _EntregaSheetState extends State<_EntregaSheet> {
                 width: 42,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.black26,
+                  color: AppColors.textoMuted,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            const Text('Entregar pedido',
+            SizedBox(height: 16),
+            Text('Entregar pedido',
                 style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
+            SizedBox(height: 4),
             Text('Cobrar ${dinero(widget.total)}',
-                style: const TextStyle(color: Colors.black54)),
-            const SizedBox(height: 18),
+                style: TextStyle(color: AppColors.textoSecundario)),
+            SizedBox(height: 18),
 
             // --- Monto cobrado ---
-            const Text('¿Cuánto cobraste?', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
+            Text('¿Cuánto cobraste?', style: TextStyle(fontWeight: FontWeight.w600)),
+            SizedBox(height: 8),
             TextField(
               controller: _montoCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
               enabled: !_quedoDebiendo,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               decoration: InputDecoration(
                 prefixText: 'S/ ',
-                prefixStyle: const TextStyle(
+                prefixStyle: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.primary,
@@ -234,14 +235,14 @@ class _EntregaSheetState extends State<_EntregaSheet> {
             ),
             if (parcial)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: EdgeInsets.only(top: 8),
                 child: Row(
                   children: [
-                    const Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 18),
-                    const SizedBox(width: 6),
+                    Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 18),
+                    SizedBox(width: 6),
                     Text(
                       'Pagó parcialmente · debe ${dinero(_deuda)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppTheme.warning,
                         fontWeight: FontWeight.w600,
                       ),
@@ -249,11 +250,11 @@ class _EntregaSheetState extends State<_EntregaSheet> {
                   ],
                 ),
               ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // --- Forma de pago ---
-            const Text('Forma de pago', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
+            Text('Forma de pago', style: TextStyle(fontWeight: FontWeight.w600)),
+            SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -263,7 +264,7 @@ class _EntregaSheetState extends State<_EntregaSheet> {
                     onTap: () => _elegirMetodo('EFECTIVO'),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: _BotonPago(
                     etiqueta: 'Yape',
@@ -273,7 +274,7 @@ class _EntregaSheetState extends State<_EntregaSheet> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -283,7 +284,7 @@ class _EntregaSheetState extends State<_EntregaSheet> {
                     onTap: () => _elegirMetodo('OTRO'),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: _BotonPago(
                     etiqueta: 'Quedó debiendo',
@@ -296,19 +297,19 @@ class _EntregaSheetState extends State<_EntregaSheet> {
             ),
             if (_quedoDebiendo)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: EdgeInsets.only(top: 8),
                 child: Text(
                   'Debe ${dinero(widget.total)}. Se registrará como deuda del cliente.',
-                  style: const TextStyle(color: AppTheme.warning, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: AppTheme.warning, fontWeight: FontWeight.w600),
                 ),
               ),
 
             // --- Foto del comprobante de Yape ---
             if (!_quedoDebiendo && _metodo == 'YAPE' && montoCobradoPositivo) ...[
-              const SizedBox(height: 16),
-              const Text('Foto del comprobante',
+              SizedBox(height: 16),
+              Text('Foto del comprobante',
                   style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               if (_fotoPath != null) ...[
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
@@ -319,11 +320,11 @@ class _EntregaSheetState extends State<_EntregaSheet> {
                     fit: BoxFit.cover,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 TextButton.icon(
                   onPressed: () => setState(() => _fotoPath = null),
-                  icon: const Icon(Icons.delete_outline),
-                  label: const Text('Quitar foto'),
+                  icon: Icon(Icons.delete_outline),
+                  label: Text('Quitar foto'),
                 ),
               ] else ...[
                 Row(
@@ -331,32 +332,32 @@ class _EntregaSheetState extends State<_EntregaSheet> {
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () => _tomarFoto(ImageSource.camera),
-                        icon: const Icon(Icons.photo_camera),
-                        label: const Text('Tomar foto'),
+                        icon: Icon(Icons.photo_camera),
+                        label: Text('Tomar foto'),
                         style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(46)),
+                            minimumSize: Size.fromHeight(46)),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Expanded(
                       child: OutlinedButton.icon(
                         onPressed: () => _tomarFoto(ImageSource.gallery),
-                        icon: const Icon(Icons.photo_library_outlined),
-                        label: const Text('Galería'),
+                        icon: Icon(Icons.photo_library_outlined),
+                        label: Text('Galería'),
                         style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(46)),
+                            minimumSize: Size.fromHeight(46)),
                       ),
                     ),
                   ],
                 ),
               ],
             ],
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
 
             // --- Balón vacío ---
-            const Text('¿El cliente entregó el balón vacío?',
+            Text('¿El cliente entregó el balón vacío?',
                 style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
@@ -367,7 +368,7 @@ class _EntregaSheetState extends State<_EntregaSheet> {
                     onTap: () => setState(() => _balonVacio = EstadoBalonVacio.recibido),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: _BotonPago(
                     etiqueta: 'No',
@@ -380,19 +381,19 @@ class _EntregaSheetState extends State<_EntregaSheet> {
             ),
             if (_balonVacio == EstadoBalonVacio.noRecibido)
               Padding(
-                padding: const EdgeInsets.only(top: 8),
+                padding: EdgeInsets.only(top: 8),
                 child: Text(
                   'Quedará como balón vacío pendiente.',
-                  style: const TextStyle(color: AppTheme.warning, fontSize: 12),
+                  style: TextStyle(color: AppTheme.warning, fontSize: 12),
                 ),
               ),
 
             // --- Fierro ---
             if (widget.cantidadFierros > 0) ...[
-              const SizedBox(height: 16),
-              const Text('¿Devolvió el fierro / soporte?',
+              SizedBox(height: 16),
+              Text('¿Devolvió el fierro / soporte?',
                   style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
@@ -403,7 +404,7 @@ class _EntregaSheetState extends State<_EntregaSheet> {
                       onTap: () => setState(() => _fierro = EstadoFierro.devuelto),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: _BotonPago(
                       etiqueta: 'No',
@@ -415,29 +416,29 @@ class _EntregaSheetState extends State<_EntregaSheet> {
                 ],
               ),
             ],
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
 
             // --- Observaciones ---
             TextField(
               controller: _observacionesCtrl,
               maxLines: 2,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Observaciones (opcional)',
                 prefixIcon: Icon(Icons.notes_outlined),
               ),
             ),
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
 
             FilledButton.icon(
               onPressed: _confirmar,
-              icon: const Icon(Icons.check_circle_outline),
-              label: const Text('Finalizar entrega'),
+              icon: Icon(Icons.check_circle_outline),
+              label: Text('Finalizar entrega'),
               style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
+                minimumSize: Size.fromHeight(52),
                 backgroundColor: AppTheme.success,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
         ),
       ),
@@ -471,7 +472,7 @@ class _BotonPago extends StatelessWidget {
           color: seleccionado ? color.withValues(alpha: 0.14) : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: seleccionado ? color : const Color(0xFFDADDD9),
+            color: seleccionado ? color : AppColors.borde,
             width: seleccionado ? 1.6 : 1,
           ),
         ),
@@ -479,7 +480,7 @@ class _BotonPago extends StatelessWidget {
           etiqueta,
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: seleccionado ? color : Colors.black87,
+            color: seleccionado ? color : AppColors.textoPrincipal,
             fontWeight: seleccionado ? FontWeight.w700 : FontWeight.w500,
             fontSize: 15,
           ),

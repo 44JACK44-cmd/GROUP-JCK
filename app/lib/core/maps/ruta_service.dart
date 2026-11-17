@@ -129,7 +129,7 @@ class RutaService {
 
     http.Response respuesta;
     try {
-      respuesta = await http.get(uri).timeout(const Duration(seconds: 15));
+      respuesta = await http.get(uri).timeout(Duration(seconds: 15));
     } on TimeoutException {
       return RutaResultado(
         destino: destino,

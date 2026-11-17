@@ -16,7 +16,7 @@ class AuthState {
   final String? empresaId;
   final String? empresaNombre;
 
-  const AuthState({
+  AuthState({
     required this.status,
     this.nombre,
     this.rol,
@@ -37,10 +37,10 @@ class AuthNotifier extends Notifier<AuthState> {
   AuthState build() {
     final session = _sb.auth.currentSession;
     if (session == null) {
-      return const AuthState(status: AuthStatus.noAutenticado);
+      return AuthState(status: AuthStatus.noAutenticado);
     }
     _cargarPerfil(session.user.id);
-    return const AuthState(status: AuthStatus.cargando);
+    return AuthState(status: AuthStatus.cargando);
   }
 
   Future<void> _cargarPerfil(String userId, {int intento = 0}) async {
@@ -74,19 +74,19 @@ class AuthNotifier extends Notifier<AuthState> {
     } catch (e) {
       // Un fallo de red NO debe expulsar al usuario: se reintenta solo.
       if (esErrorDeRed(e) && intento < 12) {
-        await Future<void>.delayed(const Duration(seconds: 5));
+        await Future<void>.delayed(Duration(seconds: 5));
         if (state.status != AuthStatus.cargando) return;
         return _cargarPerfil(userId, intento: intento + 1);
       }
       if (esErrorDeRed(e)) {
         // Sigue sin conexión: se conserva la sesión y se vuelve a intentar al
         // abrir la app, en vez de borrar el acceso del usuario.
-        state = const AuthState(status: AuthStatus.noAutenticado);
+        state = AuthState(status: AuthStatus.noAutenticado);
         return;
       }
       // Sesión sin perfil real: cerrar sesión para no dejar estado inconsistente.
       await _sb.auth.signOut();
-      state = const AuthState(status: AuthStatus.noAutenticado);
+      state = AuthState(status: AuthStatus.noAutenticado);
     }
   }
 
@@ -146,7 +146,7 @@ class AuthNotifier extends Notifier<AuthState> {
       await UbicacionService.instance.desactivar();
     } catch (_) {}
     await _sb.auth.signOut();
-    state = const AuthState(status: AuthStatus.noAutenticado);
+    state = AuthState(status: AuthStatus.noAutenticado);
   }
 }
 

@@ -4,6 +4,7 @@
 /// Todo lo demás (historial, calendario) sigue disponible desde esas pantallas.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -21,14 +22,14 @@ import '../../core/ui/estado_conexion.dart';
 import '../auth/auth_controller.dart';
 
 class HomeMotoPage extends ConsumerStatefulWidget {
-  const HomeMotoPage({super.key});
+  HomeMotoPage({super.key});
 
   @override
   ConsumerState<HomeMotoPage> createState() => _HomeMotoPageState();
 }
 
 class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
-  Rendicion _hoy = const Rendicion();
+  Rendicion _hoy = Rendicion();
   int _porEntregar = 0;
   bool _cargando = true;
 
@@ -67,7 +68,7 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
     if (uid == null) return;
     try {
       final inicio = inicioHoy();
-      final fin = DateTime.now().add(const Duration(minutes: 1));
+      final fin = DateTime.now().add(Duration(minutes: 1));
       final res = await Future.wait([
         rendicionRepo.calcular(desde: inicio, hasta: fin, motorizadoId: uid),
         pedidosRepo.listar(
@@ -94,9 +95,9 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
     final ultimo = servicio.ultimoEnvio.value;
     final (color, icono) = switch (estado) {
       EstadoGps.activo => (AppTheme.success, Icons.location_on),
-      EstadoGps.apagado => (Colors.black45, Icons.location_off_outlined),
+      EstadoGps.apagado => (AppColors.textoMuted, Icons.location_off_outlined),
       EstadoGps.sinPermiso => (AppTheme.danger, Icons.location_disabled),
-      EstadoGps.sinSesion => (Colors.black45, Icons.person_off_outlined),
+      EstadoGps.sinSesion => (AppColors.textoMuted, Icons.person_off_outlined),
     };
 
     String detalle;
@@ -115,14 +116,14 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Icon(icono, color: color),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     estado.label,
@@ -131,15 +132,15 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            Text(detalle, style: const TextStyle(fontSize: 12.5, color: Colors.black54)),
-            const SizedBox(height: 8),
+            SizedBox(height: 4),
+            Text(detalle, style: TextStyle(fontSize: 12.5, color: AppColors.textoSecundario)),
+            SizedBox(height: 8),
             if (estado == EstadoGps.activo)
               OutlinedButton.icon(
                 onPressed: () => servicio.desactivar(),
-                icon: const Icon(Icons.pause),
-                label: const Text('Pausar ubicación'),
-                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+                icon: Icon(Icons.pause),
+                label: Text('Pausar ubicación'),
+                style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(44)),
               )
             else
               FilledButton.icon(
@@ -148,7 +149,7 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                   if (!mounted) return;
                   if (r == EstadoGps.sinPermiso) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
+                      SnackBar(
                         content: Text(
                           'Permiso denegado. Actívalo en Ajustes del teléfono para compartir tu ubicación.',
                         ),
@@ -156,9 +157,9 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                     );
                   }
                 },
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('Activar ubicación'),
-                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+                icon: Icon(Icons.play_arrow),
+                label: Text('Activar ubicación'),
+                style: FilledButton.styleFrom(minimumSize: Size.fromHeight(44)),
               ),
           ],
         ),
@@ -179,31 +180,31 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Icon(icono, color: color, size: 26),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       titulo,
-                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(detalle,
-                  style: const TextStyle(color: Colors.black54, fontSize: 13)),
-              const SizedBox(height: 12),
+                  style: TextStyle(color: AppColors.textoSecundario, fontSize: 13)),
+              SizedBox(height: 12),
               FilledButton(
                 onPressed: onTap,
                 style: FilledButton.styleFrom(
                   backgroundColor: color,
-                  minimumSize: const Size.fromHeight(44),
+                  minimumSize: Size.fromHeight(44),
                 ),
                 child: Text(accion),
               ),
@@ -222,12 +223,12 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Inicio'),
+        title: Text('Inicio'),
         actions: [
           IconButton(
             tooltip: 'Cerrar sesión',
             onPressed: () => ref.read(authProvider.notifier).logout(),
-            icon: const Icon(Icons.logout),
+            icon: Icon(Icons.logout),
           ),
         ],
       ),
@@ -235,13 +236,13 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
         child: RefreshIndicator(
           onRefresh: _cargar,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            padding: EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
-              const EstadoConexion(),
-              const SizedBox(height: 4),
-              const Text('Acciones directas',
+              EstadoConexion(),
+              SizedBox(height: 4),
+              Text('Acciones directas',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               AccionesDirectas(
                 acciones: [
                   AccionDirecta(
@@ -276,12 +277,12 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                   ),
                 ],
               ),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               InkWell(
                 borderRadius: BorderRadius.circular(12),
                 onTap: () => context.go('/inicio'),
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  padding: EdgeInsets.symmetric(vertical: 2),
                   child: Row(
                     children: [
                       Expanded(
@@ -290,12 +291,12 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                           children: [
                             Text('$saludo, ${auth.nombre ?? ''}',
                                 style: Theme.of(context).textTheme.titleLarge),
-                            const SizedBox(height: 2),
+                            SizedBox(height: 2),
                             Text(
                               _porEntregar > 0
                                   ? 'Jornada activa · $_porEntregar pedido(s) por entregar'
                                   : 'Jornada activa · sin pedidos por entregar',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppTheme.success,
                                 fontWeight: FontWeight.w600,
                               ),
@@ -303,13 +304,13 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                           ],
                         ),
                       ),
-                      const Icon(Icons.home_outlined,
-                          size: 18, color: Colors.black45),
+                      Icon(Icons.home_outlined,
+                          size: 18, color: AppColors.textoMuted),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _seccion(
                 icono: Icons.delivery_dining_outlined,
                 color: AppTheme.primary,
@@ -318,7 +319,7 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                 accion: 'VER PEDIDOS',
                 onTap: () => context.go('/mis-pedidos'),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               _seccion(
                 icono: Icons.edit_note,
                 color: AppTheme.info,
@@ -329,7 +330,7 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                 accion: 'REGISTRAR MOVIMIENTO',
                 onTap: () => context.go('/mi-registro'),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               _seccion(
                 icono: Icons.payments_outlined,
                 color: AppTheme.warning,
@@ -338,7 +339,7 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                 accion: 'REGISTRAR GASTO',
                 onTap: () => context.push('/mi-registro/gasto'),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               _seccion(
                 icono: Icons.assignment_turned_in_outlined,
                 color: AppTheme.success,
@@ -348,17 +349,17 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                 accion: 'VER MI RENDICIÓN',
                 onTap: () => context.push('/declarar-rendicion'),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               OutlinedButton.icon(
                 onPressed: () => context.push('/movimientos'),
-                icon: const Icon(Icons.timeline),
-                label: const Text('Movimientos de mi jornada'),
-                style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                icon: Icon(Icons.timeline),
+                label: Text('Movimientos de mi jornada'),
+                style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(50)),
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               _gpsCard(),
               if (_cargando)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.only(top: 12),
                   child: LinearProgressIndicator(color: AppTheme.primary),
                 ),

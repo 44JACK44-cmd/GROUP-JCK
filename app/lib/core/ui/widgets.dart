@@ -1,6 +1,7 @@
 /// Widgets compartidos por las pantallas de pedidos, clientes y finanzas.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
@@ -13,7 +14,7 @@ class EstadoBadge extends StatelessWidget {
   final String estado;
   final bool compacto;
 
-  const EstadoBadge(this.estado, {super.key, this.compacto = false});
+  EstadoBadge(this.estado, {super.key, this.compacto = false});
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +45,7 @@ class TarjetaMetrica extends StatelessWidget {
   final Color color;
   final VoidCallback? onTap;
 
-  const TarjetaMetrica({
+  TarjetaMetrica({
     super.key,
     required this.titulo,
     required this.valor,
@@ -60,21 +61,21 @@ class TarjetaMetrica extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(icono, size: 22, color: color),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 valor,
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 2),
-              Text(titulo, style: const TextStyle(color: Colors.black54, fontSize: 12)),
+              SizedBox(height: 2),
+              Text(titulo, style: TextStyle(color: AppColors.textoSecundario, fontSize: 12)),
             ],
           ),
         ),
@@ -90,7 +91,7 @@ class FilaValor extends StatelessWidget {
   final Color? color;
   final bool destacado;
 
-  const FilaValor(
+  FilaValor(
     this.etiqueta,
     this.valor, {
     super.key,
@@ -101,7 +102,7 @@ class FilaValor extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -109,18 +110,18 @@ class FilaValor extends StatelessWidget {
             child: Text(
               etiqueta,
               style: TextStyle(
-                color: destacado ? Colors.black87 : Colors.black54,
+                color: destacado ? AppColors.textoPrincipal : AppColors.textoSecundario,
                 fontWeight: destacado ? FontWeight.w600 : FontWeight.normal,
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: 12),
           Text(
             valor,
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: destacado ? 18 : 15,
-              color: color ?? (destacado ? AppTheme.primary : Colors.black87),
+              color: color ?? (destacado ? AppTheme.primary : AppColors.textoPrincipal),
             ),
           ),
         ],
@@ -137,7 +138,7 @@ class EstadoVacio extends StatelessWidget {
   final String? accionTexto;
   final VoidCallback? onAccion;
 
-  const EstadoVacio({
+  EstadoVacio({
     super.key,
     required this.icono,
     required this.titulo,
@@ -150,30 +151,30 @@ class EstadoVacio extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icono, size: 56, color: Colors.black26),
-            const SizedBox(height: 12),
+            Icon(icono, size: 56, color: AppColors.textoMuted),
+            SizedBox(height: 12),
             Text(
               titulo,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
             if (mensaje != null) ...[
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 mensaje!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.black54),
+                style: TextStyle(color: AppColors.textoSecundario),
               ),
             ],
             if (accionTexto != null && onAccion != null) ...[
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               FilledButton.icon(
                 onPressed: onAccion,
-                icon: const Icon(Icons.add),
+                icon: Icon(Icons.add),
                 label: Text(accionTexto!),
               ),
             ],
@@ -197,7 +198,7 @@ class TarjetaPedido extends StatelessWidget {
   final String? motorizadoNombre;
   final List<Widget>? acciones;
 
-  const TarjetaPedido({
+  TarjetaPedido({
     super.key,
     required this.pedido,
     required this.onTap,
@@ -221,7 +222,7 @@ class TarjetaPedido extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -236,19 +237,19 @@ class TarjetaPedido extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                   ],
                   Expanded(
                     child: Text(
                       cliente?['nombre'] as String? ?? 'Cliente',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Text(
                     dinero(total),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: AppTheme.primary,
                       fontSize: 16,
@@ -256,7 +257,7 @@ class TarjetaPedido extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               Text(
                 [
                   if ((cliente?['direccion'] as String? ?? '').isNotEmpty)
@@ -265,37 +266,37 @@ class TarjetaPedido extends StatelessWidget {
                     productoResumen,
                   if (mostrarPrioridad && fecha != null) antiguedad(fecha),
                 ].join('  ·  '),
-                style: const TextStyle(color: Colors.black54, fontSize: 13),
+                style: TextStyle(color: AppColors.textoSecundario, fontSize: 13),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
               if (motorizadoNombre != null && motorizadoNombre!.isNotEmpty) ...[
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.delivery_dining_outlined, size: 13, color: Colors.black45),
-                    const SizedBox(width: 4),
+                    Icon(Icons.delivery_dining_outlined, size: 13, color: AppColors.textoMuted),
+                    SizedBox(width: 4),
                     Text(
                       motorizadoNombre!,
-                      style: const TextStyle(color: Colors.black45, fontSize: 12.5),
+                      style: TextStyle(color: AppColors.textoMuted, fontSize: 12.5),
                     ),
                   ],
                 ),
               ],
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Row(
                 children: [
                   EstadoBadge(estado, compacto: true),
-                  const Spacer(),
-                  if (trailer != null) trailer! else const SizedBox.shrink(),
+                  Spacer(),
+                  if (trailer != null) trailer! else SizedBox.shrink(),
                 ],
               ),
               if (acciones != null && acciones!.isNotEmpty) ...[
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 Row(
                   children: [
                     for (var i = 0; i < acciones!.length; i++) ...[
-                      if (i > 0) const SizedBox(width: 8),
+                      if (i > 0) SizedBox(width: 8),
                       Expanded(child: acciones![i]),
                     ],
                   ],

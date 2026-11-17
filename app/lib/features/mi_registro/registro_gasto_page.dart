@@ -4,6 +4,7 @@
 /// conserva en el Outbox y se sube a Storage al sincronizar.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -22,7 +23,7 @@ class RegistroGastoPage extends ConsumerStatefulWidget {
   /// Categoría preseleccionada (permite un botón directo de "Llenar combustible").
   final String? categoriaInicial;
 
-  const RegistroGastoPage({super.key, this.categoriaInicial});
+  RegistroGastoPage({super.key, this.categoriaInicial});
 
   @override
   ConsumerState<RegistroGastoPage> createState() => _RegistroGastoPageState();
@@ -98,7 +99,7 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
 
     setState(() => _guardando = true);
     final auth = ref.read(authProvider);
-    final uuid = const Uuid().v4();
+    final uuid = Uuid().v4();
     final datos = <String, dynamic>{
       'empresa_id': auth.empresaId,
       'descripcion': descripcionCompleta,
@@ -137,7 +138,7 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
         if (!mounted) return;
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gasto registrado.')),
+          SnackBar(content: Text('Gasto registrado.')),
         );
         return;
       } catch (e) {
@@ -164,7 +165,7 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
     if (!mounted) return;
     Navigator.of(context).pop(true);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text('Guardado en el dispositivo. Se sincronizará automáticamente.'),
       ),
     );
@@ -177,12 +178,12 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Registrar gasto')),
+      appBar: AppBar(title: Text('Registrar gasto')),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         children: [
           Text('Tipo de gasto', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -194,37 +195,37 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
                   selected: _categoria == e.key,
                   selectedColor: AppTheme.primary.withValues(alpha: 0.12),
                   labelStyle: TextStyle(
-                    color: _categoria == e.key ? AppTheme.primary : Colors.black87,
+                    color: _categoria == e.key ? AppTheme.primary : AppColors.textoPrincipal,
                     fontWeight: _categoria == e.key ? FontWeight.w600 : FontWeight.normal,
                   ),
                   onSelected: (v) => setState(() => _categoria = v ? e.key : _categoria),
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextFormField(
             controller: _descripcionCtrl,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Descripción *',
               hintText: 'Ej. Combustible moto',
               prefixIcon: Icon(Icons.description_outlined),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextFormField(
             controller: _montoCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
               labelText: 'Monto *',
               prefixText: 'S/ ',
               prefixIcon: Icon(Icons.attach_money),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text('¿Con qué se pagó?',
               style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Wrap(
             spacing: 8,
             children: [
@@ -241,36 +242,36 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
                 ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextFormField(
             controller: _observacionCtrl,
             maxLines: 2,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Observación (opcional)',
               prefixIcon: Icon(Icons.notes_outlined),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text('Comprobante (opcional)',
               style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(
             children: [
               OutlinedButton.icon(
                 onPressed: () => _tomarFoto(ImageSource.camera),
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: const Text('Tomar foto'),
+                icon: Icon(Icons.photo_camera_outlined),
+                label: Text('Tomar foto'),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: () => _tomarFoto(ImageSource.gallery),
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Galería'),
+                icon: Icon(Icons.photo_library_outlined),
+                label: Text('Galería'),
               ),
             ],
           ),
           if (_fotoPath != null) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.file(
@@ -281,12 +282,12 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
               ),
             ),
           ],
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           FilledButton.icon(
             onPressed: _guardando ? null : _guardar,
-            icon: const Icon(Icons.check_circle_outline),
+            icon: Icon(Icons.check_circle_outline),
             label: Text(_guardando ? 'Guardando…' : 'Guardar gasto'),
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+            style: FilledButton.styleFrom(minimumSize: Size.fromHeight(52)),
           ),
         ],
       ),

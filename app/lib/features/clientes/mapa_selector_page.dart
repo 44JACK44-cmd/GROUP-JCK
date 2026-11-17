@@ -12,6 +12,7 @@
 /// Devuelve [UbicacionElegida] con latitud, longitud, dirección y referencia.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -33,7 +34,7 @@ class UbicacionElegida {
   final String? direccion;
   final String? referencia;
 
-  const UbicacionElegida({
+  UbicacionElegida({
     required this.latitud,
     required this.longitud,
     this.direccion,
@@ -70,7 +71,7 @@ class MapaSelectorPage extends StatefulWidget {
   final String? referencia;
   final String? titulo;
 
-  const MapaSelectorPage({
+  MapaSelectorPage({
     super.key,
     this.latitud,
     this.longitud,
@@ -165,11 +166,11 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
               point: _posicion,
               width: 48,
               height: 48,
-              child: const Icon(
+              child: Icon(
                 Icons.location_on,
                 size: 48,
                 color: AppTheme.danger,
-                shadows: [Shadow(color: Colors.black26, blurRadius: 6)],
+                shadows: [Shadow(color: AppColors.textoMuted, blurRadius: 6)],
               ),
             ),
           ],
@@ -197,7 +198,7 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
       setState(() => _resultados = []);
       return;
     }
-    _espera = Timer(const Duration(milliseconds: 550), () async {
+    _espera = Timer(Duration(milliseconds: 550), () async {
       setState(() => _buscando = true);
       try {
         final uri = Uri.parse(
@@ -207,7 +208,7 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
         );
         final r = await http
             .get(uri, headers: {'User-Agent': _userAgent})
-            .timeout(const Duration(seconds: 10));
+            .timeout(Duration(seconds: 10));
         if (!mounted) return;
         if (r.statusCode == 200) {
           final data = jsonDecode(r.body) as List;
@@ -263,8 +264,8 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
         return;
       }
       final p = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-      ).timeout(const Duration(seconds: 15));
+        locationSettings: LocationSettings(accuracy: LocationAccuracy.high),
+      ).timeout(Duration(seconds: 15));
       if (!mounted) return;
       _moverA(LatLng(p.latitude, p.longitude));
       if (_direccionCtrl.text.trim().isEmpty) {
@@ -288,7 +289,7 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
       );
       final r = await http
           .get(uri, headers: {'User-Agent': _userAgent})
-          .timeout(const Duration(seconds: 8));
+          .timeout(Duration(seconds: 8));
       if (!mounted || r.statusCode != 200) return;
       final data = jsonDecode(r.body) as Map<String, dynamic>;
       final texto = (data['display_name'] as String? ?? '').split(',').take(3).join(',').trim();
@@ -322,14 +323,14 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
         actions: [
           TextButton(
             onPressed: _confirmar,
-            child: const Text('Listo'),
+            child: Text('Listo'),
           ),
         ],
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: TextField(
               controller: _busquedaCtrl,
               textInputAction: TextInputAction.search,
@@ -337,9 +338,9 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
               onSubmitted: _buscar,
               decoration: InputDecoration(
                 hintText: 'Buscar dirección (Av. Ejército 123)',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: Icon(Icons.search),
                 suffixIcon: _buscando
-                    ? const Padding(
+                    ? Padding(
                         padding: EdgeInsets.all(12),
                         child: SizedBox(
                           width: 18,
@@ -354,30 +355,30 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
           ),
           if (_resultados.isNotEmpty)
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
+              margin: EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE6E8E5)),
+                border: Border.all(color: AppColors.borde),
               ),
               child: Column(
                 children: [
                   for (final r in _resultados.take(4))
                     ListTile(
                       dense: true,
-                      leading: const Icon(Icons.place_outlined, size: 20),
+                      leading: Icon(Icons.place_outlined, size: 20),
                       title: Text(
                         '${r['display_name']}',
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 13),
+                        style: TextStyle(fontSize: 13),
                       ),
                       onTap: () => _elegirResultado(r),
                     ),
                 ],
               ),
             ),
-          const AvisoGoogleMaps(),
+          AvisoGoogleMaps(),
           Expanded(
             child: Stack(
               children: [
@@ -388,28 +389,28 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
                   child: FloatingActionButton.small(
                     heroTag: 'mi-ubicacion',
                     onPressed: _ubicando ? null : _usarMiUbicacion,
-                    backgroundColor: Colors.white,
+                    backgroundColor: AppColors.superficie,
                     child: _ubicando
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Icon(Icons.my_location, color: AppTheme.primary),
+                        : Icon(Icons.my_location, color: AppTheme.primary),
                   ),
                 ),
                 Positioned(
                   left: 12,
                   top: 12,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.92),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Toca el mapa para mover el pin',
-                      style: TextStyle(fontSize: 11.5, color: Colors.black54),
+                      style: TextStyle(fontSize: 11.5, color: AppColors.textoSecundario),
                     ),
                   ),
                 ),
@@ -417,10 +418,10 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-            decoration: const BoxDecoration(
+            padding: EdgeInsets.fromLTRB(16, 10, 16, 16),
+            decoration: BoxDecoration(
               color: Colors.white,
-              border: Border(top: BorderSide(color: Color(0xFFE6E8E5))),
+              border: Border(top: BorderSide(color: AppColors.borde)),
             ),
             child: SafeArea(
               top: false,
@@ -431,35 +432,35 @@ class _MapaSelectorPageState extends State<MapaSelectorPage> {
                   TextField(
                     controller: _direccionCtrl,
                     textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Dirección',
                       hintText: 'Av. Ejército 123',
                       prefixIcon: Icon(Icons.signpost_outlined),
                       isDense: true,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   TextField(
                     controller: _referenciaCtrl,
                     textCapitalization: TextCapitalization.sentences,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Referencia (opcional)',
                       hintText: 'Frente al grifo, casa azul…',
                       prefixIcon: Icon(Icons.info_outline),
                       isDense: true,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: 6),
                   Text(
                     '${_posicion.latitude.toStringAsFixed(6)}, ${_posicion.longitude.toStringAsFixed(6)}',
-                    style: const TextStyle(fontSize: 11.5, color: Colors.black45),
+                    style: TextStyle(fontSize: 11.5, color: AppColors.textoMuted),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   FilledButton.icon(
                     onPressed: _confirmar,
-                    icon: const Icon(Icons.check),
-                    label: const Text('Confirmar ubicación'),
-                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                    icon: Icon(Icons.check),
+                    label: Text('Confirmar ubicación'),
+                    style: FilledButton.styleFrom(minimumSize: Size.fromHeight(50)),
                   ),
                 ],
               ),

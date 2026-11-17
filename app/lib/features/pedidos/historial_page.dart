@@ -5,6 +5,7 @@
 /// base: si el pedido está ENTREGADO nunca aparece como pendiente.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -23,7 +24,7 @@ import 'pedido_detalle_page.dart';
 enum _Filtro { hoy, ayer, todas }
 
 class HistorialPage extends ConsumerStatefulWidget {
-  const HistorialPage({super.key});
+  HistorialPage({super.key});
 
   @override
   ConsumerState<HistorialPage> createState() => _HistorialPageState();
@@ -98,8 +99,8 @@ class _HistorialPageState extends ConsumerState<HistorialPage> {
     if (_filtro == _Filtro.todas) return _pedidos;
     final ahora = DateTime.now();
     final hoy = inicioHoy(ahora);
-    final desde = _filtro == _Filtro.hoy ? hoy : hoy.subtract(const Duration(days: 1));
-    final hasta = _filtro == _Filtro.hoy ? hoy.add(const Duration(days: 1)) : hoy;
+    final desde = _filtro == _Filtro.hoy ? hoy : hoy.subtract(Duration(days: 1));
+    final hasta = _filtro == _Filtro.hoy ? hoy.add(Duration(days: 1)) : hoy;
     return _pedidos.where((p) {
       final f = parseFecha(p['fecha']);
       return f != null && !f.isBefore(desde) && f.isBefore(hasta);
@@ -122,11 +123,11 @@ class _HistorialPageState extends ConsumerState<HistorialPage> {
     final lista = _filtrados;
     final grupos = _porDia(lista);
     return Scaffold(
-      appBar: AppBar(title: const Text('Historial de entregas')),
+      appBar: AppBar(title: Text('Historial de entregas')),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: SegmentedButton<_Filtro>(
               segments: const [
                 ButtonSegment(value: _Filtro.hoy, label: Text('Hoy')),
@@ -145,27 +146,27 @@ class _HistorialPageState extends ConsumerState<HistorialPage> {
 
   Widget _cuerpo(Map<String, List<Map<String, dynamic>>> grupos) {
     if (_cargando) {
-      return const Center(child: CircularProgressIndicator(color: AppTheme.primary));
+      return Center(child: CircularProgressIndicator(color: AppTheme.primary));
     }
     if (_error != null) {
       return Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, size: 40, color: AppTheme.danger),
-              const SizedBox(height: 12),
+              Icon(Icons.error_outline, size: 40, color: AppTheme.danger),
+              SizedBox(height: 12),
               Text(_error!, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              FilledButton(onPressed: _cargar, child: const Text('Reintentar')),
+              SizedBox(height: 12),
+              FilledButton(onPressed: _cargar, child: Text('Reintentar')),
             ],
           ),
         ),
       );
     }
     if (grupos.isEmpty) {
-      return const EstadoVacio(
+      return EstadoVacio(
         icono: Icons.history,
         titulo: 'Sin entregas en este periodo',
         mensaje: 'Aquí verás el historial real de tus entregas.',
@@ -174,23 +175,23 @@ class _HistorialPageState extends ConsumerState<HistorialPage> {
     return RefreshIndicator(
       onRefresh: _cargar,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
           for (final entrada in grupos.entries) ...[
             Padding(
-              padding: const EdgeInsets.only(top: 6, bottom: 8),
+              padding: EdgeInsets.only(top: 6, bottom: 8),
               child: Text(entrada.key, style: Theme.of(context).textTheme.titleMedium),
             ),
             for (final p in entrada.value)
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: EdgeInsets.only(bottom: 8),
                 child: _FilaHistorial(
                   pedido: p,
                   fotoUrl: _fotos[p['id']],
                   onTap: () => _abrir(p),
                 ),
               ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
         ],
       ),
@@ -221,7 +222,7 @@ class _FilaHistorial extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12),
           child: Row(
             children: [
               if (fotoUrl != null)
@@ -232,10 +233,10 @@ class _FilaHistorial extends StatelessWidget {
                     width: 44,
                     height: 44,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const Icon(
+                    errorBuilder: (_, __, ___) => Icon(
                       Icons.image_not_supported_outlined,
                       size: 28,
-                      color: Colors.black38,
+                      color: AppColors.textoMuted,
                     ),
                   ),
                 )
@@ -244,7 +245,7 @@ class _FilaHistorial extends StatelessWidget {
                   estado == 'ENTREGADO' ? Icons.check_circle : Icons.cancel_outlined,
                   color: estado == 'ENTREGADO' ? AppTheme.success : AppTheme.danger,
                 ),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,28 +255,28 @@ class _FilaHistorial extends StatelessWidget {
                         Expanded(
                           child: Text(
                             cliente?['nombre'] as String? ?? 'Cliente',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: TextStyle(fontWeight: FontWeight.w600),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                         EstadoBadge(estado, compacto: true),
                       ],
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     Text(
                       [
                         hora.isEmpty ? '#${pedido['numero']}' : '$hora · #${pedido['numero']}',
                         if (forma != null) metodoPago(forma),
                       ].join(' · '),
-                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                      style: TextStyle(fontSize: 12, color: AppColors.textoSecundario),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Text(
                 dinero(total),
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ],
           ),

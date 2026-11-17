@@ -16,7 +16,7 @@ import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
 class DeclararRendicionPage extends ConsumerStatefulWidget {
-  const DeclararRendicionPage({super.key});
+  DeclararRendicionPage({super.key});
 
   @override
   ConsumerState<DeclararRendicionPage> createState() => _DeclararRendicionPageState();
@@ -49,7 +49,7 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
     if (uid == null) return;
     try {
       final inicio = inicioHoy();
-      final fin = DateTime.now().add(const Duration(minutes: 1));
+      final fin = DateTime.now().add(Duration(minutes: 1));
       final data = await rendicionRepo.calcular(desde: inicio, hasta: fin, motorizadoId: uid);
       if (!mounted) return;
       setState(() {
@@ -86,7 +86,7 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
       if (!mounted) return;
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Rendición declarada. El administrador la revisará.')),
+        SnackBar(content: Text('Rendición declarada. El administrador la revisará.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -106,7 +106,7 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
     final diferencia = declarado - r.efectivoEsperado;
     final color = diferencia.abs() <= 0.009 ? AppTheme.success : AppTheme.danger;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(12),
@@ -132,19 +132,19 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
   Widget build(BuildContext context) {
     final r = _rendicionCalculada;
     return Scaffold(
-      appBar: AppBar(title: const Text('Declarar rendición')),
+      appBar: AppBar(title: Text('Declarar rendición')),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         children: [
           if (r != null) ...[
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('Resumen del día', style: Theme.of(context).textTheme.titleMedium),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     FilaValor('Pedidos entregados', '${r.entregados}'),
                     FilaValor('Registrados por mí', '${r.pedidosManuales}'),
                     FilaValor('Ventas', dinero(r.totalACobrar)),
@@ -163,7 +163,7 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
                     if (r.fondoYape > 0)
                       FilaValor('Fondo por Yape (no es efectivo)',
                           dinero(r.fondoYape), color: AppTheme.info),
-                    const Divider(height: 18),
+                    Divider(height: 18),
                     FilaValor('Efectivo esperado', dinero(r.efectivoEsperado),
                         destacado: true),
                     FilaValor('Total (efectivo + Yape)', dinero(r.totalEsperado),
@@ -174,14 +174,14 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
           ],
           Text('¿Cuánto dinero entregas?', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           TextFormField(
             controller: _efectivoCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
               labelText: 'Efectivo entregado',
               prefixText: 'S/ ',
               prefixIcon: Icon(Icons.payments_outlined),
@@ -189,35 +189,35 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
             onChanged: (_) => setState(() {}),
           ),
           if (r != null) ...[
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             _diferenciaWidget(r),
           ],
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextFormField(
             controller: _yapeCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
               labelText: 'Yape declarado',
               prefixText: 'S/ ',
               prefixIcon: Icon(Icons.phone_android_outlined),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextFormField(
             controller: _observacionesCtrl,
             maxLines: 2,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Observaciones (opcional)',
               prefixIcon: Icon(Icons.notes_outlined),
             ),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           FilledButton.icon(
             onPressed: _guardando ? null : _declarar,
-            icon: const Icon(Icons.check_circle_outline),
+            icon: Icon(Icons.check_circle_outline),
             label: Text(_guardando ? 'Declarando…' : 'Declarar rendición'),
             style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
+              minimumSize: Size.fromHeight(52),
               backgroundColor: AppTheme.success,
             ),
           ),

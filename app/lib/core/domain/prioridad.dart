@@ -4,6 +4,7 @@
 /// esperando el pedido. "Los más antiguos primero".
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
@@ -12,9 +13,9 @@ enum NivelPrioridad {
   urgente('Urgente', Icons.priority_high, AppTheme.danger),
   alta('Alta', Icons.keyboard_double_arrow_up, AppTheme.warning),
   media('Media', Icons.keyboard_arrow_up, AppTheme.info),
-  normal('Normal', Icons.keyboard_arrow_down, Colors.black45);
+  normal('Normal', Icons.keyboard_arrow_down, AppColors.mutedClaro);
 
-  const NivelPrioridad(this.label, this.icono, this.color);
+  NivelPrioridad(this.label, this.icono, this.color);
 
   final String label;
   final IconData icono;
@@ -42,8 +43,8 @@ class Prioridad {
 
   /// Devuelve true si el pedido `a` es más antiguo que `b` (va antes).
   static bool masAntiguoPrimero(DateTime? a, DateTime? b) {
-    final fa = a ?? DateTime.now().add(const Duration(days: 3650));
-    final fb = b ?? DateTime.now().add(const Duration(days: 3650));
+    final fa = a ?? DateTime.now().add(Duration(days: 3650));
+    final fb = b ?? DateTime.now().add(Duration(days: 3650));
     return fa.isBefore(fb);
   }
 }

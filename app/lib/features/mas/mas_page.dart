@@ -1,6 +1,7 @@
 /// Menú "Más": opciones secundarias agrupadas, no un cajón desordenado.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,14 +12,14 @@ import '../../app/theme.dart';
 import '../../core/update/app_update_service.dart';
 
 class MasPage extends StatelessWidget {
-  const MasPage({super.key});
+  MasPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Más')),
+      appBar: AppBar(title: Text('Más')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         children: [
           _seccion('Operación'),
           _Tile(icono: Icons.people_outline, titulo: 'Clientes', subtitulo: 'Directorio de clientes', color: AppTheme.primary, onTap: () => context.go('/clientes')),
@@ -43,14 +44,14 @@ class MasPage extends StatelessWidget {
 }
 
 class MasMotoPage extends StatelessWidget {
-  const MasMotoPage({super.key});
+  MasMotoPage({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Más')),
+      appBar: AppBar(title: Text('Más')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         children: [
           _seccion('Mi trabajo'),
           _Tile(icono: Icons.edit_note_outlined, titulo: 'Historial de mi registro', subtitulo: 'Pedidos, gastos y fallas anteriores', color: AppTheme.primary, onTap: () => context.push('/mi-registro')),
@@ -67,13 +68,13 @@ class MasMotoPage extends StatelessWidget {
 }
 
 Widget _seccion(String titulo) => Padding(
-      padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
+      padding: EdgeInsets.fromLTRB(4, 12, 4, 6),
       child: Text(
         titulo,
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w700,
-          color: Colors.black45,
+          color: AppColors.textoMuted,
           letterSpacing: 0.6,
         ),
       ),
@@ -91,12 +92,12 @@ class _Tile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.12), child: Icon(icono, color: color)),
-        title: Text(titulo, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitulo, style: const TextStyle(color: Colors.black54)),
-        trailing: const Icon(Icons.chevron_right),
+        title: Text(titulo, style: TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(subtitulo, style: TextStyle(color: AppColors.textoSecundario)),
+        trailing: Icon(Icons.chevron_right),
         onTap: onTap,
       ),
     );
@@ -127,11 +128,11 @@ class _UpdateTileState extends ConsumerState<_UpdateTile> {
       if (!await AppUpdateService.hayNuevaVersion(remota)) { _error('Tienes la última versión ($_version).'); return; }
       if (!mounted) return;
       final actualizar = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
-        title: const Text('Nueva versión disponible'),
+        title: Text('Nueva versión disponible'),
         content: Text('Versión ${remota.versionName}${remota.notas != null && remota.notas!.isNotEmpty ? '\n\n${remota.notas}' : ''}\n\n¿Descargar e instalar ahora?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Luego')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Actualizar')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Luego')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Actualizar')),
         ],
       ));
       if (actualizar != true || !mounted) return;
@@ -143,7 +144,7 @@ class _UpdateTileState extends ConsumerState<_UpdateTile> {
     }
   }
   Future<void> _descargar(VersionInfo remota) async {
-    showDialog(context: context, barrierDismissible: false, builder: (_) => const AlertDialog(content: Column(mainAxisSize: MainAxisSize.min, children: [Text('Descargando actualización…'), SizedBox(height: 16), LinearProgressIndicator()])));
+    showDialog(context: context, barrierDismissible: false, builder: (_) => AlertDialog(content: Column(mainAxisSize: MainAxisSize.min, children: [Text('Descargando actualización…'), SizedBox(height: 16), LinearProgressIndicator()])));
     try {
       final apk = await AppUpdateService.descargarApk(remota.apkUrl, (_) {});
       if (!mounted) return;
@@ -158,12 +159,12 @@ class _UpdateTileState extends ConsumerState<_UpdateTile> {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10),
       child: ListTile(
         leading: CircleAvatar(backgroundColor: AppTheme.primary.withValues(alpha: 0.12), child: Icon(_verificando ? Icons.sync : Icons.system_update_alt, color: AppTheme.primary)),
-        title: const Text('Buscar actualización', style: TextStyle(fontWeight: FontWeight.w600)),
+        title: Text('Buscar actualización', style: TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(_version.isEmpty ? 'Revisar versión nueva' : '$_version · tocar para revisar'),
-        trailing: _verificando ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.chevron_right),
+        trailing: _verificando ? SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(Icons.chevron_right),
         onTap: _verificando ? null : _verificar,
       ),
     );

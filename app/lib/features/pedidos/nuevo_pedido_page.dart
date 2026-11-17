@@ -13,6 +13,7 @@
 /// balón de S/ 50, se escribe 55 y se guarda 55.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -37,7 +38,7 @@ class LineaRapida {
   final int cantidad;
   final double precio;
 
-  const LineaRapida({
+  LineaRapida({
     required this.productoId,
     required this.nombre,
     this.cantidad = 1,
@@ -58,7 +59,7 @@ class NuevoPedidoPage extends ConsumerStatefulWidget {
   /// Cliente ya elegido (viene de la ficha del cliente).
   final Map<String, dynamic>? clienteInicial;
 
-  const NuevoPedidoPage({super.key, this.clienteInicial});
+  NuevoPedidoPage({super.key, this.clienteInicial});
 
   @override
   ConsumerState<NuevoPedidoPage> createState() => _NuevoPedidoPageState();
@@ -124,7 +125,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
       _errorProductos = null;
     });
     try {
-      final data = await const ProductosRepo().vendibles();
+      final data = await ProductosRepo().vendibles();
       if (!mounted) return;
       setState(() {
         _productos = data;
@@ -311,15 +312,15 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
       isScrollControlled: true,
       useSafeArea: true,
       builder: (ctx) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+        padding: EdgeInsets.fromLTRB(20, 16, 20, 20),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Text('Revisa el pedido',
+              Text('Revisa el pedido',
                   style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _FilaResumen('Cliente', _nombreCtrl.text.trim()),
               if (_telefonoCtrl.text.trim().isNotEmpty)
                 _FilaResumen('Teléfono', _telefonoCtrl.text.trim()),
@@ -343,17 +344,17 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
               _FilaResumen('Motorizado', motorizado ?? 'Lo asigna después'),
               if (_notaCtrl.text.trim().isNotEmpty)
                 _FilaResumen('Nota', _notaCtrl.text.trim()),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               FilledButton.icon(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text('CONFIRMAR PEDIDO'),
-                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(54)),
+                icon: Icon(Icons.check_circle_outline),
+                label: Text('CONFIRMAR PEDIDO'),
+                style: FilledButton.styleFrom(minimumSize: Size.fromHeight(54)),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Volver a revisar'),
+                child: Text('Volver a revisar'),
               ),
             ],
           ),
@@ -366,7 +367,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
     setState(() => _guardando = true);
     final auth = ref.read(authProvider);
     final total = items.fold<double>(0, (s, l) => s + l.subtotal);
-    final uuid = const Uuid().v4();
+    final uuid = Uuid().v4();
     final nota = _notaCtrl.text.trim();
     final telefono = _telefonoCtrl.text.trim();
     final empresaId = auth.empresaId!;
@@ -486,7 +487,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
         if (!mounted) return;
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Sin conexión: el pedido quedó guardado y se enviará solo.'),
           ),
         );
@@ -514,27 +515,27 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Nuevo pedido')),
+      appBar: AppBar(title: Text('Nuevo pedido')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 120),
         children: [
           _seccionCliente(),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _seccionUbicacion(),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _seccionProducto(),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           _seccionPago(),
           if (_motorizados.isNotEmpty) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             _seccionMotorizado(),
           ],
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextField(
             controller: _notaCtrl,
             maxLines: 2,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Nota (opcional)',
               hintText: 'Casa azul, dejar con el vecino…',
               prefixIcon: Icon(Icons.notes_outlined),
@@ -561,9 +562,9 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
             decoration: InputDecoration(
               labelText: 'Nombre',
               hintText: 'Juan Pérez',
-              prefixIcon: const Icon(Icons.badge_outlined),
+              prefixIcon: Icon(Icons.badge_outlined),
               suffixIcon: _buscandoCliente
-                  ? const Padding(
+                  ? Padding(
                       padding: EdgeInsets.all(12),
                       child: SizedBox(
                         width: 18,
@@ -574,19 +575,19 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
                   : null,
             ),
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           TextField(
             controller: _telefonoCtrl,
             keyboardType: TextInputType.phone,
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9 +*#-]'))],
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Teléfono',
               hintText: '999 888 777',
               prefixIcon: Icon(Icons.phone_outlined),
             ),
           ),
           if (_sugerencias.isNotEmpty) ...[
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             for (final s in _sugerencias)
               ListTile(
                 dense: true,
@@ -595,7 +596,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
                   backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
                   child: Text(
                     (s['nombre'] as String? ?? '?')[0].toUpperCase(),
-                    style: const TextStyle(color: AppTheme.primary),
+                    style: TextStyle(color: AppTheme.primary),
                   ),
                 ),
                 title: Text(s['nombre'] as String? ?? ''),
@@ -606,11 +607,11 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
                 onTap: () => _usarCliente(s),
               ),
             if (_sugerencias.isNotEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 4),
                 child: Text(
                   'Toca un cliente para usar su dirección guardada.',
-                  style: TextStyle(fontSize: 12, color: Colors.black45),
+                  style: TextStyle(fontSize: 12, color: AppColors.textoMuted),
                 ),
               ),
           ],
@@ -621,11 +622,11 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
               backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
               child: Text(
                 (c['nombre'] as String? ?? '?')[0].toUpperCase(),
-                style: const TextStyle(color: AppTheme.primary),
+                style: TextStyle(color: AppTheme.primary),
               ),
             ),
             title: Text(c['nombre'] as String? ?? '',
-                style: const TextStyle(fontWeight: FontWeight.w600)),
+                style: TextStyle(fontWeight: FontWeight.w600)),
             subtitle: Text([
               if ((c['telefono'] as String? ?? '').isNotEmpty) c['telefono'],
               if ((c['direccion'] as String? ?? '').isNotEmpty) c['direccion'],
@@ -638,7 +639,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
                 _lineas = [];
                 _preciosCliente = {};
               }),
-              child: const Text('Cambiar'),
+              child: Text('Cambiar'),
             ),
           ),
       ],
@@ -654,7 +655,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
         if (_direccion.isNotEmpty || marcada)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: AppTheme.success.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(12),
@@ -664,41 +665,41 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.check_circle, color: AppTheme.success, size: 18),
-                    const SizedBox(width: 6),
+                    Icon(Icons.check_circle, color: AppTheme.success, size: 18),
+                    SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         _direccion.isEmpty ? 'Punto marcado en el mapa' : _direccion,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
                       ),
                     ),
                   ],
                 ),
                 if (_referencia.isNotEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 2, left: 24),
+                    padding: EdgeInsets.only(top: 2, left: 24),
                     child: Text(_referencia,
-                        style: const TextStyle(fontSize: 12.5, color: Colors.black54)),
+                        style: TextStyle(fontSize: 12.5, color: AppColors.textoSecundario)),
                   ),
                 if (marcada)
                   Padding(
-                    padding: const EdgeInsets.only(top: 2, left: 24),
+                    padding: EdgeInsets.only(top: 2, left: 24),
                     child: Text(
                       '${_latitud!.toStringAsFixed(5)}, ${_longitud!.toStringAsFixed(5)}',
-                      style: const TextStyle(fontSize: 11, color: Colors.black38),
+                      style: TextStyle(fontSize: 11, color: AppColors.textoMuted),
                     ),
                   ),
               ],
             ),
           ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         OutlinedButton.icon(
           onPressed: _marcarUbicacion,
-          icon: const Icon(Icons.map_outlined),
+          icon: Icon(Icons.map_outlined),
           label: Text(
             marcada || _direccion.isNotEmpty ? 'Cambiar ubicación' : 'Marcar ubicación',
           ),
-          style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+          style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(50)),
         ),
       ],
     );
@@ -710,7 +711,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
       icono: Icons.propane_tank_outlined,
       hijos: [
         if (_cargandoProductos)
-          const Padding(
+          Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
           )
@@ -718,12 +719,12 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(_errorProductos!, style: const TextStyle(color: AppTheme.danger)),
-              TextButton(onPressed: _cargarProductos, child: const Text('Reintentar')),
+              Text(_errorProductos!, style: TextStyle(color: AppTheme.danger)),
+              TextButton(onPressed: _cargarProductos, child: Text('Reintentar')),
             ],
           )
         else if (_productos.isEmpty)
-          const Text('No hay productos cargados. Pide al administrador que los registre.')
+          Text('No hay productos cargados. Pide al administrador que los registre.')
         else
           Wrap(
             spacing: 8,
@@ -739,7 +740,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
             ],
           ),
         for (var i = 0; i < _lineas.length; i++) ...[
-          const SizedBox(height: 10),
+          SizedBox(height: 10),
           _LineaCard(
             linea: _lineas[i],
             puedeQuitar: _lineas.length > 1,
@@ -768,16 +769,16 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
                   onTap: () => setState(() => _formaPago = f.$1),
                 ),
               ),
-              if (f != _formasPago.last) const SizedBox(width: 8),
+              if (f != _formasPago.last) SizedBox(width: 8),
             ],
           ],
         ),
         if (_formaPago == 'DEUDA')
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(top: 8),
             child: Text(
               'Quedará como deuda del cliente.',
-              style: TextStyle(fontSize: 12.5, color: Colors.black54),
+              style: TextStyle(fontSize: 12.5, color: AppColors.textoSecundario),
             ),
           ),
       ],
@@ -794,7 +795,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
           runSpacing: 8,
           children: [
             ChoiceChip(
-              label: const Text('Sin asignar'),
+              label: Text('Sin asignar'),
               selected: _motorizadoId == null,
               selectedColor: AppTheme.primary.withValues(alpha: 0.15),
               onSelected: (_) => setState(() => _motorizadoId = null),
@@ -813,12 +814,12 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
               ),
           ],
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         Text(
           _motorizadoId == null
               ? 'El pedido queda libre para que lo tome un motorizado.'
               : 'Queda asignado ahora mismo.',
-          style: const TextStyle(fontSize: 12, color: Colors.black45),
+          style: TextStyle(fontSize: 12, color: AppColors.textoMuted),
         ),
       ],
     );
@@ -828,10 +829,10 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
     final listo = _lineas.isNotEmpty &&
         _lineas.every((l) => l.cantidad > 0 && l.precio > 0);
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
-      decoration: const BoxDecoration(
+      padding: EdgeInsets.fromLTRB(20, 10, 20, 16),
+      decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE6E8E5))),
+        border: Border(top: BorderSide(color: AppColors.borde)),
       ),
       child: SafeArea(
         top: false,
@@ -843,11 +844,11 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
               children: [
                 Text(
                   _cantidad == 1 ? '1 unidad' : '$_cantidad unidades',
-                  style: const TextStyle(color: Colors.black54, fontSize: 12.5),
+                  style: TextStyle(color: AppColors.textoSecundario, fontSize: 12.5),
                 ),
                 Text(
                   dinero(_total),
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.primary,
@@ -855,13 +856,13 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
                 ),
               ],
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: 12),
             Expanded(
               child: FilledButton.icon(
                 onPressed: _guardando || !listo ? null : _confirmarPedido,
-                icon: const Icon(Icons.check),
+                icon: Icon(Icons.check),
                 label: Text(_guardando ? 'Guardando…' : 'CONFIRMAR PEDIDO'),
-                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                style: FilledButton.styleFrom(minimumSize: Size.fromHeight(52)),
               ),
             ),
           ],
@@ -878,21 +879,21 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
                 Icon(icono, size: 20, color: AppTheme.primary),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   titulo,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             ...hijos,
           ],
         ),
@@ -921,12 +922,12 @@ class _ChipProducto extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: seleccionado ? AppTheme.primary.withValues(alpha: 0.12) : Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: seleccionado ? AppTheme.primary : const Color(0xFFDADDD9),
+            color: seleccionado ? AppTheme.primary : AppColors.borde,
             width: seleccionado ? 1.6 : 1,
           ),
         ),
@@ -938,14 +939,14 @@ class _ChipProducto extends StatelessWidget {
               nombre,
               style: TextStyle(
                 fontWeight: seleccionado ? FontWeight.w700 : FontWeight.w600,
-                color: seleccionado ? AppTheme.primary : Colors.black87,
+                color: seleccionado ? AppTheme.primary : AppColors.textoPrincipal,
                 fontSize: 14,
               ),
             ),
             if (sugerido != null)
               Text(
                 'Sugerido ${dinero(sugerido!)}',
-                style: const TextStyle(fontSize: 11, color: Colors.black45),
+                style: TextStyle(fontSize: 11, color: AppColors.textoMuted),
               ),
           ],
         ),
@@ -971,9 +972,9 @@ class _LineaCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F8F6),
+        color: Color(0xFFF7F8F6),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -984,7 +985,7 @@ class _LineaCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   linea.nombre,
-                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
                 ),
               ),
               if (puedeQuitar)
@@ -992,43 +993,43 @@ class _LineaCard extends StatelessWidget {
                   visualDensity: VisualDensity.compact,
                   tooltip: 'Quitar',
                   onPressed: onQuitar,
-                  icon: const Icon(Icons.close, size: 18),
+                  icon: Icon(Icons.close, size: 18),
                 ),
             ],
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: 6),
           Row(
             children: [
               IconButton.filledTonal(
                 onPressed: linea.cantidad > 1
                     ? () => onCambio(linea.copyWith(cantidad: linea.cantidad - 1))
                     : null,
-                icon: const Icon(Icons.remove, size: 18),
+                icon: Icon(Icons.remove, size: 18),
               ),
               SizedBox(
                 width: 34,
                 child: Text(
                   '${linea.cantidad}',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
                 ),
               ),
               IconButton.filledTonal(
                 onPressed: () => onCambio(linea.copyWith(cantidad: linea.cantidad + 1)),
-                icon: const Icon(Icons.add, size: 18),
+                icon: Icon(Icons.add, size: 18),
               ),
-              const Spacer(),
+              Spacer(),
               Expanded(
                 flex: 2,
                 child: TextFormField(
                   key: ValueKey('precio-${linea.productoId}-${linea.cantidad}'),
                   initialValue: linea.precio > 0 ? PrecioLibre.paraEditar(linea.precio) : '',
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]'))],
                   onChanged: (t) =>
                       onCambio(linea.copyWith(precio: PrecioLibre.parse(t) ?? 0)),
-                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  decoration: const InputDecoration(
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  decoration: InputDecoration(
                     isDense: true,
                     prefixText: 'S/ ',
                     labelText: 'Cobrar',
@@ -1072,21 +1073,21 @@ class _BotonOpcion extends StatelessWidget {
           color: seleccionado ? color.withValues(alpha: 0.14) : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: seleccionado ? color : const Color(0xFFDADDD9),
+            color: seleccionado ? color : AppColors.borde,
             width: seleccionado ? 1.6 : 1,
           ),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icono, size: 22, color: seleccionado ? color : Colors.black54),
-            const SizedBox(height: 2),
+            Icon(icono, size: 22, color: seleccionado ? color : AppColors.textoSecundario),
+            SizedBox(height: 2),
             Text(
               etiqueta,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 12.5,
-                color: seleccionado ? color : Colors.black87,
+                color: seleccionado ? color : AppColors.textoPrincipal,
                 fontWeight: seleccionado ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
@@ -1114,14 +1115,14 @@ class _FilaResumen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
+      padding: EdgeInsets.symmetric(vertical: 5),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
             width: 92,
             child: Text(etiqueta,
-                style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                style: TextStyle(color: AppColors.textoSecundario, fontSize: 13)),
           ),
           Expanded(
             child: Text(

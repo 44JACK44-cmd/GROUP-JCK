@@ -5,6 +5,7 @@
 /// Solo ADMIN (RLS lo garantiza).
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,7 +17,7 @@ import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
 class CajaPage extends ConsumerStatefulWidget {
-  const CajaPage({super.key});
+  CajaPage({super.key});
 
   @override
   ConsumerState<CajaPage> createState() => _CajaPageState();
@@ -25,7 +26,7 @@ class CajaPage extends ConsumerStatefulWidget {
 class _CajaPageState extends ConsumerState<CajaPage> {
   Map<String, dynamic>? _caja;
   List<Map<String, dynamic>> _movimientos = [];
-  ResumenCaja _resumen = const ResumenCaja();
+  ResumenCaja _resumen = ResumenCaja();
   bool _cargando = true;
 
   @override
@@ -60,17 +61,17 @@ class _CajaPageState extends ConsumerState<CajaPage> {
     final fondo = await showDialog<double>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Abrir caja'),
+        title: Text('Abrir caja'),
         content: TextField(
           controller: ctrl,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(labelText: 'Dinero en caja (S/)'),
+          keyboardType: TextInputType.numberWithOptions(decimal: true),
+          decoration: InputDecoration(labelText: 'Dinero en caja (S/)'),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancelar')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, double.tryParse(ctrl.text) ?? 0),
-            child: const Text('Abrir'),
+            child: Text('Abrir'),
           ),
         ],
       ),
@@ -103,19 +104,19 @@ class _CajaPageState extends ConsumerState<CajaPage> {
           children: [
             TextField(
               controller: montoCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Monto (S/)'),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: 'Monto (S/)'),
             ),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             TextField(
               controller: descCtrl,
-              decoration: const InputDecoration(labelText: 'Descripción'),
+              decoration: InputDecoration(labelText: 'Descripción'),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Guardar')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Guardar')),
         ],
       ),
     );
@@ -162,25 +163,25 @@ class _CajaPageState extends ConsumerState<CajaPage> {
     final declarado = await showDialog<double>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Cerrar caja'),
+        title: Text('Cerrar caja'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('Según el sistema deberías tener ${dinero(_resumen.saldo)}',
-                style: const TextStyle(color: Colors.black54)),
-            const SizedBox(height: 10),
+                style: TextStyle(color: AppColors.textoSecundario)),
+            SizedBox(height: 10),
             TextField(
               controller: ctrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Dinero contado (S/)'),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: 'Dinero contado (S/)'),
             ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancelar')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, double.tryParse(ctrl.text)),
-            child: const Text('Cerrar'),
+            child: Text('Cerrar'),
           ),
         ],
       ),
@@ -215,9 +216,9 @@ class _CajaPageState extends ConsumerState<CajaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Caja')),
+      appBar: AppBar(title: Text('Caja')),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _caja == null
               ? RefreshIndicator(
                   onRefresh: _cargar,
@@ -226,13 +227,13 @@ class _CajaPageState extends ConsumerState<CajaPage> {
               : RefreshIndicator(
                   onRefresh: _cargar,
                   child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    physics: AlwaysScrollableScrollPhysics(),
+                    padding: EdgeInsets.fromLTRB(16, 12, 16, 24),
                     children: [
                       // ---- Resumen del dinero ----
                       Card(
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16),
                           child: Column(
                             children: [
                               FilaValor('Total cobrado', dinero(_resumen.totalCobrado),
@@ -244,54 +245,54 @@ class _CajaPageState extends ConsumerState<CajaPage> {
                               FilaValor('Deudas', dinero(_resumen.deudas),
                                   color: _resumen.deudas > 0 ? AppTheme.danger : null),
                               FilaValor('Gastos', dinero(_resumen.gastos), color: AppTheme.danger),
-                              const Divider(height: 20),
+                              Divider(height: 20),
                               FilaValor('Fondo inicial',
                                   dinero(_resumen.fondoInicial)),
                               FilaValor('Ingresos', dinero(_resumen.ingresos),
                                   color: AppTheme.success),
                               FilaValor('Egresos', dinero(_resumen.egresos),
                                   color: AppTheme.danger),
-                              const Divider(height: 20),
+                              Divider(height: 20),
                               FilaValor('Saldo', dinero(_resumen.saldo), destacado: true),
                             ],
                           ),
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12),
                       Row(
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () => _movimientoManual(esIngreso: false),
-                              icon: const Icon(Icons.remove_circle_outline, color: AppTheme.danger),
-                              label: const Text('Gasto'),
+                              icon: Icon(Icons.remove_circle_outline, color: AppTheme.danger),
+                              label: Text('Gasto'),
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          SizedBox(width: 10),
                           Expanded(
                             child: OutlinedButton.icon(
                               onPressed: () => _movimientoManual(esIngreso: true),
-                              icon: const Icon(Icons.add_circle_outline, color: AppTheme.success),
-                              label: const Text('Ingreso'),
+                              icon: Icon(Icons.add_circle_outline, color: AppTheme.success),
+                              label: Text('Ingreso'),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       OutlinedButton.icon(
                         onPressed: _cerrarCaja,
-                        icon: const Icon(Icons.lock_outline),
-                        label: const Text('Cerrar caja del día'),
+                        icon: Icon(Icons.lock_outline),
+                        label: Text('Cerrar caja del día'),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20),
                       Text('Movimientos', style: Theme.of(context).textTheme.titleMedium),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8),
                       if (_movimientos.isEmpty)
-                        const Card(
+                        Card(
                           child: Padding(
                             padding: EdgeInsets.all(20),
                             child: Text('Sin movimientos todavía.',
-                                style: TextStyle(color: Colors.black54)),
+                                style: TextStyle(color: AppColors.textoSecundario)),
                           ),
                         )
                       else
@@ -321,7 +322,7 @@ class _CajaPageState extends ConsumerState<CajaPage> {
                               ),
                             ),
                           ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: 24),
                     ],
                   ),
                 ),
@@ -336,23 +337,23 @@ class _CajaCerrada extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(24),
+      physics: AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.all(24),
       children: [
-        const SizedBox(height: 80),
-        const Icon(Icons.point_of_sale_outlined, size: 56, color: Colors.black26),
-        const SizedBox(height: 16),
-        const Center(
+        SizedBox(height: 80),
+        Icon(Icons.point_of_sale_outlined, size: 56, color: AppColors.textoMuted),
+        SizedBox(height: 16),
+        Center(
           child: Text('La caja está cerrada.\nÁbrela para registrar el dinero del día.',
-              textAlign: TextAlign.center, style: TextStyle(color: Colors.black54)),
+              textAlign: TextAlign.center, style: TextStyle(color: AppColors.textoSecundario)),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: 24),
         FilledButton.icon(
           onPressed: onAbrir,
-          icon: const Icon(Icons.lock_open),
-          label: const Text('Abrir caja'),
+          icon: Icon(Icons.lock_open),
+          label: Text('Abrir caja'),
           style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
+            minimumSize: Size.fromHeight(50),
             backgroundColor: AppTheme.primary,
           ),
         ),

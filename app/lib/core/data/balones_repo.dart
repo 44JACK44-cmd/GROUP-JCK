@@ -19,7 +19,7 @@ class PendienteDevolucion {
   final String? telefono;
   final int cantidad;
 
-  const PendienteDevolucion({
+  PendienteDevolucion({
     required this.clienteId,
     required this.nombre,
     required this.cantidad,
@@ -87,7 +87,7 @@ class BalonesRepo {
       if (pedidoId != null) 'pedido_id': pedidoId,
       'cantidad': cantidad,
       'usuario_id': usuarioId,
-      'uuid_offline': const Uuid().v4(),
+      'uuid_offline': Uuid().v4(),
     });
     await auditoriaRepo.registrar(
       empresaId: empresaId,
@@ -116,7 +116,7 @@ class BalonesRepo {
       if (pedidoId != null) 'pedido_id': pedidoId,
       'cantidad': cantidad,
       'usuario_id': usuarioId,
-      'uuid_offline': const Uuid().v4(),
+      'uuid_offline': Uuid().v4(),
     });
     await auditoriaRepo.registrar(
       empresaId: empresaId,

@@ -26,7 +26,7 @@ class PagoConComprobanteService {
     String? pedidoId,
     String? fotoPath,
   }) async {
-    final uuid = const Uuid().v4();
+    final uuid = Uuid().v4();
     String? comprobanteUrl;
     if (fotoPath != null) {
       comprobanteUrl = await ComprobanteService.subir(fotoPath);

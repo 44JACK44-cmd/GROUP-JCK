@@ -18,7 +18,7 @@ enum EstadoBalonVacio {
   noRecibido('NO_RECIBIDO', 'No devolvió el vacío'),
   noAplica('NO_APLICA', 'No aplica');
 
-  const EstadoBalonVacio(this.db, this.label);
+  EstadoBalonVacio(this.db, this.label);
 
   final String db;
   final String label;
@@ -30,7 +30,7 @@ enum EstadoFierro {
   pendiente('PENDIENTE', 'Fierro pendiente'),
   noAplica('NO_APLICA', 'No aplica');
 
-  const EstadoFierro(this.db, this.label);
+  EstadoFierro(this.db, this.label);
 
   final String db;
   final String label;
@@ -51,7 +51,7 @@ class DatosEntrega {
   final String? comprobanteLocalPath;
   final bool sinConexion;
 
-  const DatosEntrega({
+  DatosEntrega({
     required this.montoCobrado,
     required this.metodo,
     required this.balonVacio,
@@ -77,7 +77,7 @@ enum EstadoPagoEntrega {
   parcial('PARCIAL'),
   pendiente('PENDIENTE');
 
-  const EstadoPagoEntrega(this.db);
+  EstadoPagoEntrega(this.db);
 
   final String db;
 
@@ -131,7 +131,7 @@ class EntregasRepo {
       'estado_bal_on_vacio': datos.balonVacio.db,
       'estado_pago': _estadoPagoDb(estadoPago),
       'registrado_por': usuarioId,
-      'uuid_offline': const Uuid().v4(),
+      'uuid_offline': Uuid().v4(),
     };
 
     await sb.from('entregas').insert(entrega);
@@ -147,7 +147,7 @@ class EntregasRepo {
         'monto': datos.montoCobrado,
         'metodo': datos.metodo,
         'registrado_por': usuarioId,
-        'uuid_offline': const Uuid().v4(),
+        'uuid_offline': Uuid().v4(),
         if (comprobanteUrl != null && comprobanteUrl.isNotEmpty)
           'comprobante_url': comprobanteUrl,
       };
@@ -179,7 +179,7 @@ class EntregasRepo {
         'pedido_id': pedidoId,
         'cantidad': datos.cantidadBalones,
         'usuario_id': usuarioId,
-        'uuid_offline': const Uuid().v4(),
+        'uuid_offline': Uuid().v4(),
       });
       if (datos.balonVacio == EstadoBalonVacio.recibido) {
         await sb.from('movimiento_bal_on').insert({
@@ -189,7 +189,7 @@ class EntregasRepo {
           'pedido_id': pedidoId,
           'cantidad': datos.cantidadBalones,
           'usuario_id': usuarioId,
-          'uuid_offline': const Uuid().v4(),
+          'uuid_offline': Uuid().v4(),
         });
       }
     }
@@ -203,7 +203,7 @@ class EntregasRepo {
         'pedido_id': pedidoId,
         'cantidad': datos.cantidadFierros,
         'usuario_id': usuarioId,
-        'uuid_offline': const Uuid().v4(),
+        'uuid_offline': Uuid().v4(),
       });
       if (datos.fierro == EstadoFierro.devuelto) {
         await sb.from('movimiento_fierro').insert({
@@ -213,7 +213,7 @@ class EntregasRepo {
           'pedido_id': pedidoId,
           'cantidad': datos.cantidadFierros,
           'usuario_id': usuarioId,
-          'uuid_offline': const Uuid().v4(),
+          'uuid_offline': Uuid().v4(),
         });
       }
     }

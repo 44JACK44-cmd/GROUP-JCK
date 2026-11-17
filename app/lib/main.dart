@@ -49,13 +49,13 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Supabase.initialize(url: supabaseUrl, publishableKey: supabaseAnonKey);
   await TemaApp.cargar();
-  runApp(const ProviderScope(child: GasApp()));
+  runApp(ProviderScope(child: GasApp()));
 }
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 
 class GasApp extends ConsumerStatefulWidget {
-  const GasApp({super.key});
+  GasApp({super.key});
 
   static const _rutasPublicas = {'/welcome', '/login', '/registro-empresa', '/ajustes'};
 
@@ -115,7 +115,7 @@ class _GasAppState extends ConsumerState<GasApp> {
 
     // Esperar a que el navigator exista (puede tardar tras el splash).
     for (var i = 0; i < 20 && _rootNavigatorKey.currentContext == null; i++) {
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(Duration(milliseconds: 500));
       if (!mounted) return;
     }
     if (!mounted) return;
@@ -133,7 +133,7 @@ class _GasAppState extends ConsumerState<GasApp> {
       builder: (ctx) => FutureBuilder<String>(
         future: AppUpdateService.versionLocalName(),
         builder: (ctx, snap) => AlertDialog(
-          title: const Text('Nueva versión disponible'),
+          title: Text('Nueva versión disponible'),
           content: Text(
             'Tu versión: v${snap.data ?? '?'}\n'
             'Nueva versión: v${remota.versionName}\n'
@@ -144,14 +144,14 @@ class _GasAppState extends ConsumerState<GasApp> {
             if (!remota.obligatoria)
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Luego'),
+                child: Text('Luego'),
               ),
             FilledButton(
               onPressed: () {
                 Navigator.of(ctx).pop();
                 _descargarEInstalar(remota);
               },
-              child: const Text('Actualizar'),
+              child: Text('Actualizar'),
             ),
           ],
         ),
@@ -168,16 +168,16 @@ class _GasAppState extends ConsumerState<GasApp> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('Descargando actualización'),
+        title: Text('Descargando actualización'),
         content: ValueListenableBuilder<double>(
           valueListenable: progreso,
           builder: (ctx, p, _) => Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Por favor espera, no cierres la app.'),
-              const SizedBox(height: 16),
+              Text('Por favor espera, no cierres la app.'),
+              SizedBox(height: 16),
               LinearProgressIndicator(value: p > 0 ? p : null),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text('${(p * 100).toStringAsFixed(0)}%'),
             ],
           ),
@@ -198,7 +198,7 @@ class _GasAppState extends ConsumerState<GasApp> {
       if (!context.mounted) return;
       Navigator.of(context).pop(); // cerrar diálogo si sigue abierto
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo descargar la actualización. Inténtalo más tarde.')),
+        SnackBar(content: Text('No se pudo descargar la actualización. Inténtalo más tarde.')),
       );
     }
   }
@@ -237,10 +237,10 @@ class _GasAppState extends ConsumerState<GasApp> {
       },
       routes: [
         GoRoute(path: '/splash', builder: (_, state) => const _Splash()),
-        GoRoute(path: '/welcome', builder: (_, state) => const WelcomePage()),
-        GoRoute(path: '/login', builder: (_, state) => const LoginPage()),
-        GoRoute(path: '/registro-empresa', builder: (_, state) => const RegisterEmpresaPage()),
-        GoRoute(path: '/ajustes', builder: (_, state) => const AjustesPage()),
+        GoRoute(path: '/welcome', builder: (_, state) => WelcomePage()),
+        GoRoute(path: '/login', builder: (_, state) => LoginPage()),
+        GoRoute(path: '/registro-empresa', builder: (_, state) => RegisterEmpresaPage()),
+        GoRoute(path: '/ajustes', builder: (_, state) => AjustesPage()),
 
         // ------- Barra inferior (pestañas) -------
         ShellRoute(
@@ -250,44 +250,44 @@ class _GasAppState extends ConsumerState<GasApp> {
           ),
           routes: [
             GoRoute(path: '/inicio', builder: (_, state) => const _InicioPorRol()),
-            GoRoute(path: '/pedidos', builder: (_, state) => const PedidosPage()),
-            GoRoute(path: '/clientes', builder: (_, state) => const ClientesPage()),
-            GoRoute(path: '/cobros', builder: (_, state) => const CobrosPage()),
-            GoRoute(path: '/mas', builder: (_, state) => const MasPage()),
-            GoRoute(path: '/mis-pedidos', builder: (_, state) => const MisPedidosPage()),
-            GoRoute(path: '/historial', builder: (_, state) => const HistorialPage()),
-            GoRoute(path: '/mi-registro', builder: (_, state) => const MiRegistroPage()),
-            GoRoute(path: '/movimientos', builder: (_, state) => const MovimientosPage()),
-            GoRoute(path: '/calendario', builder: (_, state) => const CalendarioPage()),
-            GoRoute(path: '/mas-moto', builder: (_, state) => const MasMotoPage()),
+            GoRoute(path: '/pedidos', builder: (_, state) => PedidosPage()),
+            GoRoute(path: '/clientes', builder: (_, state) => ClientesPage()),
+            GoRoute(path: '/cobros', builder: (_, state) => CobrosPage()),
+            GoRoute(path: '/mas', builder: (_, state) => MasPage()),
+            GoRoute(path: '/mis-pedidos', builder: (_, state) => MisPedidosPage()),
+            GoRoute(path: '/historial', builder: (_, state) => HistorialPage()),
+            GoRoute(path: '/mi-registro', builder: (_, state) => MiRegistroPage()),
+            GoRoute(path: '/movimientos', builder: (_, state) => MovimientosPage()),
+            GoRoute(path: '/calendario', builder: (_, state) => CalendarioPage()),
+            GoRoute(path: '/mas-moto', builder: (_, state) => MasMotoPage()),
           ],
         ),
         // Ruta antigua: la pantalla de reparto ahora es "Mis pedidos".
         GoRoute(path: '/reparto', redirect: (_, __) => '/mis-pedidos'),
 
         // ------- Pantallas completas (sin barra inferior) -------
-        GoRoute(path: '/pedidos/nuevo', builder: (_, state) => const NuevoPedidoPage()),
-        GoRoute(path: '/balones', builder: (_, state) => const BalonesPage()),
-        GoRoute(path: '/deudas', builder: (_, state) => const DeudasPage()),
-        GoRoute(path: '/caja', builder: (_, state) => const CajaPage()),
-        GoRoute(path: '/rendicion', builder: (_, state) => const RendicionPage()),
-        GoRoute(path: '/conciliacion', builder: (_, state) => const ConciliacionPage()),
-        GoRoute(path: '/declarar-rendicion', builder: (_, state) => const DeclararRendicionPage()),
-        GoRoute(path: '/aprobacion-rendiciones', builder: (_, state) => const AprobacionRendicionesPage()),
-        GoRoute(path: '/cierre-diario', builder: (_, state) => const CierreDiarioPage()),
-        GoRoute(path: '/reportes', builder: (_, state) => const ReportesPage()),
-        GoRoute(path: '/motorizados', builder: (_, state) => const MotorizadosPage()),
-GoRoute(path: '/motorizados-actividad', builder: (_, state) => const MotorizadosActividadPage()),
-        GoRoute(path: '/seguimiento', builder: (_, state) => const SeguimientoPage()),
-        GoRoute(path: '/combustible', builder: (_, state) => const CombustiblePage()),
-        GoRoute(path: '/mi-registro/pedido', builder: (_, state) => const RegistroPedidoPage()),
-        GoRoute(path: '/mi-registro/gasto', builder: (_, state) => const RegistroGastoPage()),
+        GoRoute(path: '/pedidos/nuevo', builder: (_, state) => NuevoPedidoPage()),
+        GoRoute(path: '/balones', builder: (_, state) => BalonesPage()),
+        GoRoute(path: '/deudas', builder: (_, state) => DeudasPage()),
+        GoRoute(path: '/caja', builder: (_, state) => CajaPage()),
+        GoRoute(path: '/rendicion', builder: (_, state) => RendicionPage()),
+        GoRoute(path: '/conciliacion', builder: (_, state) => ConciliacionPage()),
+        GoRoute(path: '/declarar-rendicion', builder: (_, state) => DeclararRendicionPage()),
+        GoRoute(path: '/aprobacion-rendiciones', builder: (_, state) => AprobacionRendicionesPage()),
+        GoRoute(path: '/cierre-diario', builder: (_, state) => CierreDiarioPage()),
+        GoRoute(path: '/reportes', builder: (_, state) => ReportesPage()),
+        GoRoute(path: '/motorizados', builder: (_, state) => MotorizadosPage()),
+GoRoute(path: '/motorizados-actividad', builder: (_, state) => MotorizadosActividadPage()),
+        GoRoute(path: '/seguimiento', builder: (_, state) => SeguimientoPage()),
+        GoRoute(path: '/combustible', builder: (_, state) => CombustiblePage()),
+        GoRoute(path: '/mi-registro/pedido', builder: (_, state) => RegistroPedidoPage()),
+        GoRoute(path: '/mi-registro/gasto', builder: (_, state) => RegistroGastoPage()),
         GoRoute(
           path: '/mi-registro/combustible',
-          builder: (_, state) => const RegistroGastoPage(categoriaInicial: 'Combustible'),
+          builder: (_, state) => RegistroGastoPage(categoriaInicial: 'Combustible'),
         ),
-        GoRoute(path: '/devolucion-balon', builder: (_, state) => const DevolucionBalonPage()),
-        GoRoute(path: '/mi-registro/incidencia', builder: (_, state) => const RegistroIncidenciaPage()),
+        GoRoute(path: '/devolucion-balon', builder: (_, state) => DevolucionBalonPage()),
+        GoRoute(path: '/mi-registro/incidencia', builder: (_, state) => RegistroIncidenciaPage()),
       ],
     );
 
@@ -299,6 +299,8 @@ GoRoute(path: '/motorizados-actividad', builder: (_, state) => const Motorizados
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
         themeMode: modo,
+        themeAnimationDuration: AppTheme.normal,
+        themeAnimationCurve: Curves.easeInOut,
         routerConfig: router,
       ),
     );
@@ -312,7 +314,7 @@ class _InicioPorRol extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
-    return auth.esMotorizado ? const HomeMotoPage() : const HomePage();
+    return auth.esMotorizado ? HomeMotoPage() : HomePage();
   }
 }
 
@@ -323,7 +325,7 @@ class _Splash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       body: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
     );
   }

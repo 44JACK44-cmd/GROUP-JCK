@@ -5,6 +5,7 @@
 /// Nada se calcula en paralelo: admin y motorizado ven los mismos datos.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -22,7 +23,7 @@ import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
 class MiRegistroPage extends ConsumerStatefulWidget {
-  const MiRegistroPage({super.key});
+  MiRegistroPage({super.key});
 
   @override
   ConsumerState<MiRegistroPage> createState() => _MiRegistroPageState();
@@ -30,7 +31,7 @@ class MiRegistroPage extends ConsumerStatefulWidget {
 
 class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
   DateTime _dia = inicioHoy();
-  Rendicion _resumen = const Rendicion();
+  Rendicion _resumen = Rendicion();
   List<MovimientoActividad> _movimientos = [];
   bool _cargando = true;
   String? _error;
@@ -67,7 +68,7 @@ class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
     if (uid == null) return;
     final miPeticion = ++_peticion;
     final desde = _dia;
-    final hasta = _dia.add(const Duration(days: 1));
+    final hasta = _dia.add(Duration(days: 1));
     try {
       final res = await Future.wait([
         rendicionRepo.calcular(desde: desde, hasta: hasta, motorizadoId: uid),
@@ -106,7 +107,7 @@ class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
   String get _tituloDia {
     final hoy = inicioHoy();
     if (_dia == hoy) return 'Hoy';
-    if (_dia == hoy.subtract(const Duration(days: 1))) return 'Ayer';
+    if (_dia == hoy.subtract(Duration(days: 1))) return 'Ayer';
     return fechaCorta(_dia);
   }
 
@@ -114,51 +115,51 @@ class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mi registro'),
+        title: Text('Mi registro'),
         actions: [
           IconButton(
             tooltip: 'Actualizar',
             onPressed: _cargar,
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
           ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: _cargar,
         child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          physics: AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
             _acciones(),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             _selectorDia(),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (_error != null)
               _tarjetaError()
             else ...[
               _resumenCard(),
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               Text('Actividad', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               if (_cargando)
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(vertical: 28),
                   child: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
                 )
               else if (_movimientos.isEmpty)
-                const Card(
+                Card(
                   child: Padding(
                     padding: EdgeInsets.all(20),
                     child: Text(
                       'Sin movimientos en este día.',
-                      style: TextStyle(color: Colors.black54),
+                      style: TextStyle(color: AppColors.textoSecundario),
                     ),
                   ),
                 )
               else
                 for (final m in _movimientos) ...[
                   ActividadTile(movimiento: m),
-                  const SizedBox(height: 0),
+                  SizedBox(height: 0),
                 ],
             ],
           ],
@@ -176,7 +177,7 @@ class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
           label: Text(label),
           style: FilledButton.styleFrom(
             backgroundColor: color,
-            minimumSize: const Size.fromHeight(52),
+            minimumSize: Size.fromHeight(52),
           ),
         ),
       );
@@ -185,9 +186,9 @@ class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
     return Row(
       children: [
         boton('Pedido', Icons.add_circle_outline, AppTheme.primary, '/mi-registro/pedido'),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         boton('Gasto', Icons.payments_outlined, AppTheme.warning, '/mi-registro/gasto'),
-        const SizedBox(width: 8),
+        SizedBox(width: 8),
         boton('Falla', Icons.build_outlined, AppTheme.danger, '/mi-registro/incidencia'),
       ],
     );
@@ -200,7 +201,7 @@ class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
         IconButton(
           tooltip: 'Día anterior',
           onPressed: () => _cambiarDia(-1),
-          icon: const Icon(Icons.chevron_left),
+          icon: Icon(Icons.chevron_left),
         ),
         Expanded(
           child: Center(
@@ -210,7 +211,7 @@ class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
         IconButton(
           tooltip: 'Día siguiente',
           onPressed: esHoy ? null : () => _cambiarDia(1),
-          icon: const Icon(Icons.chevron_right),
+          icon: Icon(Icons.chevron_right),
         ),
       ],
     );
@@ -219,14 +220,14 @@ class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
   Widget _tarjetaError() {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         child: Column(
           children: [
-            const Icon(Icons.error_outline, color: AppTheme.danger, size: 36),
-            const SizedBox(height: 8),
+            Icon(Icons.error_outline, color: AppTheme.danger, size: 36),
+            SizedBox(height: 8),
             Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 10),
-            FilledButton(onPressed: _cargar, child: const Text('Reintentar')),
+            SizedBox(height: 10),
+            FilledButton(onPressed: _cargar, child: Text('Reintentar')),
           ],
         ),
       ),
@@ -237,7 +238,7 @@ class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
     final r = _resumen;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -245,18 +246,18 @@ class _MiRegistroPageState extends ConsumerState<MiRegistroPage> {
             FilaValor('Entregados', '${r.entregados}', color: AppTheme.success),
             FilaValor('No entregados', '${r.noEntregados}',
                 color: r.noEntregados > 0 ? AppTheme.danger : null),
-            const Divider(height: 22),
+            Divider(height: 22),
             FilaValor('Ventas', dinero(r.totalACobrar), destacado: true),
             FilaValor('Cobrado', dinero(r.cobrado)),
             FilaValor('Efectivo', dinero(r.efectivo)),
             FilaValor('Yape', dinero(r.yape), color: AppTheme.info),
             if (r.pendiente > 0)
               FilaValor('Deuda', dinero(r.pendiente), color: AppTheme.danger),
-            const Divider(height: 22),
+            Divider(height: 22),
             FilaValor('Balones entregados', '${r.balonesEntregados}'),
             FilaValor('Balones devueltos', '${r.balonesDevueltos}',
                 color: AppTheme.success),
-            const Divider(height: 22),
+            Divider(height: 22),
             FilaValor('Fondo de vuelto', dinero(r.fondoInicial), color: AppTheme.info),
             FilaValor('Gastos en efectivo', dinero(r.gastosEfectivo),
                 color: r.gastosEfectivo > 0 ? AppTheme.danger : null),

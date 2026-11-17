@@ -31,7 +31,7 @@ class ResumenCaja {
   /// Gastos registrados en el periodo.
   final double gastos;
 
-  const ResumenCaja({
+  ResumenCaja({
     this.fondoInicial = 0,
     this.ingresos = 0,
     this.egresos = 0,

@@ -1,3 +1,4 @@
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,7 +9,7 @@ import 'auth_controller.dart';
 /// Registro de una nueva empresa desde la APK.
 /// Llama a la Edge Function `register-empresa` (crea empresa + admin).
 class RegisterEmpresaPage extends ConsumerStatefulWidget {
-  const RegisterEmpresaPage({super.key});
+  RegisterEmpresaPage({super.key});
 
   @override
   ConsumerState<RegisterEmpresaPage> createState() => _RegisterEmpresaPageState();
@@ -121,87 +122,87 @@ class _RegisterEmpresaPageState extends ConsumerState<RegisterEmpresaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Registrar mi empresa')),
+      appBar: AppBar(title: Text('Registrar mi empresa')),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextField(
                 controller: _empresaCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Nombre de la empresa',
                   hintText: 'Ej: Grupo Gas SAC',
                   prefixIcon: Icon(Icons.business_outlined),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               TextField(
                 controller: _nombreCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Tu nombre (administrador)',
                   prefixIcon: Icon(Icons.person_outline),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               TextField(
                 controller: _telefonoCtrl,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Teléfono',
                   hintText: 'Ej: 999888777',
                   prefixIcon: Icon(Icons.phone_outlined),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               TextField(
                 controller: _correoCtrl,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Correo electrónico',
                   hintText: 'tucorreo@ejemplo.com',
                   prefixIcon: Icon(Icons.mail_outline),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               TextField(
                 controller: _passwordCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Contraseña (mín. 6 caracteres)',
                   prefixIcon: Icon(Icons.lock_outline),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               TextField(
                 controller: _confirmarCtrl,
                 obscureText: true,
                 onSubmitted: (_) => _registrar(),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Confirmar contraseña',
                   prefixIcon: Icon(Icons.lock_outline),
                 ),
               ),
               if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!, style: const TextStyle(color: AppTheme.danger)),
+                SizedBox(height: 12),
+                Text(_error!, style: TextStyle(color: AppTheme.danger)),
               ],
-              const SizedBox(height: 24),
+              SizedBox(height: 24),
               FilledButton(
                 onPressed: _cargando ? null : _registrar,
                 child: _cargando
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 22, width: 22,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Text('Crear mi empresa'),
+                    : Text('Crear mi empresa'),
               ),
-              const SizedBox(height: 12),
-              const Text(
+              SizedBox(height: 12),
+              Text(
                 'Al registrarte crearás tu empresa y tu usuario administrador. Después podrás agregar motorizados, clientes y pedidos.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.black45, fontSize: 13),
+                style: TextStyle(color: AppColors.textoMuted, fontSize: 13),
               ),
             ],
           ),

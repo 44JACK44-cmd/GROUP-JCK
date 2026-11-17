@@ -4,6 +4,7 @@
 /// permite filtrar por motorizado (el admin también puede repartir).
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -26,7 +27,7 @@ import '../rutas/ruta_page.dart';
 import 'flujo_entrega.dart';
 
 class MisPedidosPage extends ConsumerStatefulWidget {
-  const MisPedidosPage({super.key});
+  MisPedidosPage({super.key});
 
   @override
   ConsumerState<MisPedidosPage> createState() => _MisPedidosPageState();
@@ -117,7 +118,7 @@ class _MisPedidosPageState extends ConsumerState<MisPedidosPage> {
       _cargar();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tomaste el pedido.')),
+        SnackBar(content: Text('Tomaste el pedido.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -154,7 +155,7 @@ class _MisPedidosPageState extends ConsumerState<MisPedidosPage> {
       final abierto = await navegarACliente(direccion: direccion);
       if (!abierto && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('El cliente no tiene ubicación guardada. Edita su ficha para marcarla.'),
           ),
         );
@@ -197,12 +198,12 @@ class _MisPedidosPageState extends ConsumerState<MisPedidosPage> {
     final auth = ref.watch(authProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mis pedidos'),
+        title: Text('Mis pedidos'),
         actions: [
           IconButton(
             tooltip: 'Actualizar',
             onPressed: _cargar,
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
           ),
         ],
       ),
@@ -210,16 +211,16 @@ class _MisPedidosPageState extends ConsumerState<MisPedidosPage> {
         children: [
           if (auth.esAdmin && _motorizados.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
               child: DropdownButtonFormField<String?>(
                 initialValue: _filtroMotorizado,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Motorizado',
                   isDense: true,
                   prefixIcon: Icon(Icons.delivery_dining_outlined),
                 ),
                 items: [
-                  const DropdownMenuItem<String?>(
+                  DropdownMenuItem<String?>(
                     value: null,
                     child: Text('Todos los motorizados'),
                   ),
@@ -237,48 +238,48 @@ class _MisPedidosPageState extends ConsumerState<MisPedidosPage> {
             ),
           Expanded(
             child: _cargando
-                ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
                 : RefreshIndicator(
                     onRefresh: _cargar,
                     child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
                       children: [
                         // Pedidos disponibles para tomar
                         if (_disponibles.isNotEmpty) ...[
                           Text('Pedidos disponibles para tomar',
                               style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           for (final p in _disponibles)
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
+                              padding: EdgeInsets.only(bottom: 8),
                               child: Card(
                                 color: AppTheme.warning.withValues(alpha: 0.05),
                                 child: ListTile(
-                                  leading: const Icon(Icons.delivery_dining_outlined, color: AppTheme.warning),
+                                  leading: Icon(Icons.delivery_dining_outlined, color: AppTheme.warning),
                                   title: Text(
                                     (p['clientes'] as Map?)?['nombre'] as String? ?? 'Cliente',
-                                    style: const TextStyle(fontWeight: FontWeight.w600),
+                                    style: TextStyle(fontWeight: FontWeight.w600),
                                   ),
                                   subtitle: Text(
                                     '${(p['clientes'] as Map?)?['direccion'] ?? ''} · ${dinero((p['total'] as num? ?? 0).toDouble())}',
-                                    style: const TextStyle(color: Colors.black54, fontSize: 12),
+                                    style: TextStyle(color: AppColors.textoSecundario, fontSize: 12),
                                   ),
                                   trailing: FilledButton(
                                     onPressed: () => _tomarPedido(p),
                                     style: FilledButton.styleFrom(
                                       backgroundColor: AppTheme.warning,
-                                      minimumSize: const Size(0, 36),
+                                      minimumSize: Size(0, 36),
                                     ),
-                                    child: const Text('Tomar', style: TextStyle(fontSize: 13)),
+                                    child: Text('Tomar', style: TextStyle(fontSize: 13)),
                                   ),
                                 ),
                               ),
                             ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                         ],
                         // Pedidos asignados
                         if (_pedidos.isEmpty && _disponibles.isEmpty)
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(top: 40),
                             child: EstadoVacio(
                               icono: Icons.inventory_2_outlined,
@@ -288,17 +289,17 @@ class _MisPedidosPageState extends ConsumerState<MisPedidosPage> {
                           )
                         else if (_pedidos.isNotEmpty) ...[
                           Text('Mis pedidos', style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 8),
+                          SizedBox(height: 8),
                           for (final p in _pedidos)
                             Padding(
-                              padding: const EdgeInsets.only(bottom: 8),
+                              padding: EdgeInsets.only(bottom: 8),
                               child: TarjetaPedido(
                                 pedido: p,
                                 onTap: () => _abrirDetalle(p),
                                 trailer: Text(
                                   antiguedad(parseFecha(p['fecha'])),
-                                  style: const TextStyle(
-                                    color: Colors.black54,
+                                  style: TextStyle(
+                                    color: AppColors.textoSecundario,
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -307,16 +308,16 @@ class _MisPedidosPageState extends ConsumerState<MisPedidosPage> {
                                 acciones: [
                                   OutlinedButton.icon(
                                     onPressed: () => _navegar(p),
-                                    icon: const Icon(Icons.navigation_outlined, size: 18),
-                                    label: const Text('NAVEGAR'),
-                                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(44)),
+                                    icon: Icon(Icons.navigation_outlined, size: 18),
+                                    label: Text('NAVEGAR'),
+                                    style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(44)),
                                   ),
                                   FilledButton.icon(
                                     onPressed: () => _entregar(p),
-                                    icon: const Icon(Icons.check_circle_outline, size: 18),
-                                    label: const Text('ENTREGADO'),
+                                    icon: Icon(Icons.check_circle_outline, size: 18),
+                                    label: Text('ENTREGADO'),
                                     style: FilledButton.styleFrom(
-                                      minimumSize: const Size.fromHeight(44),
+                                      minimumSize: Size.fromHeight(44),
                                       backgroundColor: AppTheme.success,
                                     ),
                                   ),

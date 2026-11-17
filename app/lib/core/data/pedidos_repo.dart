@@ -20,7 +20,7 @@ class LineaPedido {
   final int cantidad;
   final double precioUnitario;
 
-  const LineaPedido({
+  LineaPedido({
     required this.productoId,
     required this.nombre,
     required this.cantidad,
@@ -217,7 +217,7 @@ class PedidosRepo {
       throw Exception('El pedido debe tener un precio mayor a cero.');
     }
 
-    final uuid = uuidOffline ?? const Uuid().v4();
+    final uuid = uuidOffline ?? Uuid().v4();
 
     final cabecera = {
       'empresa_id': empresaId,

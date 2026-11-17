@@ -9,6 +9,7 @@
 /// servicio de Google Directions, nunca de una línea recta.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -30,7 +31,7 @@ import '../../core/ui/widgets.dart';
 import '../rutas/ruta_page.dart';
 
 class SeguimientoPage extends ConsumerStatefulWidget {
-  const SeguimientoPage({super.key});
+  SeguimientoPage({super.key});
 
   @override
   ConsumerState<SeguimientoPage> createState() => _SeguimientoPageState();
@@ -39,7 +40,7 @@ class SeguimientoPage extends ConsumerStatefulWidget {
 class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
   final MapController _mapa = MapController();
   gmaps.GoogleMapController? _mapaGoogle;
-  final RutaService _rutas = const RutaService();
+  final RutaService _rutas = RutaService();
 
   List<Map<String, dynamic>> _motos = [];
   Map<String, UbicacionMotorizado> _ubicaciones = {};
@@ -61,7 +62,7 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
     SyncBus.pedidos.addListener(_onBus);
     _cargar();
     // Recalcula "hace X" aunque no llegue ningún cambio.
-    _reloj = Timer.periodic(const Duration(seconds: 30), (_) {
+    _reloj = Timer.periodic(Duration(seconds: 30), (_) {
       if (mounted) setState(() {});
     });
   }
@@ -117,7 +118,7 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
   Color _color(EstadoUbicacion e) => switch (e) {
         EstadoUbicacion.activo => AppTheme.success,
         EstadoUbicacion.reciente => AppTheme.warning,
-        _ => Colors.black38,
+        _ => AppColors.textoMuted,
       };
 
   LatLng get _centro {
@@ -175,7 +176,7 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
     final pedido = _pedidosActivos[motorizadoId];
     if (pedido == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Ese motorizado no tiene pedido activo.')),
+        SnackBar(content: Text('Ese motorizado no tiene pedido activo.')),
       );
       return;
     }
@@ -185,7 +186,7 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
     final lng = (cliente['longitud'] as num?)?.toDouble();
     if (lat == null || lng == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El cliente no tiene ubicación guardada.')),
+        SnackBar(content: Text('El cliente no tiene ubicación guardada.')),
       );
       return;
     }
@@ -271,7 +272,7 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
                       Icons.location_on,
                       size: 46,
                       color: _color(entry.value.estado),
-                      shadows: const [Shadow(color: Colors.black26, blurRadius: 6)],
+                      shadows: [const Shadow(color: Color(0x66000000), blurRadius: 6)],
                     ),
                   ),
                 ),
@@ -285,24 +286,24 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Motorizados en tiempo real'),
+        title: Text('Motorizados en tiempo real'),
         actions: [
           IconButton(
             tooltip: 'Actualizar',
             onPressed: _cargar,
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
           ),
         ],
       ),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : Column(
               children: [
                 Expanded(
                   child: Stack(
                     children: [
                       _construirMapa(),
-                      const Positioned(
+                      Positioned(
                         top: 0,
                         left: 0,
                         right: 0,
@@ -312,13 +313,13 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
                         left: 12,
                         top: 52,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
+                          padding: EdgeInsets.symmetric(
                               horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.94),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.circle, size: 9, color: AppTheme.success),
@@ -343,7 +344,7 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
 
   Widget _lista() {
     if (_motos.isEmpty) {
-      return const Padding(
+      return Padding(
         padding: EdgeInsets.all(20),
         child: EstadoVacio(
           icono: Icons.delivery_dining_outlined,
@@ -352,13 +353,13 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
       );
     }
     return Container(
-      constraints: const BoxConstraints(maxHeight: 290),
-      decoration: const BoxDecoration(
+      constraints: BoxConstraints(maxHeight: 290),
+      decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE6E8E5))),
+        border: Border(top: BorderSide(color: AppColors.borde)),
       ),
       child: ListView(
-        padding: const EdgeInsets.symmetric(vertical: 6),
+        padding: EdgeInsets.symmetric(vertical: 6),
         children: [
           for (final m in _motos)
             Builder(builder: (context) {
@@ -374,7 +375,7 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
                 dense: true,
                 selected: _seleccionado == id,
                 leading: Icon(Icons.two_wheeler, color: _color(estado)),
-                title: Text(nombre, style: const TextStyle(fontWeight: FontWeight.w600)),
+                title: Text(nombre, style: TextStyle(fontWeight: FontWeight.w600)),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -389,22 +390,22 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
                         'Pedido #${pedido['numero']} · '
                         '${dinero((pedido['total'] as num? ?? 0).toDouble())}'
                         '${clienteNombre != null ? ' · $clienteNombre' : ''}',
-                        style: const TextStyle(fontSize: 11.5, color: Colors.black54),
+                        style: TextStyle(fontSize: 11.5, color: AppColors.textoSecundario),
                       )
                     else
-                      const Text('Sin pedido activo',
-                          style: TextStyle(fontSize: 11.5, color: Colors.black45)),
+                      Text('Sin pedido activo',
+                          style: TextStyle(fontSize: 11.5, color: AppColors.textoMuted)),
                     if (_seleccionado == id && _ruta != null && _ruta!.hayRuta)
                       Text(
                         'Ruta ${_ruta!.distanciaTexto} · ETA ${_ruta!.duracionTexto}',
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 11.5,
                             color: AppTheme.primary,
                             fontWeight: FontWeight.w600),
                       )
                     else if (_seleccionado == id && _calculandoRuta)
-                      const Text('Calculando ruta…',
-                          style: TextStyle(fontSize: 11.5, color: Colors.black45)),
+                      Text('Calculando ruta…',
+                          style: TextStyle(fontSize: 11.5, color: AppColors.textoMuted)),
                   ],
                 ),
                 trailing: u == null
@@ -414,12 +415,12 @@ class _SeguimientoPageState extends ConsumerState<SeguimientoPage> {
                         children: [
                           TextButton(
                             onPressed: () => _centrarEn(u),
-                            child: const Text('Ver'),
+                            child: Text('Ver'),
                           ),
                           if (pedido != null)
                             TextButton(
                               onPressed: () => _verRuta(id),
-                              child: const Text('Ruta'),
+                              child: Text('Ruta'),
                             ),
                         ],
                       ),

@@ -4,6 +4,7 @@
 /// así los dos ven exactamente la misma información y la misma foto de Yape.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
@@ -15,7 +16,7 @@ class ActividadTile extends StatelessWidget {
   final MovimientoActividad movimiento;
   final VoidCallback? onTap;
 
-  const ActividadTile({super.key, required this.movimiento, this.onTap});
+  ActividadTile({super.key, required this.movimiento, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -24,18 +25,18 @@ class ActividadTile extends StatelessWidget {
       'PEDIDO' => (Icons.receipt_long_outlined, AppTheme.primary),
       'GASTO' => (Icons.payments_outlined, AppTheme.warning),
       'INCIDENCIA' => (Icons.build_outlined, AppTheme.danger),
-      _ => (Icons.circle_outlined, Colors.black45),
+      _ => (Icons.circle_outlined, AppColors.textoMuted),
     };
     final hora = '${m.fecha.hour.toString().padLeft(2, '0')}:'
         '${m.fecha.minute.toString().padLeft(2, '0')}';
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: EdgeInsets.only(bottom: 8),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12),
           child: Row(
             children: [
               if (m.comprobanteUrl != null)
@@ -51,37 +52,37 @@ class ActividadTile extends StatelessWidget {
                 )
               else
                 Icon(icono, color: color),
-              const SizedBox(width: 12),
+              SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       m.titulo,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: TextStyle(fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 2),
+                    SizedBox(height: 2),
                     Text(
                       [
                         hora,
                         if (m.detalle.isNotEmpty) m.detalle,
                         if (m.metodo != null) metodoPago(m.metodo),
                       ].join(' · '),
-                      style: const TextStyle(fontSize: 12, color: Colors.black54),
+                      style: TextStyle(fontSize: 12, color: AppColors.textoSecundario),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   if (m.monto > 0)
-                    Text(dinero(m.monto), style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text(dinero(m.monto), style: TextStyle(fontWeight: FontWeight.bold)),
                   if (m.estado.isNotEmpty) ...[
-                    const SizedBox(height: 4),
+                    SizedBox(height: 4),
                     EstadoBadge(m.estado, compacto: true),
                   ],
                 ],

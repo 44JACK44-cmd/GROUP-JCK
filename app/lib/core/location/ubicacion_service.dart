@@ -26,7 +26,7 @@ enum EstadoGps {
   sinPermiso('Sin permiso de ubicación'),
   sinSesion('Sin sesión');
 
-  const EstadoGps(this.label);
+  EstadoGps(this.label);
 
   final String label;
 }
@@ -115,7 +115,7 @@ class UbicacionService {
     _reloj?.cancel();
     estado.value = EstadoGps.activo;
     await _enviar(primeraVez: true);
-    _reloj = Timer.periodic(const Duration(seconds: 30), (_) => _enviar());
+    _reloj = Timer.periodic(Duration(seconds: 30), (_) => _enviar());
   }
 
   Future<bool> _permiso() async {
@@ -139,7 +139,7 @@ class UbicacionService {
     _enviando = true;
     try {
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
+        locationSettings: LocationSettings(
           accuracy: LocationAccuracy.medium,
           timeLimit: Duration(seconds: 20),
         ),

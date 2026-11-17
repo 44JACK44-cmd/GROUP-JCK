@@ -10,7 +10,7 @@ class MotorizadoFormPage extends StatefulWidget {
   final Map<String, dynamic>? motorizado;
   final List<Map<String, dynamic>> vehiculos;
 
-  const MotorizadoFormPage({super.key, this.motorizado, required this.vehiculos});
+  MotorizadoFormPage({super.key, this.motorizado, required this.vehiculos});
 
   @override
   State<MotorizadoFormPage> createState() => _MotorizadoFormPageState();
@@ -137,39 +137,39 @@ class _MotorizadoFormPageState extends State<MotorizadoFormPage> {
       appBar: AppBar(title: Text(_esEdicion ? 'Editar motorizado' : 'Nuevo motorizado')),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               TextField(
                 controller: _nombreCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Nombre completo',
                   prefixIcon: Icon(Icons.person_outline),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               TextField(
                 controller: _telefonoCtrl,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Teléfono',
                   hintText: 'Ej: 999888777 — con este número podrá iniciar sesión',
                   prefixIcon: Icon(Icons.phone_outlined),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               TextField(
                 controller: _correoCtrl,
                 keyboardType: TextInputType.emailAddress,
                 decoration: InputDecoration(
                   labelText: 'Correo (opcional)',
                   hintText: _esEdicion ? 'No se puede cambiar' : 'Si lo dejas vacío se genera uno con el teléfono',
-                  prefixIcon: const Icon(Icons.mail_outline),
+                  prefixIcon: Icon(Icons.mail_outline),
                   enabled: !_esEdicion,
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               TextField(
                 controller: _passwordCtrl,
                 obscureText: true,
@@ -177,18 +177,18 @@ class _MotorizadoFormPageState extends State<MotorizadoFormPage> {
                   labelText: _esEdicion
                       ? 'Nueva contraseña (opcional)'
                       : 'Contraseña temporal (mín. 6)',
-                  prefixIcon: const Icon(Icons.lock_outline),
+                  prefixIcon: Icon(Icons.lock_outline),
                 ),
               ),
-              const SizedBox(height: 14),
+              SizedBox(height: 14),
               DropdownButtonFormField<String?>(
                 initialValue: _vehiculoId,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'Vehículo asignado',
                   prefixIcon: Icon(Icons.delivery_dining_outlined),
                 ),
                 items: [
-                  const DropdownMenuItem<String?>(
+                  DropdownMenuItem<String?>(
                     value: null,
                     child: Text('Sin vehículo'),
                   ),
@@ -200,24 +200,24 @@ class _MotorizadoFormPageState extends State<MotorizadoFormPage> {
                 onChanged: (v) => setState(() => _vehiculoId = v),
               ),
               if (_esEdicion) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Usuario activo'),
-                  subtitle: const Text('Si lo desactivas no podrá iniciar sesión'),
+                  title: Text('Usuario activo'),
+                  subtitle: Text('Si lo desactivas no podrá iniciar sesión'),
                   value: _activo,
                   onChanged: (v) => setState(() => _activo = v),
                 ),
               ],
               if (_error != null) ...[
-                const SizedBox(height: 12),
-                Text(_error!, style: const TextStyle(color: AppTheme.danger)),
+                SizedBox(height: 12),
+                Text(_error!, style: TextStyle(color: AppTheme.danger)),
               ],
-              const SizedBox(height: 20),
+              SizedBox(height: 20),
               FilledButton(
                 onPressed: _cargando ? null : _guardar,
                 child: _cargando
-                    ? const SizedBox(
+                    ? SizedBox(
                         height: 22, width: 22,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )

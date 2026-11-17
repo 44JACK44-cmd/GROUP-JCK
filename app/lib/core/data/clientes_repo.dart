@@ -13,7 +13,7 @@ class ResumenCliente {
   final int balonesPendientes;
   final int fierrosPendientes;
 
-  const ResumenCliente({
+  ResumenCliente({
     this.deuda = 0,
     this.balonesPendientes = 0,
     this.fierrosPendientes = 0,

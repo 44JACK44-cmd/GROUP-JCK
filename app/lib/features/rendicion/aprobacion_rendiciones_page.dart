@@ -1,6 +1,7 @@
 /// Aprobación de rendiciones por el administrador.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,7 +13,7 @@ import '../../core/domain/formato.dart';
 import '../auth/auth_controller.dart';
 
 class AprobacionRendicionesPage extends ConsumerStatefulWidget {
-  const AprobacionRendicionesPage({super.key});
+  AprobacionRendicionesPage({super.key});
 
   @override
   ConsumerState<AprobacionRendicionesPage> createState() => _AprobacionRendicionesPageState();
@@ -65,7 +66,7 @@ class _AprobacionRendicionesPageState extends ConsumerState<AprobacionRendicione
         fechaRendicion.month,
         fechaRendicion.day,
       );
-      final fin = inicio.add(const Duration(days: 1));
+      final fin = inicio.add(Duration(days: 1));
       final r = await rendicionRepo.calcular(
         desde: inicio,
         hasta: fin,
@@ -115,8 +116,8 @@ class _AprobacionRendicionesPageState extends ConsumerState<AprobacionRendicione
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: const Text('Confirmar')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: Text('Confirmar')),
         ],
       ),
     );
@@ -137,7 +138,7 @@ class _AprobacionRendicionesPageState extends ConsumerState<AprobacionRendicione
       case 'EN_REVISION':
         return AppTheme.info;
       default:
-        return Colors.black54;
+        return AppColors.textoSecundario;
     }
   }
 
@@ -145,28 +146,28 @@ class _AprobacionRendicionesPageState extends ConsumerState<AprobacionRendicione
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Rendiciones'),
+        title: Text('Rendiciones'),
         actions: [
-          IconButton(tooltip: 'Actualizar', onPressed: _cargar, icon: const Icon(Icons.refresh)),
+          IconButton(tooltip: 'Actualizar', onPressed: _cargar, icon: Icon(Icons.refresh)),
         ],
       ),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _rendiciones.isEmpty
-              ? const Center(child: Text('No hay rendiciones registradas.', style: TextStyle(color: Colors.black54)))
+              ? Center(child: Text('No hay rendiciones registradas.', style: TextStyle(color: AppColors.textoSecundario)))
               : RefreshIndicator(
                   onRefresh: _cargar,
                   child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16),
                     itemCount: _rendiciones.length,
                     itemBuilder: (context, i) {
                       final r = _rendiciones[i];
                       final motorizado = r['perfiles'] as Map<String, dynamic>?;
                       final estado = r['estado'] as String? ?? 'PENDIENTE';
                       return Card(
-                        margin: const EdgeInsets.only(bottom: 10),
+                        margin: EdgeInsets.only(bottom: 10),
                         child: Padding(
-                          padding: const EdgeInsets.all(14),
+                          padding: EdgeInsets.all(14),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -175,11 +176,11 @@ class _AprobacionRendicionesPageState extends ConsumerState<AprobacionRendicione
                                   Expanded(
                                     child: Text(
                                       motorizado?['nombre'] as String? ?? 'Motorizado',
-                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                     ),
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                     decoration: BoxDecoration(
                                       color: _colorEstado(estado).withValues(alpha: 0.12),
                                       borderRadius: BorderRadius.circular(12),
@@ -191,8 +192,8 @@ class _AprobacionRendicionesPageState extends ConsumerState<AprobacionRendicione
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 8),
-                              Text('Fecha: ${r['fecha']}', style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                              SizedBox(height: 8),
+                              Text('Fecha: ${r['fecha']}', style: TextStyle(color: AppColors.textoSecundario, fontSize: 13)),
                               Text('Efectivo declarado: ${dinero((r['efectivo_declarado'] as num? ?? 0).toDouble())}'),
                               Text('Yape declarado: ${dinero((r['yape_declarado'] as num? ?? 0).toDouble())}'),
                               if ((r['diferencia'] as num? ?? 0).toDouble() != 0)
@@ -204,26 +205,26 @@ class _AprobacionRendicionesPageState extends ConsumerState<AprobacionRendicione
                                   ),
                                 ),
                               if (r['observaciones'] != null)
-                                Text('Obs: ${r['observaciones']}', style: const TextStyle(color: Colors.black54, fontSize: 12)),
-                              const SizedBox(height: 10),
+                                Text('Obs: ${r['observaciones']}', style: TextStyle(color: AppColors.textoSecundario, fontSize: 12)),
+                              SizedBox(height: 10),
                               if (estado == 'PENDIENTE' || estado == 'EN_REVISION') ...[
                                 Row(
                                   children: [
                                     Expanded(
                                       child: FilledButton.icon(
                                         onPressed: () => _revisar(r, EstadoRendicion.aprobada),
-                                        icon: const Icon(Icons.check, size: 18),
-                                        label: const Text('Aprobar'),
+                                        icon: Icon(Icons.check, size: 18),
+                                        label: Text('Aprobar'),
                                         style: FilledButton.styleFrom(backgroundColor: AppTheme.success),
                                       ),
                                     ),
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: 8),
                                     Expanded(
                                       child: OutlinedButton.icon(
                                         onPressed: () => _revisar(r, EstadoRendicion.observada),
-                                        icon: const Icon(Icons.warning_amber, size: 18, color: AppTheme.warning),
-                                        label: const Text('Observar', style: TextStyle(color: AppTheme.warning)),
-                                        style: OutlinedButton.styleFrom(side: const BorderSide(color: AppTheme.warning)),
+                                        icon: Icon(Icons.warning_amber, size: 18, color: AppTheme.warning),
+                                        label: Text('Observar', style: TextStyle(color: AppTheme.warning)),
+                                        style: OutlinedButton.styleFrom(side: BorderSide(color: AppTheme.warning)),
                                       ),
                                     ),
                                   ],

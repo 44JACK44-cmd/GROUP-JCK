@@ -39,7 +39,7 @@ class PagosRepo {
       'monto': monto,
       'metodo': metodo,
       'registrado_por': usuarioId,
-      'uuid_offline': uuidOffline ?? const Uuid().v4(),
+      'uuid_offline': uuidOffline ?? Uuid().v4(),
       if (comprobanteUrl != null && comprobanteUrl.isNotEmpty)
         'comprobante_url': comprobanteUrl,
     };

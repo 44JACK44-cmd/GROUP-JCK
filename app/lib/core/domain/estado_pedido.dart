@@ -17,7 +17,7 @@ enum EstadoPedido {
   cancelado('CANCELADO', 'Cancelado', Icons.cancel_outlined),
   noEntregado('NO_ENTREGADO', 'No entregado', Icons.report_gmailerrorred_outlined);
 
-  const EstadoPedido(this.db, this.label, this.icono);
+  EstadoPedido(this.db, this.label, this.icono);
 
   /// Valor guardado en la base de datos.
   final String db;
@@ -101,7 +101,7 @@ enum GrupoPedido {
   completados('Completados', ['ENTREGADO'], Icons.check_circle_outline),
   cancelados('Cancelados', ['CANCELADO', 'NO_ENTREGADO'], Icons.cancel_outlined);
 
-  const GrupoPedido(this.label, this.estados, this.icono);
+  GrupoPedido(this.label, this.estados, this.icono);
 
   final String label;
   final List<String> estados;

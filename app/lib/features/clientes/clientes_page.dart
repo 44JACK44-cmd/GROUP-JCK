@@ -1,3 +1,4 @@
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -9,7 +10,7 @@ import 'cliente_form_page.dart';
 /// Lista de clientes de la empresa con búsqueda por nombre,
 /// teléfono o dirección. RLS muestra solo los de la empresa.
 class ClientesPage extends ConsumerStatefulWidget {
-  const ClientesPage({super.key});
+  ClientesPage({super.key});
 
   @override
   ConsumerState<ClientesPage> createState() => _ClientesPageState();
@@ -86,27 +87,27 @@ class _ClientesPageState extends ConsumerState<ClientesPage> {
   Widget build(BuildContext context) {
     final lista = _filtrados;
     return Scaffold(
-      appBar: AppBar(title: const Text('Clientes')),
+      appBar: AppBar(title: Text('Clientes')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _abrirFormulario(),
         backgroundColor: AppTheme.primary,
-        icon: const Icon(Icons.person_add_alt_1),
-        label: const Text('Nuevo'),
+        icon: Icon(Icons.person_add_alt_1),
+        label: Text('Nuevo'),
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: TextField(
               controller: _busquedaCtrl,
               onChanged: (v) => setState(() => _filtro = v.trim()),
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre, teléfono o dirección',
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: Icon(Icons.search),
                 suffixIcon: _filtro.isEmpty
                     ? null
                     : IconButton(
-                        icon: const Icon(Icons.close),
+                        icon: Icon(Icons.close),
                         onPressed: () {
                           _busquedaCtrl.clear();
                           setState(() => _filtro = '');
@@ -117,15 +118,15 @@ class _ClientesPageState extends ConsumerState<ClientesPage> {
           ),
           Expanded(
             child: _cargando
-                ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
                 : lista.isEmpty
                     ? _EstadoVacio(tieneBusqueda: _filtro.isNotEmpty)
                     : RefreshIndicator(
                         onRefresh: _cargar,
                         child: ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
+                          padding: EdgeInsets.fromLTRB(16, 8, 16, 90),
                           itemCount: lista.length,
-                          separatorBuilder: (_, i) => const SizedBox(height: 10),
+                          separatorBuilder: (_, i) => SizedBox(height: 10),
                           itemBuilder: (context, i) {
                             final c = lista[i];
                             final subtitulo = [
@@ -140,16 +141,16 @@ class _ClientesPageState extends ConsumerState<ClientesPage> {
                                   backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
                                   child: Text(
                                     (c['nombre'] as String? ?? '?')[0].toUpperCase(),
-                                    style: const TextStyle(color: AppTheme.primary),
+                                    style: TextStyle(color: AppTheme.primary),
                                   ),
                                 ),
                                 title: Text(c['nombre'] as String? ?? '',
-                                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                                    style: TextStyle(fontWeight: FontWeight.w600)),
                                 subtitle: subtitulo.isEmpty
                                     ? null
                                     : Text(subtitulo,
                                         maxLines: 1, overflow: TextOverflow.ellipsis),
-                                trailing: const Icon(Icons.chevron_right),
+                                trailing: Icon(Icons.chevron_right),
                                 onTap: () => _abrirDetalle(c),
                               ),
                             );
@@ -171,16 +172,16 @@ class _EstadoVacio extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView(
       children: [
-        const SizedBox(height: 120),
-        const Icon(Icons.people_outline, size: 56, color: Colors.black26),
-        const SizedBox(height: 12),
+        SizedBox(height: 120),
+        Icon(Icons.people_outline, size: 56, color: AppColors.textoMuted),
+        SizedBox(height: 12),
         Center(
           child: Text(
             tieneBusqueda
                 ? 'Ningún cliente coincide con la búsqueda.'
                 : 'No tienes clientes registrados.\nToca "Nuevo" para agregar el primero.',
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.black54),
+            style: TextStyle(color: AppColors.textoSecundario),
           ),
         ),
       ],

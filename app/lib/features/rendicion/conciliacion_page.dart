@@ -4,6 +4,7 @@
 /// y las diferencias entre ambos.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,7 +14,7 @@ import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
 
 class ConciliacionPage extends ConsumerStatefulWidget {
-  const ConciliacionPage({super.key});
+  ConciliacionPage({super.key});
 
   @override
   ConsumerState<ConciliacionPage> createState() => _ConciliacionPageState();
@@ -34,7 +35,7 @@ class _ConciliacionPageState extends ConsumerState<ConciliacionPage> {
     if (!silencioso) setState(() => _cargando = true);
     try {
       final inicio = inicioHoy();
-      final fin = DateTime.now().add(const Duration(minutes: 1));
+      final fin = DateTime.now().add(Duration(minutes: 1));
       final todos = await pedidosRepo.listar(desde: inicio, hasta: fin, limite: 500);
       if (!mounted) return;
       final admin = todos.where((p) => p['origen'] != 'MOTORIZADO').toList();
@@ -65,70 +66,70 @@ class _ConciliacionPageState extends ConsumerState<ConciliacionPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Conciliación'),
+        title: Text('Conciliación'),
         actions: [
           IconButton(
             tooltip: 'Actualizar',
             onPressed: _cargar,
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
           ),
         ],
       ),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : RefreshIndicator(
               onRefresh: () => _cargar(silencioso: true),
               child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                physics: AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
                   // Resumen
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Resumen del día', style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 10),
+                          SizedBox(height: 10),
                           Row(
                             children: [
                               Expanded(
                                 child: Column(
                                   children: [
-                                    const Text('Recepción', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w600)),
-                                    Text('${_pedidosAdmin.length}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                                    Text(dinero(totalAdmin), style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                                    Text('Recepción', style: TextStyle(color: AppColors.textoSecundario, fontWeight: FontWeight.w600)),
+                                    Text('${_pedidosAdmin.length}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                                    Text(dinero(totalAdmin), style: TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
                                   ],
                                 ),
                               ),
                               Expanded(
                                 child: Column(
                                   children: [
-                                    const Text('Motorizado', style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w600)),
-                                    Text('${_pedidosMoto.length}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
-                                    Text(dinero(totalMoto), style: const TextStyle(color: AppTheme.warning, fontWeight: FontWeight.w600)),
+                                    Text('Motorizado', style: TextStyle(color: AppColors.textoSecundario, fontWeight: FontWeight.w600)),
+                                    Text('${_pedidosMoto.length}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                                    Text(dinero(totalMoto), style: TextStyle(color: AppTheme.warning, fontWeight: FontWeight.w600)),
                                   ],
                                 ),
                               ),
                             ],
                           ),
                           if (_pedidosAdmin.length != _pedidosMoto.length || (totalAdmin - totalMoto).abs() > 0.009) ...[
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             Container(
-                              padding: const EdgeInsets.all(10),
+                              padding: EdgeInsets.all(10),
                               decoration: BoxDecoration(
                                 color: AppTheme.warning.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.warning_amber_rounded, color: AppTheme.warning),
-                                  const SizedBox(width: 8),
+                                  Icon(Icons.warning_amber_rounded, color: AppTheme.warning),
+                                  SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       'Diferencia: ${_pedidosAdmin.length - _pedidosMoto.length} pedido(s), ${dinero((totalAdmin - totalMoto).abs())}',
-                                      style: const TextStyle(color: AppTheme.warning, fontWeight: FontWeight.w600),
+                                      style: TextStyle(color: AppTheme.warning, fontWeight: FontWeight.w600),
                                     ),
                                   ),
                                 ],
@@ -139,70 +140,70 @@ class _ConciliacionPageState extends ConsumerState<ConciliacionPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   // Pedidos de recepción
                   Text('Pedidos de recepción (${_pedidosAdmin.length})',
                       style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   if (_pedidosAdmin.isEmpty)
-                    const Card(
+                    Card(
                       child: Padding(
                         padding: EdgeInsets.all(16),
-                        child: Text('Sin pedidos de recepción hoy.', style: TextStyle(color: Colors.black54)),
+                        child: Text('Sin pedidos de recepción hoy.', style: TextStyle(color: AppColors.textoSecundario)),
                       ),
                     )
                   else
                     for (final p in _pedidosAdmin)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: EdgeInsets.only(bottom: 8),
                         child: Card(
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
-                              child: Text('#${p['numero']}', style: const TextStyle(color: AppTheme.primary, fontSize: 11, fontWeight: FontWeight.bold)),
+                              child: Text('#${p['numero']}', style: TextStyle(color: AppTheme.primary, fontSize: 11, fontWeight: FontWeight.bold)),
                             ),
                             title: Text((p['clientes'] as Map?)?['nombre'] as String? ?? 'Cliente',
-                                style: const TextStyle(fontWeight: FontWeight.w600)),
+                                style: TextStyle(fontWeight: FontWeight.w600)),
                             subtitle: Text(
                               '${metodoPago(p['forma_pago'] as String?)} · ${antiguedad(parseFecha(p['fecha']))}',
-                              style: const TextStyle(color: Colors.black54, fontSize: 12),
+                              style: TextStyle(color: AppColors.textoSecundario, fontSize: 12),
                             ),
                             trailing: Text(dinero((p['total'] as num? ?? 0).toDouble()),
-                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                                style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   // Pedidos del motorizado
                   Text('Pedidos del motorizado (${_pedidosMoto.length})',
                       style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   if (_pedidosMoto.isEmpty)
-                    const Card(
+                    Card(
                       child: Padding(
                         padding: EdgeInsets.all(16),
-                        child: Text('Sin pedidos registrados por motorizados hoy.', style: TextStyle(color: Colors.black54)),
+                        child: Text('Sin pedidos registrados por motorizados hoy.', style: TextStyle(color: AppColors.textoSecundario)),
                       ),
                     )
                   else
                     for (final p in _pedidosMoto)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: EdgeInsets.only(bottom: 8),
                         child: Card(
                           color: AppTheme.warning.withValues(alpha: 0.05),
                           child: ListTile(
                             leading: CircleAvatar(
                               backgroundColor: AppTheme.warning.withValues(alpha: 0.12),
-                              child: Text('#${p['numero']}', style: const TextStyle(color: AppTheme.warning, fontSize: 11, fontWeight: FontWeight.bold)),
+                              child: Text('#${p['numero']}', style: TextStyle(color: AppTheme.warning, fontSize: 11, fontWeight: FontWeight.bold)),
                             ),
                             title: Text((p['clientes'] as Map?)?['nombre'] as String? ?? 'Cliente',
-                                style: const TextStyle(fontWeight: FontWeight.w600)),
+                                style: TextStyle(fontWeight: FontWeight.w600)),
                             subtitle: Text(
                               'Registrado por motorizado · ${metodoPago(p['forma_pago'] as String?)}',
-                              style: const TextStyle(color: AppTheme.warning, fontSize: 12),
+                              style: TextStyle(color: AppTheme.warning, fontSize: 12),
                             ),
                             trailing: Text(dinero((p['total'] as num? ?? 0).toDouble()),
-                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                                style: TextStyle(fontWeight: FontWeight.bold)),
                           ),
                         ),
                       ),

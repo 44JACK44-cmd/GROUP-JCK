@@ -4,6 +4,7 @@
 /// balones, motorizados y combustible.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,13 +19,13 @@ enum PeriodoInforme {
   semana('Esta semana'),
   mes('Este mes');
 
-  const PeriodoInforme(this.label);
+  PeriodoInforme(this.label);
 
   final String label;
 }
 
 class ReportesPage extends ConsumerStatefulWidget {
-  const ReportesPage({super.key});
+  ReportesPage({super.key});
 
   @override
   ConsumerState<ReportesPage> createState() => _ReportesPageState();
@@ -32,7 +33,7 @@ class ReportesPage extends ConsumerStatefulWidget {
 
 class _ReportesPageState extends ConsumerState<ReportesPage> {
   PeriodoInforme _periodo = PeriodoInforme.hoy;
-  InformesResumen _datos = const InformesResumen();
+  InformesResumen _datos = InformesResumen();
   List<RendimientoMotorizado> _motorizados = [];
   bool _cargando = true;
 
@@ -46,9 +47,9 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
     setState(() => _cargando = true);
     final ahora = DateTime.now();
     final (desde, hasta) = switch (_periodo) {
-      PeriodoInforme.hoy => (inicioHoy(ahora), ahora.add(const Duration(minutes: 1))),
-      PeriodoInforme.semana => (inicioSemana(ahora), ahora.add(const Duration(minutes: 1))),
-      PeriodoInforme.mes => (inicioMes(ahora), ahora.add(const Duration(minutes: 1))),
+      PeriodoInforme.hoy => (inicioHoy(ahora), ahora.add(Duration(minutes: 1))),
+      PeriodoInforme.semana => (inicioSemana(ahora), ahora.add(Duration(minutes: 1))),
+      PeriodoInforme.mes => (inicioMes(ahora), ahora.add(Duration(minutes: 1))),
     };
     try {
       final res = await Future.wait([
@@ -72,12 +73,12 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
     final d = _datos;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Informes'),
+        title: Text('Informes'),
         actions: [
           IconButton(
             tooltip: 'Actualizar',
             onPressed: _cargar,
-            icon: const Icon(Icons.refresh),
+            icon: Icon(Icons.refresh),
           ),
         ],
       ),
@@ -85,18 +86,18 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
         children: [
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Row(
               children: [
                 for (final p in PeriodoInforme.values)
                   Padding(
-                    padding: const EdgeInsets.only(right: 8),
+                    padding: EdgeInsets.only(right: 8),
                     child: ChoiceChip(
                       label: Text(p.label),
                       selected: _periodo == p,
                       selectedColor: AppTheme.primary.withValues(alpha: 0.15),
                       labelStyle: TextStyle(
-                        color: _periodo == p ? AppTheme.primary : Colors.black87,
+                        color: _periodo == p ? AppTheme.primary : AppColors.textoPrincipal,
                         fontWeight: _periodo == p ? FontWeight.w600 : FontWeight.normal,
                       ),
                       onSelected: (_) {
@@ -108,14 +109,14 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
               ],
             ),
           ),
-          const Divider(height: 1),
+          Divider(height: 1),
           Expanded(
             child: _cargando
-                ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+                ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
                 : RefreshIndicator(
                     onRefresh: _cargar,
                     child: ListView(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                      padding: EdgeInsets.fromLTRB(16, 12, 16, 24),
                       children: [
                         _Seccion(
                           titulo: 'Pedidos',
@@ -126,7 +127,7 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
                             FilaValor('Cancelados', '${d.cancelados}', color: AppTheme.danger),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         _Seccion(
                           titulo: 'Ventas',
                           filas: [
@@ -136,7 +137,7 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
                                 color: d.pendiente > 0 ? AppTheme.danger : null),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         _Seccion(
                           titulo: 'Pagos',
                           filas: [
@@ -145,7 +146,7 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
                             FilaValor('Otros', dinero(d.otros)),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         _Seccion(
                           titulo: 'Deudas',
                           filas: [
@@ -155,7 +156,7 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
                                 destacado: true),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         _Seccion(
                           titulo: 'Balones',
                           filas: [
@@ -166,7 +167,7 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
                                 color: d.balonesVaciosPendientes > 0 ? AppTheme.warning : null),
                           ],
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         _Seccion(
                           titulo: 'Gastos',
                           filas: [
@@ -176,7 +177,7 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
                           ],
                         ),
                         if (_motorizados.isNotEmpty) ...[
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           _Seccion(
                             titulo: 'Motorizados',
                             filas: [
@@ -209,12 +210,12 @@ class _Seccion extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(titulo, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             ...filas,
           ],
         ),

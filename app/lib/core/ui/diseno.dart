@@ -5,6 +5,7 @@
 /// todos los iconos son `IconData` de Material.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
@@ -19,7 +20,7 @@ class AppCard extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final Color? color;
 
-  const AppCard({
+  AppCard({
     super.key,
     required this.child,
     this.onTap,
@@ -50,7 +51,7 @@ class ActionButton extends StatelessWidget {
   final Color? color;
   final bool destacado;
 
-  const ActionButton({
+  ActionButton({
     super.key,
     required this.texto,
     required this.icono,
@@ -69,9 +70,9 @@ class ActionButton extends StatelessWidget {
       style: FilledButton.styleFrom(
         backgroundColor: destacado ? c : c.withValues(alpha: 0.08),
         foregroundColor: destacado ? Colors.white : c,
-        minimumSize: const Size.fromHeight(52),
+        minimumSize: Size.fromHeight(52),
         alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: 16),
       ),
     );
     return Semantics(
@@ -88,7 +89,7 @@ class SectionTitle extends StatelessWidget {
   final String texto;
   final Widget? trailing;
 
-  const SectionTitle(this.texto, {super.key, this.trailing});
+  SectionTitle(this.texto, {super.key, this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -97,10 +98,10 @@ class SectionTitle extends StatelessWidget {
         Expanded(
           child: Text(
             texto,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              color: Colors.black87,
+              color: AppColors.textoPrincipal,
             ),
           ),
         ),
@@ -112,11 +113,11 @@ class SectionTitle extends StatelessWidget {
 
 /// Indicador de carga pequeño y alineado.
 class LoadingState extends StatelessWidget {
-  const LoadingState({super.key});
+  LoadingState({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Padding(
+    return Padding(
       padding: EdgeInsets.symmetric(vertical: 28),
       child: Center(
         child: CircularProgressIndicator(color: AppTheme.primary),
@@ -130,7 +131,7 @@ class StatusBadge extends StatelessWidget {
   final String estado;
   final bool compacto;
 
-  const StatusBadge(this.estado, {super.key, this.compacto = false});
+  StatusBadge(this.estado, {super.key, this.compacto = false});
 
   @override
   Widget build(BuildContext context) => EstadoBadge(estado, compacto: compacto);
@@ -151,14 +152,14 @@ Color colorMovimiento(String tipo) => switch (tipo) {
       'PAGO' => AppTheme.success,
       'GASTO' => AppTheme.warning,
       'INCIDENCIA' => AppTheme.danger,
-      _ => Colors.black54,
+      _ => AppColors.textoSecundario,
     };
 
 /// Fila de movimiento: hora, icono, descripción, pedido, usuario y monto.
 class MovementTile extends StatelessWidget {
   final MovimientoActividad movimiento;
 
-  const MovementTile(this.movimiento, {super.key});
+  MovementTile(this.movimiento, {super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -171,7 +172,7 @@ class MovementTile extends StatelessWidget {
       ),
       title: Text(
         m.titulo,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
       ),
       subtitle: Text(
         [
@@ -182,15 +183,15 @@ class MovementTile extends StatelessWidget {
         ].join('  ·  '),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(fontSize: 12, color: Colors.black54),
+        style: TextStyle(fontSize: 12, color: AppColors.textoSecundario),
       ),
       trailing: m.monto > 0
           ? Text(
               dinero(m.monto),
-              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
             )
           : null,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
     );
   }
 }
@@ -204,7 +205,7 @@ class PaymentSummary extends StatelessWidget {
   final double gastosEfectivo;
   final double esperado;
 
-  const PaymentSummary({
+  PaymentSummary({
     super.key,
     required this.efectivo,
     required this.yape,
@@ -223,7 +224,7 @@ class PaymentSummary extends StatelessWidget {
           FilaValor('Fondo de vuelto', dinero(fondo)),
           FilaValor('Efectivo cobrado', dinero(efectivo)),
           FilaValor('Gastos en efectivo', dinero(gastosEfectivo)),
-          const Divider(height: 18),
+          Divider(height: 18),
           FilaValor('Efectivo esperado', dinero(esperado), destacado: true),
           FilaValor('Yape (no es efectivo)', dinero(yape)),
           FilaValor('Deuda (no es efectivo)', dinero(deuda)),

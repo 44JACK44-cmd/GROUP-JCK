@@ -4,6 +4,7 @@
 /// suaves y `Semantics`. Se adapta con `Wrap` a teléfonos pequeños y grandes.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class AccionDirecta {
@@ -13,7 +14,7 @@ class AccionDirecta {
   final VoidCallback onPressed;
   final String? badges;
 
-  const AccionDirecta({
+  AccionDirecta({
     required this.texto,
     required this.icono,
     required this.color,
@@ -25,7 +26,7 @@ class AccionDirecta {
 class AccionesDirectas extends StatelessWidget {
   final List<AccionDirecta> acciones;
 
-  const AccionesDirectas({super.key, required this.acciones});
+  AccionesDirectas({super.key, required this.acciones});
 
   @override
   Widget build(BuildContext context) {
@@ -47,10 +48,10 @@ class AccionesDirectas extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   onTap: a.onPressed,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                    padding: EdgeInsets.symmetric(vertical: 10, horizontal: 4),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFE6E8E5)),
+                      border: Border.all(color: AppColors.borde),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -63,7 +64,7 @@ class AccionesDirectas extends StatelessWidget {
                                 right: -10,
                                 top: -4,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(
+                                  padding: EdgeInsets.symmetric(
                                       horizontal: 4, vertical: 1),
                                   decoration: BoxDecoration(
                                     color: a.color,
@@ -71,7 +72,7 @@ class AccionesDirectas extends StatelessWidget {
                                   ),
                                   child: Text(
                                     a.badges!,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 9,
                                       fontWeight: FontWeight.bold,
@@ -81,15 +82,15 @@ class AccionesDirectas extends StatelessWidget {
                               ),
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        SizedBox(height: 6),
                         Text(
                           a.texto,
                           textAlign: TextAlign.center,
                           maxLines: 2,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11.5,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black87,
+                            color: AppColors.textoPrincipal,
                           ),
                         ),
                       ],

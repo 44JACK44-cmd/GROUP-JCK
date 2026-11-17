@@ -4,6 +4,7 @@
 /// las acciones: asignar, tomar, iniciar ruta, entregar, cancelar.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -29,7 +30,7 @@ import 'flujo_entrega.dart';
 class PedidoDetallePage extends ConsumerStatefulWidget {
   final Map<String, dynamic> pedido;
 
-  const PedidoDetallePage({super.key, required this.pedido});
+  PedidoDetallePage({super.key, required this.pedido});
 
   @override
   ConsumerState<PedidoDetallePage> createState() => _PedidoDetallePageState();
@@ -102,7 +103,7 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
   /// Si no se puede descargar, se comparte el enlace como respaldo.
   Future<void> _compartirComprobante(String url) async {
     try {
-      final respuesta = await http.get(Uri.parse(url)).timeout(const Duration(seconds: 20));
+      final respuesta = await http.get(Uri.parse(url)).timeout(Duration(seconds: 20));
       if (respuesta.statusCode != 200) throw Exception('No se pudo descargar');
       final dir = await getTemporaryDirectory();
       final archivo = File('${dir.path}/comprobante-yape-${DateTime.now().millisecondsSinceEpoch}.jpg');
@@ -122,7 +123,7 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
       context: context,
       builder: (ctx) => Dialog(
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -131,21 +132,21 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                 child: Image.network(
                   url,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Padding(
+                  errorBuilder: (_, __, ___) => Padding(
                     padding: EdgeInsets.all(30),
                     child: Text('No se pudo cargar el comprobante.'),
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               FilledButton.icon(
                 onPressed: () => _compartirComprobante(url),
-                icon: const Icon(Icons.share_outlined),
-                label: const Text('Compartir foto'),
+                icon: Icon(Icons.share_outlined),
+                label: Text('Compartir foto'),
               ),
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('Cerrar'),
+                child: Text('Cerrar'),
               ),
             ],
           ),
@@ -178,14 +179,14 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
         child: ListView(
           shrinkWrap: true,
           children: [
-            const Padding(
+            Padding(
               padding: EdgeInsets.all(16),
               child: Text('¿A quién se lo asignas?',
                   style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             ),
             for (final m in motorizados)
               ListTile(
-                leading: const Icon(Icons.delivery_dining_outlined),
+                leading: Icon(Icons.delivery_dining_outlined),
                 title: Text(m['nombre'] as String? ?? ''),
                 subtitle: Text(m['telefono'] as String? ?? ''),
                 onTap: () => Navigator.of(ctx).pop(m),
@@ -203,7 +204,7 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
         final continuar = await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('No suele trabajar hoy'),
+            title: Text('No suele trabajar hoy'),
             content: Text(
               '${elegido['nombre'] ?? 'Este motorizado'} normalmente no trabaja '
               'este día. ¿Quieres asignar el pedido excepcionalmente?',
@@ -211,11 +212,11 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Cancelar'),
+                child: Text('Cancelar'),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Asignar igual'),
+                child: Text('Asignar igual'),
               ),
             ],
           ),
@@ -301,7 +302,7 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
       if (!mounted) return;
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pedido marcado como no entregado.')),
+        SnackBar(content: Text('Pedido marcado como no entregado.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -418,10 +419,10 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
           decoration: InputDecoration(labelText: etiqueta),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Cancelar')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, ctrl.text.trim()),
-            child: const Text('Guardar'),
+            child: Text('Guardar'),
           ),
         ],
       ),
@@ -466,14 +467,14 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
       child: Scaffold(
         appBar: AppBar(title: Text('Pedido #${p['numero']}')),
         body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 28),
               children: [
                 // ---- Cliente ----
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -483,23 +484,23 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                               backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
                               child: Text(
                                 (cliente?['nombre'] as String? ?? '?')[0].toUpperCase(),
-                                style: const TextStyle(color: AppTheme.primary),
+                                style: TextStyle(color: AppTheme.primary),
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     cliente?['nombre'] as String? ?? 'Cliente',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontWeight: FontWeight.bold, fontSize: 17),
                                   ),
                                   if (_motorizadoNombre != null)
                                     Text(_motorizadoNombre ?? '',
-                                        style: const TextStyle(
-                                            color: Colors.black54, fontSize: 13)),
+                                        style: TextStyle(
+                                            color: AppColors.textoSecundario, fontSize: 13)),
                                 ],
                               ),
                             ),
@@ -507,32 +508,32 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                           ],
                         ),
                         if (direccion.isNotEmpty) ...[
-                          const SizedBox(height: 12),
+                          SizedBox(height: 12),
                           Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Icon(Icons.place_outlined, size: 18, color: AppTheme.info),
-                              const SizedBox(width: 6),
+                              Icon(Icons.place_outlined, size: 18, color: AppTheme.info),
+                              SizedBox(width: 6),
                               Expanded(
                                 child: Text(direccion,
-                                    style: const TextStyle(fontSize: 15, height: 1.3)),
+                                    style: TextStyle(fontSize: 15, height: 1.3)),
                               ),
                             ],
                           ),
                         ],
                         if (referencia.isNotEmpty)
                           Padding(
-                            padding: const EdgeInsets.only(left: 24, top: 2),
+                            padding: EdgeInsets.only(left: 24, top: 2),
                             child: Text('Referencia: $referencia',
-                                style: const TextStyle(color: Colors.black54, fontSize: 13)),
+                                style: TextStyle(color: AppColors.textoSecundario, fontSize: 13)),
                           ),
                         if (lat == null || lng == null)
-                          const Padding(
+                          Padding(
                             padding: EdgeInsets.only(left: 24, top: 4),
                             child: Text('Sin coordenadas: la ruta usará la dirección.',
-                                style: TextStyle(color: Colors.black45, fontSize: 12)),
+                                style: TextStyle(color: AppColors.textoMuted, fontSize: 12)),
                           ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12),
                         Row(
                           children: [
                             Expanded(
@@ -540,11 +541,11 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                                 onPressed: (cliente?['telefono'] as String? ?? '').isEmpty
                                     ? null
                                     : () => llamar(cliente?['telefono'] as String?),
-                                icon: const Icon(Icons.call_outlined),
-                                label: const Text('Llamar'),
+                                icon: Icon(Icons.call_outlined),
+                                label: Text('Llamar'),
                               ),
                             ),
-                            const SizedBox(width: 10),
+                            SizedBox(width: 10),
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: (lat == null || lng == null) && direccion.isEmpty
@@ -553,22 +554,22 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                                           latitud: lat ?? 0,
                                           longitud: lng ?? 0,
                                         ),
-                                icon: const Icon(Icons.map_outlined),
-                                label: const Text('Ver mapa'),
+                                icon: Icon(Icons.map_outlined),
+                                label: Text('Ver mapa'),
                               ),
                             ),
                           ],
                         ),
                         if (lat != null || direccion.isNotEmpty) ...[
-                          const SizedBox(height: 10),
+                          SizedBox(height: 10),
                           SizedBox(
                             width: double.infinity,
                             child: FilledButton.icon(
                               onPressed: _abrirRuta,
-                              icon: const Icon(Icons.directions_outlined),
-                              label: const Text('Ir al cliente'),
+                              icon: Icon(Icons.directions_outlined),
+                              label: Text('Ir al cliente'),
                               style: FilledButton.styleFrom(
-                                minimumSize: const Size.fromHeight(50),
+                                minimumSize: Size.fromHeight(50),
                                 backgroundColor: AppTheme.info,
                               ),
                             ),
@@ -578,44 +579,44 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: 12),
 
                 // ---- Qué entregar y cuánto cobrar ----
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         for (final d in _detalles)
                           Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 3),
+                            padding: EdgeInsets.symmetric(vertical: 3),
                             child: Row(
                               children: [
-                                const Icon(Icons.local_fire_department_outlined,
+                                Icon(Icons.local_fire_department_outlined,
                                     size: 18, color: AppTheme.primary),
-                                const SizedBox(width: 8),
+                                SizedBox(width: 8),
                                 Expanded(
                                   child: Text(
                                     '${d['cantidad']} × ${_nombreProducto(d)}',
-                                    style: const TextStyle(fontWeight: FontWeight.w500),
+                                    style: TextStyle(fontWeight: FontWeight.w500),
                                   ),
                                 ),
                                 Text(dinero((d['cantidad'] as num? ?? 0) *
                                         (d['precio_unitario'] as num? ?? 0)),
-                                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                                    style: TextStyle(fontWeight: FontWeight.w600)),
                               ],
                             ),
                           ),
                         if (_detalles.isEmpty)
-                          const Text('Sin productos registrados.',
-                              style: TextStyle(color: Colors.black54)),
-                        const Divider(height: 22),
+                          Text('Sin productos registrados.',
+                              style: TextStyle(color: AppColors.textoSecundario)),
+                        Divider(height: 22),
                         EstadoStepper(
                           estado: p['estado'] as String? ?? 'NUEVO',
                           pagado: _entrega?['estado_pago'] == 'PAGADO',
                         ),
-                        const Divider(height: 22),
+                        Divider(height: 22),
                         FilaValor(
                           'Cobrar',
                           dinero(_total),
@@ -638,15 +639,15 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                           for (final pago in _pagos)
                             if (pago['comprobante_url'] != null)
                               Padding(
-                                padding: const EdgeInsets.only(top: 6),
+                                padding: EdgeInsets.only(top: 6),
                                 child: OutlinedButton.icon(
                                   onPressed: () => _verComprobante(
                                     pago['comprobante_url'] as String,
                                   ),
-                                  icon: const Icon(Icons.receipt_long_outlined),
-                                  label: const Text('VER COMPROBANTE'),
+                                  icon: Icon(Icons.receipt_long_outlined),
+                                  label: Text('VER COMPROBANTE'),
                                   style: OutlinedButton.styleFrom(
-                                    minimumSize: const Size.fromHeight(42),
+                                    minimumSize: Size.fromHeight(42),
                                   ),
                                 ),
                               ),
@@ -662,16 +663,16 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                         ],
                         if ((p['observaciones'] as String? ?? '').isNotEmpty)
                           Padding(
-                            padding: const EdgeInsets.only(top: 8),
+                            padding: EdgeInsets.only(top: 8),
                             child: Text('Nota: ${p['observaciones']}',
-                                style: const TextStyle(
-                                    color: Colors.black54, fontStyle: FontStyle.italic)),
+                                style: TextStyle(
+                                    color: AppColors.textoSecundario, fontStyle: FontStyle.italic)),
                           ),
                       ],
                     ),
                   ),
                 ),
-                const SizedBox(height: 20),
+                SizedBox(height: 20),
 
                 // ---- Acciones ----
                 // Motorizado: tomar un pedido libre.
@@ -680,14 +681,14 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                     p['repartidor_id'] == null) ...[
                   FilledButton.icon(
                     onPressed: _tomarPedido,
-                    icon: const Icon(Icons.pan_tool_alt_outlined),
-                    label: const Text('Tomar el pedido'),
+                    icon: Icon(Icons.pan_tool_alt_outlined),
+                    label: Text('Tomar el pedido'),
                     style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50),
+                      minimumSize: Size.fromHeight(50),
                       backgroundColor: AppTheme.primary,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                 ],
                 // ADMIN: asignar o cambiar de motorizado, y liberar.
                 if (auth.esAdmin &&
@@ -695,87 +696,87 @@ class _PedidoDetallePageState extends ConsumerState<PedidoDetallePage> {
                     (estado == EstadoPedido.nuevo || estado == EstadoPedido.asignado)) ...[
                   OutlinedButton.icon(
                     onPressed: _asignarMotorizado,
-                    icon: const Icon(Icons.delivery_dining_outlined),
+                    icon: Icon(Icons.delivery_dining_outlined),
                     label: Text(estado == EstadoPedido.asignado
                         ? 'Cambiar de motorizado'
                         : 'Asignar motorizado'),
-                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                    style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(50)),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   if (estado == EstadoPedido.asignado)
                     OutlinedButton.icon(
                       onPressed: _liberar,
-                      icon: const Icon(Icons.person_off_outlined),
-                      label: const Text('Liberar pedido'),
-                      style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                      icon: Icon(Icons.person_off_outlined),
+                      label: Text('Liberar pedido'),
+                      style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(50)),
                     ),
-                  if (estado == EstadoPedido.asignado) const SizedBox(height: 10),
+                  if (estado == EstadoPedido.asignado) SizedBox(height: 10),
                 ],
                 if (puedeOperar && estado == EstadoPedido.asignado) ...[
                   OutlinedButton.icon(
                     onPressed: _iniciarRuta,
-                    icon: const Icon(Icons.route_outlined),
-                    label: const Text('Iniciar ruta'),
-                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                    icon: Icon(Icons.route_outlined),
+                    label: Text('Iniciar ruta'),
+                    style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(50)),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                 ],
                 if (puedeOperar &&
                     (estado == EstadoPedido.asignado || estado == EstadoPedido.enCamino)) ...[
                   FilledButton.icon(
                     onPressed: _trabajando ? null : _entregar,
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('Entregar pedido'),
+                    icon: Icon(Icons.check_circle_outline),
+                    label: Text('Entregar pedido'),
                     style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
+                      minimumSize: Size.fromHeight(52),
                       backgroundColor: AppTheme.success,
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   OutlinedButton.icon(
                     onPressed: _trabajando ? null : _noEntregado,
-                    icon: const Icon(Icons.report_gmailerrorred_outlined,
+                    icon: Icon(Icons.report_gmailerrorred_outlined,
                         color: AppTheme.warning),
-                    label: const Text('No se pudo entregar',
+                    label: Text('No se pudo entregar',
                         style: TextStyle(color: AppTheme.warning)),
                     style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50),
-                      side: const BorderSide(color: AppTheme.warning),
+                      minimumSize: Size.fromHeight(50),
+                      side: BorderSide(color: AppTheme.warning),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                 ],
                 if (auth.esAdmin && !estado.esFinalizado) ...[
                   OutlinedButton.icon(
                     onPressed: _cancelar,
-                    icon: const Icon(Icons.cancel_outlined, color: AppTheme.danger),
-                    label: const Text('Cancelar pedido',
+                    icon: Icon(Icons.cancel_outlined, color: AppTheme.danger),
+                    label: Text('Cancelar pedido',
                         style: TextStyle(color: AppTheme.danger)),
                     style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50),
-                      side: const BorderSide(color: AppTheme.danger),
+                      minimumSize: Size.fromHeight(50),
+                      side: BorderSide(color: AppTheme.danger),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                 ],
                 if (auth.esAdmin && estado.esFinalizado) ...[
                   OutlinedButton.icon(
                     onPressed: _reabrir,
-                    icon: const Icon(Icons.restart_alt),
-                    label: const Text('Reabrir pedido'),
-                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                    icon: Icon(Icons.restart_alt),
+                    label: Text('Reabrir pedido'),
+                    style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(50)),
                   ),
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                 ],
                 if (estado.esFinalizado)
                   Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: EdgeInsets.only(top: 8),
                     child: Text(
                       estado == EstadoPedido.entregado
                           ? 'Este pedido ya fue entregado.'
                           : 'Este pedido está ${estado.label.toLowerCase()}.',
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.black54),
+                      style: TextStyle(color: AppColors.textoSecundario),
                     ),
                   ),
               ],

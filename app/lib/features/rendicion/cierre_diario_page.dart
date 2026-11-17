@@ -1,6 +1,7 @@
 /// Cierre diario de jornada por el administrador.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -12,7 +13,7 @@ import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
 class CierreDiarioPage extends ConsumerStatefulWidget {
-  const CierreDiarioPage({super.key});
+  CierreDiarioPage({super.key});
 
   @override
   ConsumerState<CierreDiarioPage> createState() => _CierreDiarioPageState();
@@ -64,11 +65,11 @@ class _CierreDiarioPageState extends ConsumerState<CierreDiarioPage> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Cerrar jornada'),
-        content: const Text('¿Estás seguro de cerrar la jornada de hoy? Esta acción no se puede deshacer.'),
+        title: Text('Cerrar jornada'),
+        content: Text('¿Estás seguro de cerrar la jornada de hoy? Esta acción no se puede deshacer.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Cerrar')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Cancelar')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Cerrar')),
         ],
       ),
     );
@@ -86,7 +87,7 @@ class _CierreDiarioPageState extends ConsumerState<CierreDiarioPage> {
       await _cargar();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Jornada cerrada correctamente.')),
+        SnackBar(content: Text('Jornada cerrada correctamente.')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -108,35 +109,35 @@ class _CierreDiarioPageState extends ConsumerState<CierreDiarioPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cierre diario'),
+        title: Text('Cierre diario'),
         actions: [
-          IconButton(tooltip: 'Actualizar', onPressed: _cargar, icon: const Icon(Icons.refresh)),
+          IconButton(tooltip: 'Actualizar', onPressed: _cargar, icon: Icon(Icons.refresh)),
         ],
       ),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : RefreshIndicator(
               onRefresh: () => _cargar(silencioso: true),
               child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
+                physics: AlwaysScrollableScrollPhysics(),
+                padding: EdgeInsets.all(16),
                 children: [
                 if (cerrado) ...[
                   Card(
                     color: AppTheme.success.withValues(alpha: 0.1),
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.check_circle, color: AppTheme.success),
-                              const SizedBox(width: 8),
+                              Icon(Icons.check_circle, color: AppTheme.success),
+                              SizedBox(width: 8),
                               Text('Jornada cerrada', style: Theme.of(context).textTheme.titleMedium?.copyWith(color: AppTheme.success)),
                             ],
                           ),
-                          const SizedBox(height: 10),
+                          SizedBox(height: 10),
                           FilaValor('Total ventas', dinero((_cierre!['total_ventas'] as num? ?? 0).toDouble())),
                           FilaValor('Efectivo esperado', dinero((_cierre!['efectivo_esperado'] as num? ?? 0).toDouble())),
                           FilaValor('Efectivo recibido', dinero((_cierre!['efectivo_recibido'] as num? ?? 0).toDouble())),
@@ -147,8 +148,8 @@ class _CierreDiarioPageState extends ConsumerState<CierreDiarioPage> {
                           FilaValor('Rendiciones pendientes', '${_cierre!['rendiciones_pendientes']}'),
                           if (_cierre!['justificacion'] != null)
                             Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text('Obs: ${_cierre!['justificacion']}', style: const TextStyle(color: Colors.black54, fontSize: 12)),
+                              padding: EdgeInsets.only(top: 8),
+                              child: Text('Obs: ${_cierre!['justificacion']}', style: TextStyle(color: AppColors.textoSecundario, fontSize: 12)),
                             ),
                         ],
                       ),
@@ -157,33 +158,33 @@ class _CierreDiarioPageState extends ConsumerState<CierreDiarioPage> {
                 ] else ...[
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Cerrar jornada de hoy', style: Theme.of(context).textTheme.titleMedium),
-                          const SizedBox(height: 10),
-                          const Text(
+                          SizedBox(height: 10),
+                          Text(
                             'Se calcularán automáticamente los totales del día. '
                             'No se puede cerrar si hay rendiciones pendientes de revisión.',
-                            style: TextStyle(color: Colors.black54),
+                            style: TextStyle(color: AppColors.textoSecundario),
                           ),
-                          const SizedBox(height: 14),
+                          SizedBox(height: 14),
                           TextFormField(
                             controller: _justificacionCtrl,
                             maxLines: 2,
-                            decoration: const InputDecoration(
+                            decoration: InputDecoration(
                               labelText: 'Justificación (opcional)',
                               prefixIcon: Icon(Icons.notes_outlined),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          SizedBox(height: 16),
                           FilledButton.icon(
                             onPressed: _cerrando ? null : _cerrar,
-                            icon: const Icon(Icons.lock_outlined),
+                            icon: Icon(Icons.lock_outlined),
                             label: Text(_cerrando ? 'Cerrando…' : 'Cerrar jornada'),
                             style: FilledButton.styleFrom(
-                              minimumSize: const Size.fromHeight(52),
+                              minimumSize: Size.fromHeight(52),
                               backgroundColor: AppTheme.danger,
                             ),
                           ),

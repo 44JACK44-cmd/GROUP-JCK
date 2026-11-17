@@ -16,7 +16,7 @@ import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
 class MovimientosPage extends ConsumerStatefulWidget {
-  const MovimientosPage({super.key});
+  MovimientosPage({super.key});
 
   @override
   ConsumerState<MovimientosPage> createState() => _MovimientosPageState();
@@ -62,8 +62,8 @@ class _MovimientosPageState extends ConsumerState<MovimientosPage> {
     final uid = auth.usuarioId;
     if (uid == null) return;
     final miPeticion = ++_peticion;
-    final desde = inicioHoy().subtract(const Duration(days: 7));
-    final hasta = DateTime.now().add(const Duration(minutes: 1));
+    final desde = inicioHoy().subtract(Duration(days: 7));
+    final hasta = DateTime.now().add(Duration(minutes: 1));
     try {
       final data = auth.esAdmin
           ? await actividadRepo.movimientosDeTodos(desde: desde, hasta: hasta)
@@ -95,21 +95,21 @@ class _MovimientosPageState extends ConsumerState<MovimientosPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Movimientos')),
+      appBar: AppBar(title: Text('Movimientos')),
       body: RefreshIndicator(
         onRefresh: _cargar,
         child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+          physics: AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(16, 10, 16, 24),
           children: [
-            const EstadoConexion(),
+            EstadoConexion(),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
                   for (final e in _filtros.entries)
                     Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                      padding: EdgeInsets.only(right: 8),
                       child: ChoiceChip(
                         label: Text(e.value),
                         selected: (_filtro ?? 'TODOS') == e.key,
@@ -120,11 +120,11 @@ class _MovimientosPageState extends ConsumerState<MovimientosPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (_cargando)
-              const LoadingState()
+              LoadingState()
             else if (_visibles.isEmpty)
-             const EstadoVacio(
+             EstadoVacio(
                icono: Icons.timeline,
                titulo: 'Sin movimientos en estos días',
              )

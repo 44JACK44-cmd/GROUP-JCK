@@ -5,6 +5,7 @@
 /// transición con [EstadoPedido.puedeTransicionarA] y con RLS en el servidor.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
@@ -14,7 +15,7 @@ class EstadoStepper extends StatelessWidget {
   final String estado;
   final bool pagado;
 
-  const EstadoStepper({
+  EstadoStepper({
     super.key,
     required this.estado,
     this.pagado = false,
@@ -35,7 +36,7 @@ class EstadoStepper extends StatelessWidget {
 
     if (esFinal) {
       return Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: AppTheme.danger.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
@@ -43,7 +44,7 @@ class EstadoStepper extends StatelessWidget {
         child: Row(
           children: [
             Icon(estadoActual.icono, size: 20, color: estadoActual.color),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text(
               estadoActual.label,
               style: TextStyle(
@@ -71,16 +72,16 @@ class EstadoStepper extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: i <= indice || (pagado && i == total - 1)
                         ? AppTheme.primary
-                        : const Color(0xFFE3E6E2),
+                        : Color(0xFFE3E6E2),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
               ),
-              if (i < total - 1) const SizedBox(width: 4),
+              if (i < total - 1) SizedBox(width: 4),
             ],
           ],
         ),
-        const SizedBox(height: 10),
+        SizedBox(height: 10),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -95,9 +96,9 @@ class EstadoStepper extends StatelessWidget {
                       size: 18,
                       color: i <= indice || (pagado && i == total - 1)
                           ? AppTheme.primary
-                          : Colors.black38,
+                          : AppColors.textoMuted,
                     ),
-                    const SizedBox(height: 3),
+                    SizedBox(height: 3),
                     Text(
                       i == total - 1 && pagado
                           ? 'Pagado'
@@ -107,7 +108,7 @@ class EstadoStepper extends StatelessWidget {
                         fontSize: 10.5,
                         color: i <= indice || (pagado && i == total - 1)
                             ? AppTheme.primary
-                            : Colors.black54,
+                            : AppColors.textoSecundario,
                         fontWeight: i == indice ? FontWeight.w700 : FontWeight.w500,
                       ),
                     ),

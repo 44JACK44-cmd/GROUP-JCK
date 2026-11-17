@@ -6,6 +6,7 @@
 /// preferencias locales del dispositivo e información de versión.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -102,7 +103,7 @@ class _AjustesPageState extends State<AjustesPage> {
     if (!mounted) return;
     if (!ok) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('Este teléfono no tiene voz en español instalada '
               'o el asistente está desactivado.'),
         ),
@@ -165,7 +166,7 @@ class _AjustesPageState extends State<AjustesPage> {
       final quiere = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Nueva versión disponible'),
+          title: Text('Nueva versión disponible'),
           content: Text(
             'Tu versión: $_versionLocal\n'
             'Nueva versión: v${remota.versionName}\n'
@@ -176,11 +177,11 @@ class _AjustesPageState extends State<AjustesPage> {
             if (!remota.obligatoria)
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Luego'),
+                child: Text('Luego'),
               ),
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Actualizar'),
+              child: Text('Actualizar'),
             ),
           ],
         ),
@@ -199,16 +200,16 @@ class _AjustesPageState extends State<AjustesPage> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('Descargando actualización'),
+        title: Text('Descargando actualización'),
         content: ValueListenableBuilder<double>(
           valueListenable: progreso,
           builder: (ctx, p, _) => Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Por favor espera, no cierres la app.'),
-              const SizedBox(height: 16),
+              Text('Por favor espera, no cierres la app.'),
+              SizedBox(height: 16),
               LinearProgressIndicator(value: p > 0 ? p : null),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text('${(p * 100).toStringAsFixed(0)}%'),
             ],
           ),
@@ -299,7 +300,7 @@ class _AjustesPageState extends State<AjustesPage> {
           '$supabaseUrl/rest/v1/app_versiones?id=eq.1&select=version_code');
       final r = await http
           .get(uri, headers: {'apikey': supabaseAnonKey})
-          .timeout(const Duration(seconds: 8));
+          .timeout(Duration(seconds: 8));
       reloj.stop();
       if (!mounted) return;
       if (r.statusCode == 200) {
@@ -411,9 +412,9 @@ class _AjustesPageState extends State<AjustesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Configuración')),
+      appBar: AppBar(title: Text('Configuración')),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         children: [
           _seccion(
             context,
@@ -443,32 +444,32 @@ class _AjustesPageState extends State<AjustesPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _fila('Servidor', _host),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Row(
                   children: [
                     _chipEstado(),
-                    const Spacer(),
+                    Spacer(),
                     TextButton.icon(
                       onPressed: _estadoCon == EstadoPrueba.probando
                           ? null
                           : () => _probarConexion(),
-                      icon: const Icon(Icons.refresh, size: 18),
-                      label: const Text('Probar'),
+                      icon: Icon(Icons.refresh, size: 18),
+                      label: Text('Probar'),
                     ),
                   ],
                 ),
                 if (_errorCon != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 4),
+                    padding: EdgeInsets.only(top: 4),
                     child: Text(
                       _errorCon!,
-                      style: const TextStyle(color: AppTheme.danger, fontSize: 13),
+                      style: TextStyle(color: AppTheme.danger, fontSize: 13),
                     ),
                   ),
                 if (_latencia != null && _estadoCon == EstadoPrueba.ok)
                   Text(
                     'Última respuesta: $_latencia ms',
-                    style: const TextStyle(fontSize: 12, color: Colors.black45),
+                    style: TextStyle(fontSize: 12, color: AppColors.textoMuted),
                   ),
               ],
             ),
@@ -481,23 +482,23 @@ class _AjustesPageState extends State<AjustesPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _fila('Pendientes de enviar', _pendientes == null ? '…' : '$_pendientes'),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: _sincronizando ? null : _sincronizar,
                   icon: _sincronizando
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Icon(Icons.cloud_upload_outlined, size: 18),
+                      : Icon(Icons.cloud_upload_outlined, size: 18),
                   label: Text(_sincronizando ? 'Sincronizando…' : 'Sincronizar ahora'),
                 ),
-                const SizedBox(height: 6),
-                const Text(
+                SizedBox(height: 6),
+                Text(
                   'Los pedidos, entregas y cobros hechos sin internet se envían solos '
                   'al volver la conexión. Nada se borra si el envío falla.',
-                  style: TextStyle(fontSize: 12, color: Colors.black45),
+                  style: TextStyle(fontSize: 12, color: AppColors.textoMuted),
                 ),
               ],
             ),
@@ -510,13 +511,13 @@ class _AjustesPageState extends State<AjustesPage> {
               children: [
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Navegar dentro de la app',
+                  title: Text('Navegar dentro de la app',
                       style: TextStyle(fontWeight: FontWeight.w600)),
                   subtitle: Text(
                     _mapaInterno
                         ? 'Activado: la ruta se abre en la pantalla de la app.'
                         : 'Desactivado: el botón de ruta abre Google Maps.',
-                    style: const TextStyle(fontSize: 13),
+                    style: TextStyle(fontSize: 13),
                   ),
                   value: _mapaInterno,
                   onChanged: (v) async {
@@ -524,8 +525,8 @@ class _AjustesPageState extends State<AjustesPage> {
                     if (mounted) setState(() => _mapaInterno = v);
                   },
                 ),
-                const Divider(height: 1),
-                const SizedBox(height: 8),
+                Divider(height: 1),
+                SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: () {
                     Navigator.of(context).push(
@@ -536,10 +537,10 @@ class _AjustesPageState extends State<AjustesPage> {
                       ),
                     );
                   },
-                  icon: const Icon(Icons.map_outlined, size: 18),
-                  label: const Text('Probar el mapa'),
+                  icon: Icon(Icons.map_outlined, size: 18),
+                  label: Text('Probar el mapa'),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Text(
                   hayClaveGoogleMaps
                       ? 'Google Maps activo: la ruta real y las indicaciones '
@@ -549,7 +550,7 @@ class _AjustesPageState extends State<AjustesPage> {
                           'OpenStreetMap y, si se pide la ruta, un aviso claro con '
                           'acceso a Google Maps. Para activarlo se compila con la '
                           'clave de Google Maps (no se guarda en el código).',
-                  style: const TextStyle(fontSize: 12.5, color: Colors.black54),
+                  style: TextStyle(fontSize: 12.5, color: AppColors.textoSecundario),
                 ),
               ],
             ),
@@ -562,7 +563,7 @@ class _AjustesPageState extends State<AjustesPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _fila('Estado', _permisoUbicacion),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
@@ -570,7 +571,7 @@ class _AjustesPageState extends State<AjustesPage> {
                         onPressed: _puedePedirUbicacion
                             ? _solicitarUbicacion
                             : null,
-                        icon: const Icon(Icons.location_searching, size: 18),
+                        icon: Icon(Icons.location_searching, size: 18),
                         label: Text(_permisoUbicacion == 'Concedido'
                             ? 'Permiso concedido'
                             : 'Solicitar permiso'),
@@ -578,10 +579,10 @@ class _AjustesPageState extends State<AjustesPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                const Text(
+                SizedBox(height: 6),
+                Text(
                   'Se usa para marcar la ubicación del cliente y calcular la ruta.',
-                  style: TextStyle(fontSize: 12, color: Colors.black45),
+                  style: TextStyle(fontSize: 12, color: AppColors.textoMuted),
                 ),
               ],
             ),
@@ -608,9 +609,9 @@ class _AjustesPageState extends State<AjustesPage> {
               children: [
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Asistente de voz',
+                  title: Text('Asistente de voz',
                       style: TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: const Text(
+                  subtitle: Text(
                     'Indicaciones habladas durante la ruta. El volumen '
                     'se controla con los botones del teléfono.',
                     style: TextStyle(fontSize: 13),
@@ -621,18 +622,18 @@ class _AjustesPageState extends State<AjustesPage> {
                     if (mounted) setState(() => _voz = v);
                   },
                 ),
-                const Divider(height: 1),
-                const SizedBox(height: 8),
-                const Text(
+                Divider(height: 1),
+                SizedBox(height: 8),
+                Text(
                   'Las instrucciones que se dicen son exactamente las de la ruta '
                   'real (texto y distancia). Si no hay ruta, no se habla nada.',
-                  style: TextStyle(fontSize: 12.5, color: Colors.black54),
+                  style: TextStyle(fontSize: 12.5, color: AppColors.textoSecundario),
                 ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 OutlinedButton.icon(
                   onPressed: _probarVoz,
-                  icon: const Icon(Icons.play_circle_outline, size: 18),
-                  label: const Text('Probar la voz'),
+                  icon: Icon(Icons.play_circle_outline, size: 18),
+                  label: Text('Probar la voz'),
                 ),
               ],
             ),
@@ -647,33 +648,33 @@ class _AjustesPageState extends State<AjustesPage> {
                 _fila('Versión publicada', _versionServidor ?? 'No disponible'),
                 if (_hayActualizacion == true)
                   Padding(
-                    padding: const EdgeInsets.only(top: 6),
+                    padding: EdgeInsets.only(top: 6),
                     child: Row(
                       children: [
-                        const Icon(Icons.system_update, color: AppTheme.warning, size: 18),
-                        const SizedBox(width: 6),
+                        Icon(Icons.system_update, color: AppTheme.warning, size: 18),
+                        SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             'Hay una versión nueva ($_versionServidor). '
                             'Inicia sesión y busca "Buscar actualización".',
-                            style: const TextStyle(fontSize: 13),
+                            style: TextStyle(fontSize: 13),
                           ),
                         ),
                       ],
                     ),
                   ),
-                const SizedBox(height: 10),
+                SizedBox(height: 10),
                 FilledButton.icon(
                   onPressed: _actualizando ? null : _buscarActualizacion,
                   icon: _actualizando
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 16,
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
-                      : const Icon(Icons.system_update_alt),
+                      : Icon(Icons.system_update_alt),
                   label: Text(_actualizando ? 'Buscando…' : 'Buscar actualización'),
-                  style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                  style: FilledButton.styleFrom(minimumSize: Size.fromHeight(46)),
                 ),
               ],
             ),
@@ -689,42 +690,42 @@ class _AjustesPageState extends State<AjustesPage> {
                   onPressed: _diagnosticando ? null : _ejecutarDiagnostico,
                   style: FilledButton.styleFrom(
                     backgroundColor: AppTheme.primary,
-                    minimumSize: const Size.fromHeight(46),
+                    minimumSize: Size.fromHeight(46),
                   ),
                   icon: _diagnosticando
-                      ? const SizedBox(
+                      ? SizedBox(
                           height: 16,
                           width: 16,
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white),
                         )
-                      : const Icon(Icons.play_arrow),
+                      : Icon(Icons.play_arrow),
                   label: Text(_diagnosticando
                       ? 'Comprobando…'
                       : 'Ejecutar diagnóstico completo'),
                 ),
                 if (_diagnostico.isNotEmpty) ...[
-                  const SizedBox(height: 10),
+                  SizedBox(height: 10),
                   for (final linea in _diagnostico)
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
+                      padding: EdgeInsets.only(bottom: 4),
                       child: Text(linea,
-                          style: const TextStyle(fontSize: 13)),
+                          style: TextStyle(fontSize: 13)),
                     ),
                 ],
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          const Center(
+          SizedBox(height: 8),
+          Center(
             child: Text(
               'GasApp no guarda claves secretas en el teléfono.\n'
               'Los ajustes de administración se encuentran dentro de la app.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 11.5, color: Colors.black38),
+              style: TextStyle(fontSize: 11.5, color: AppColors.textoMuted),
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: 24),
         ],
       ),
     );
@@ -733,7 +734,7 @@ class _AjustesPageState extends State<AjustesPage> {
   Widget _chipEstado() {
     switch (_estadoCon) {
       case EstadoPrueba.probando:
-        return const Row(
+        return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
@@ -749,13 +750,13 @@ class _AjustesPageState extends State<AjustesPage> {
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, color: AppTheme.success, size: 16),
-            const SizedBox(width: 6),
-            Text('Conectado', style: const TextStyle(fontSize: 13)),
+            Icon(Icons.check_circle, color: AppTheme.success, size: 16),
+            SizedBox(width: 6),
+            Text('Conectado', style: TextStyle(fontSize: 13)),
           ],
         );
       case EstadoPrueba.fallido:
-        return const Row(
+        return Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(Icons.error_outline, color: AppTheme.danger, size: 16),
@@ -764,7 +765,7 @@ class _AjustesPageState extends State<AjustesPage> {
           ],
         );
       case EstadoPrueba.pendiente:
-        return const Text('Sin comprobar', style: TextStyle(fontSize: 13));
+        return Text('Sin comprobar', style: TextStyle(fontSize: 13));
     }
   }
 
@@ -775,11 +776,11 @@ class _AjustesPageState extends State<AjustesPage> {
         SizedBox(
           width: 130,
           child: Text(etiqueta,
-              style: const TextStyle(fontSize: 13, color: Colors.black54)),
+              style: TextStyle(fontSize: 13, color: AppColors.textoSecundario)),
         ),
         Expanded(
           child: Text(valor,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
         ),
       ],
     );
@@ -788,24 +789,24 @@ class _AjustesPageState extends State<AjustesPage> {
   Widget _seccion(BuildContext context,
       {required String titulo, required IconData icono, required Widget hijo}) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: EdgeInsets.only(bottom: 12),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Icon(icono, color: AppTheme.primary, size: 20),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   titulo,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 15, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             hijo,
           ],
         ),

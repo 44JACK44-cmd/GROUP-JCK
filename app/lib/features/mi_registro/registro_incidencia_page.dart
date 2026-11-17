@@ -19,7 +19,7 @@ import '../../core/storage/comprobante_service.dart';
 import '../auth/auth_controller.dart';
 
 class RegistroIncidenciaPage extends ConsumerStatefulWidget {
-  const RegistroIncidenciaPage({super.key});
+  RegistroIncidenciaPage({super.key});
 
   @override
   ConsumerState<RegistroIncidenciaPage> createState() =>
@@ -60,7 +60,7 @@ class _RegistroIncidenciaPageState extends ConsumerState<RegistroIncidenciaPage>
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo abrir la cámara.')),
+          SnackBar(content: Text('No se pudo abrir la cámara.')),
         );
       }
     }
@@ -70,7 +70,7 @@ class _RegistroIncidenciaPageState extends ConsumerState<RegistroIncidenciaPage>
     final descripcion = _descripcionCtrl.text.trim();
     if (descripcion.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Escribe una descripción.')),
+        SnackBar(content: Text('Escribe una descripción.')),
       );
       return;
     }
@@ -84,7 +84,7 @@ class _RegistroIncidenciaPageState extends ConsumerState<RegistroIncidenciaPage>
       'tipo': _tipo,
       'descripcion': descripcion,
       'monto': monto,
-      'uuid_offline': const Uuid().v4(),
+      'uuid_offline': Uuid().v4(),
       if (_fotoPath != null) 'comprobante_local_path': _fotoPath,
     };
 
@@ -112,7 +112,7 @@ class _RegistroIncidenciaPageState extends ConsumerState<RegistroIncidenciaPage>
         if (!mounted) return;
         Navigator.of(context).pop(true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Incidencia registrada.')),
+          SnackBar(content: Text('Incidencia registrada.')),
         );
         return;
       } catch (e) {
@@ -136,7 +136,7 @@ class _RegistroIncidenciaPageState extends ConsumerState<RegistroIncidenciaPage>
     if (!mounted) return;
     Navigator.of(context).pop(true);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Text('Guardado en el dispositivo. Se sincronizará automáticamente.'),
       ),
     );
@@ -145,12 +145,12 @@ class _RegistroIncidenciaPageState extends ConsumerState<RegistroIncidenciaPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Registrar falla')),
+      appBar: AppBar(title: Text('Registrar falla')),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(20),
         children: [
           Text('Tipo de falla', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -165,46 +165,46 @@ class _RegistroIncidenciaPageState extends ConsumerState<RegistroIncidenciaPage>
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextFormField(
             controller: _descripcionCtrl,
             maxLines: 3,
             textCapitalization: TextCapitalization.sentences,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'Descripción *',
               prefixIcon: Icon(Icons.description_outlined),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextFormField(
             controller: _montoCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            decoration: const InputDecoration(
+            keyboardType: TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
               labelText: 'Monto (opcional)',
               prefixText: 'S/ ',
               prefixIcon: Icon(Icons.attach_money),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text('Foto (opcional)', style: Theme.of(context).textTheme.titleSmall),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           Row(
             children: [
               OutlinedButton.icon(
                 onPressed: () => _tomarFoto(ImageSource.camera),
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: const Text('Tomar foto'),
+                icon: Icon(Icons.photo_camera_outlined),
+                label: Text('Tomar foto'),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               OutlinedButton.icon(
                 onPressed: () => _tomarFoto(ImageSource.gallery),
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Galería'),
+                icon: Icon(Icons.photo_library_outlined),
+                label: Text('Galería'),
               ),
             ],
           ),
           if (_fotoPath != null) ...[
-            const SizedBox(height: 10),
+            SizedBox(height: 10),
             ClipRRect(
               borderRadius: BorderRadius.circular(12),
               child: Image.file(
@@ -215,12 +215,12 @@ class _RegistroIncidenciaPageState extends ConsumerState<RegistroIncidenciaPage>
               ),
             ),
           ],
-          const SizedBox(height: 20),
+          SizedBox(height: 20),
           FilledButton.icon(
             onPressed: _guardando ? null : _guardar,
-            icon: const Icon(Icons.check_circle_outline),
+            icon: Icon(Icons.check_circle_outline),
             label: Text(_guardando ? 'Guardando…' : 'Guardar falla'),
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+            style: FilledButton.styleFrom(minimumSize: Size.fromHeight(52)),
           ),
         ],
       ),

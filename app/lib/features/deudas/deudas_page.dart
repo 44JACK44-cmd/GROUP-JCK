@@ -3,6 +3,7 @@
 /// Lista de quien debe, cuánto debe y la acción de registrar un pago.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,7 +17,7 @@ import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
 class DeudasPage extends ConsumerStatefulWidget {
-  const DeudasPage({super.key});
+  DeudasPage({super.key});
 
   @override
   ConsumerState<DeudasPage> createState() => _DeudasPageState();
@@ -110,11 +111,11 @@ class _DeudasPageState extends ConsumerState<DeudasPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Deudas')),
+      appBar: AppBar(title: Text('Deudas')),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _deudores.isEmpty
-              ? const EstadoVacio(
+              ? EstadoVacio(
                   icono: Icons.verified_outlined,
                   titulo: 'Nadie debe dinero',
                   mensaje: 'Las deudas aparecen aquí cuando alguien se queda debiendo.',
@@ -122,30 +123,30 @@ class _DeudasPageState extends ConsumerState<DeudasPage> {
               : RefreshIndicator(
                   onRefresh: _cargar,
                   child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                    padding: EdgeInsets.fromLTRB(16, 12, 16, 24),
                     children: [
                       Card(
                         child: Padding(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.all(16),
                           child: Row(
                             children: [
-                              const Icon(Icons.account_balance_wallet_outlined,
+                              Icon(Icons.account_balance_wallet_outlined,
                                   size: 36, color: AppTheme.danger),
-                              const SizedBox(width: 14),
+                              SizedBox(width: 14),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('Total por cobrar',
-                                        style: TextStyle(color: Colors.black54)),
+                                    Text('Total por cobrar',
+                                        style: TextStyle(color: AppColors.textoSecundario)),
                                     Text(dinero(_total),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
                                           color: AppTheme.danger,
                                         )),
                                     Text('${_deudores.length} cliente(s)',
-                                        style: const TextStyle(color: Colors.black54)),
+                                        style: TextStyle(color: AppColors.textoSecundario)),
                                   ],
                                 ),
                               ),
@@ -153,13 +154,13 @@ class _DeudasPageState extends ConsumerState<DeudasPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      SizedBox(height: 14),
                       for (final d in _deudores)
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
+                          padding: EdgeInsets.only(bottom: 10),
                           child: Card(
                             child: Padding(
-                              padding: const EdgeInsets.all(14),
+                              padding: EdgeInsets.all(14),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -168,13 +169,13 @@ class _DeudasPageState extends ConsumerState<DeudasPage> {
                                       Expanded(
                                         child: Text(
                                           d['nombre'] as String? ?? 'Cliente',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                               fontWeight: FontWeight.bold, fontSize: 16),
                                         ),
                                       ),
                                       Text(
                                         'Debe ${dinero((d['deuda'] as num? ?? 0).toDouble())}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: AppTheme.danger,
                                         ),
@@ -183,16 +184,16 @@ class _DeudasPageState extends ConsumerState<DeudasPage> {
                                   ),
                                   if ((d['telefono'] as String? ?? '').isNotEmpty)
                                     Text(d['telefono'] as String,
-                                        style: const TextStyle(color: Colors.black54)),
-                                  const SizedBox(height: 10),
+                                        style: TextStyle(color: AppColors.textoSecundario)),
+                                  SizedBox(height: 10),
                                   SizedBox(
                                     width: double.infinity,
                                     child: OutlinedButton.icon(
                                       onPressed: () => _registrarPago(d),
-                                      icon: const Icon(Icons.payments_outlined),
-                                      label: const Text('Registrar pago'),
+                                      icon: Icon(Icons.payments_outlined),
+                                      label: Text('Registrar pago'),
                                       style: OutlinedButton.styleFrom(
-                                        minimumSize: const Size.fromHeight(44),
+                                        minimumSize: Size.fromHeight(44),
                                       ),
                                     ),
                                   ),
@@ -243,7 +244,7 @@ class _PagoDeudaSheetState extends State<_PagoDeudaSheet> {
     final monto = double.tryParse(_montoCtrl.text) ?? 0;
     if (monto <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El monto debe ser mayor a cero.')),
+        SnackBar(content: Text('El monto debe ser mayor a cero.')),
       );
       return;
     }
@@ -251,18 +252,18 @@ class _PagoDeudaSheetState extends State<_PagoDeudaSheet> {
       final continuar = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Sin comprobante'),
-          content: const Text(
+          title: Text('Sin comprobante'),
+          content: Text(
             'El pago fue por Yape pero no tomaste foto. ¿Registrar igual?',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Volver a la foto'),
+              child: Text('Volver a la foto'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Continuar sin foto'),
+              child: Text('Continuar sin foto'),
             ),
           ],
         ),
@@ -293,15 +294,15 @@ class _PagoDeudaSheetState extends State<_PagoDeudaSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('Cobrar a ${widget.cliente['nombre']}',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            SizedBox(height: 16),
             TextField(
               controller: _montoCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(prefixText: 'S/ ', labelText: 'Monto'),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              decoration: InputDecoration(prefixText: 'S/ ', labelText: 'Monto'),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -312,7 +313,7 @@ class _PagoDeudaSheetState extends State<_PagoDeudaSheet> {
                     selected: _metodo == e.key,
                     selectedColor: AppTheme.primary.withValues(alpha: 0.15),
                     labelStyle: TextStyle(
-                      color: _metodo == e.key ? AppTheme.primary : Colors.black87,
+                      color: _metodo == e.key ? AppTheme.primary : AppColors.textoPrincipal,
                       fontWeight: _metodo == e.key ? FontWeight.w600 : FontWeight.normal,
                     ),
                     onSelected: (_) => setState(() => _metodo = e.key),
@@ -320,19 +321,19 @@ class _PagoDeudaSheetState extends State<_PagoDeudaSheet> {
               ],
             ),
             if (_metodo == 'YAPE') ...[
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               ComprobantePicker(
                 fotoPath: _fotoPath,
                 onChanged: (v) => setState(() => _fotoPath = v),
               ),
             ],
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             FilledButton(
               onPressed: _confirmar,
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-              child: const Text('Registrar pago'),
+              style: FilledButton.styleFrom(minimumSize: Size.fromHeight(52)),
+              child: Text('Registrar pago'),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
         ),
       ),

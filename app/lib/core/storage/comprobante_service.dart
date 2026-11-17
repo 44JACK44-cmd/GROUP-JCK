@@ -35,7 +35,7 @@ class ComprobanteService {
       final file = File(localPath);
       if (!await file.exists()) return null;
       final ext = localPath.split('.').last.toLowerCase();
-      final name = '${const Uuid().v4()}.$ext';
+      final name = '${Uuid().v4()}.$ext';
       final path = 'yape/$name';
       final bytes = await file.readAsBytes();
       await Supabase.instance.client.storage

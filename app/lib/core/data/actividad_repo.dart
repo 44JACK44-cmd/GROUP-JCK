@@ -22,7 +22,7 @@ class MovimientoActividad {
   final String? pedidoId;
   final String? comprobanteUrl;
 
-  const MovimientoActividad({
+  MovimientoActividad({
     required this.fecha,
     required this.tipo,
     required this.titulo,
@@ -43,7 +43,7 @@ class ResumenVivo {
   final DateTime? ultimaActividad;
   final String ultimoMovimiento;
 
-  const ResumenVivo({
+  ResumenVivo({
     this.pedidos = 0,
     this.entregados = 0,
     this.ventas = 0,
@@ -164,7 +164,7 @@ class ActividadRepo {
   /// actividad se calcula con la fecha real del último pedido o gasto.
   Future<Map<String, ResumenVivo>> resumenVivoHoy() async {
     final inicio = inicioHoy();
-    final fin = DateTime.now().add(const Duration(minutes: 1));
+    final fin = DateTime.now().add(Duration(minutes: 1));
     try {
       final res = await Future.wait([
         sb

@@ -17,7 +17,7 @@ enum EstadoUbicacion {
   sinActualizar('Sin actualizar'),
   sinUbicacion('Sin ubicación');
 
-  const EstadoUbicacion(this.label);
+  EstadoUbicacion(this.label);
 
   final String label;
 
@@ -25,7 +25,7 @@ enum EstadoUbicacion {
     if (actualizadoEn == null) return EstadoUbicacion.sinUbicacion;
     final diff = DateTime.now().difference(actualizadoEn);
     if (diff <= frescuraUbicacion) return EstadoUbicacion.activo;
-    if (diff <= const Duration(minutes: 10)) return EstadoUbicacion.reciente;
+    if (diff <= Duration(minutes: 10)) return EstadoUbicacion.reciente;
     return EstadoUbicacion.sinActualizar;
   }
 }

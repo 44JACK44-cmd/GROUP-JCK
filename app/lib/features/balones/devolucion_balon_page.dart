@@ -5,6 +5,7 @@
 /// No se crea ningún pago ni venta ficticia.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
@@ -19,7 +20,7 @@ import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
 class DevolucionBalonPage extends ConsumerStatefulWidget {
-  const DevolucionBalonPage({super.key});
+  DevolucionBalonPage({super.key});
 
   @override
   ConsumerState<DevolucionBalonPage> createState() =>
@@ -85,14 +86,14 @@ class _DevolucionBalonPageState extends ConsumerState<DevolucionBalonPage> {
       'tipo': 'DEVOLUCION_VACIO',
       'cantidad': cantidad,
       'usuario_id': auth.usuarioId,
-      'uuid_offline': const Uuid().v4(),
+      'uuid_offline': Uuid().v4(),
     };
     try {
       await sb.from('movimiento_bal_on').insert(movimiento);
       SyncBus.dineroCambio();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Devolución registrada.')),
+          SnackBar(content: Text('Devolución registrada.')),
         );
       }
     } catch (e) {
@@ -101,7 +102,7 @@ class _DevolucionBalonPageState extends ConsumerState<DevolucionBalonPage> {
         SyncBus.dineroCambio();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
+            SnackBar(
               content: Text('Guardado en el dispositivo. Se sincronizará solo.'),
             ),
           );
@@ -124,26 +125,26 @@ class _DevolucionBalonPageState extends ConsumerState<DevolucionBalonPage> {
   Widget build(BuildContext context) {
     final deudores = _pendientes.entries.where((e) => e.value > 0).toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Devolución de balones')),
+      appBar: AppBar(title: Text('Devolución de balones')),
       body: RefreshIndicator(
         onRefresh: _cargar,
         child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+          physics: AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(16, 10, 16, 24),
           children: [
-            const EstadoConexion(),
-            const Text(
+            EstadoConexion(),
+            Text(
               'Balones vacíos que los clientes todavía deben devolver.',
-              style: TextStyle(color: Colors.black54, fontSize: 13),
+              style: TextStyle(color: AppColors.textoSecundario, fontSize: 13),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (_cargando)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: 30),
                 child: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
               )
             else if (deudores.isEmpty)
-              const EstadoVacio(
+              EstadoVacio(
                 icono: Icons.local_fire_department_outlined,
                 titulo: 'Todos los balones están devueltos',
               )
@@ -151,24 +152,24 @@ class _DevolucionBalonPageState extends ConsumerState<DevolucionBalonPage> {
               for (final e in deudores)
                 Card(
                   child: Padding(
-                    padding: const EdgeInsets.all(14),
+                    padding: EdgeInsets.all(14),
                     child: Row(
                       children: [
                         CircleAvatar(
                           backgroundColor: AppTheme.warning.withValues(alpha: 0.12),
-                          child: const Icon(Icons.local_fire_department_outlined,
+                          child: Icon(Icons.local_fire_department_outlined,
                               color: AppTheme.warning, size: 20),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(_nombres[e.key] ?? 'Cliente',
-                                  style: const TextStyle(fontWeight: FontWeight.w700)),
+                                  style: TextStyle(fontWeight: FontWeight.w700)),
                               Text('Debe ${e.value} balón(es) vacío(s)',
-                                  style: const TextStyle(
-                                      fontSize: 12, color: Colors.black54)),
+                                  style: TextStyle(
+                                      fontSize: 12, color: AppColors.textoSecundario)),
                             ],
                           ),
                         ),
@@ -178,15 +179,15 @@ class _DevolucionBalonPageState extends ConsumerState<DevolucionBalonPage> {
                               : () => _devolver(e.key, 1),
                           style: FilledButton.styleFrom(
                             backgroundColor: AppTheme.success,
-                            minimumSize: const Size(88, 44),
+                            minimumSize: Size(88, 44),
                           ),
                           child: _registrando.contains(e.key)
-                              ? const SizedBox(
+                              ? SizedBox(
                                   width: 16,
                                   height: 16,
                                   child: CircularProgressIndicator(strokeWidth: 2),
                                 )
-                              : const Text('Devuelve 1'),
+                              : Text('Devuelve 1'),
                         ),
                       ],
                     ),

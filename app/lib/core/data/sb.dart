@@ -12,7 +12,7 @@ class ErrorApp {
   final String mensaje;
   final bool esRed;
 
-  const ErrorApp(this.mensaje, {this.esRed = false});
+  ErrorApp(this.mensaje, {this.esRed = false});
 }
 
 /// Convierte cualquier excepción en un mensaje que el usuario entienda.

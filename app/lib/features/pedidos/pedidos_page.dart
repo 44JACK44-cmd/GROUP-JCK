@@ -5,6 +5,7 @@
 /// esperando se atiende primero.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -24,7 +25,7 @@ import 'nuevo_pedido_page.dart';
 import 'pedido_detalle_page.dart';
 
 class PedidosPage extends ConsumerStatefulWidget {
-  const PedidosPage({super.key});
+  PedidosPage({super.key});
 
   @override
   ConsumerState<PedidosPage> createState() => _PedidosPageState();
@@ -61,7 +62,7 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
       final data = await pedidosRepo.listar(
         estados: esHoy ? const [] : _grupo.estados,
         desde: esHoy ? inicioHoy() : null,
-        hasta: esHoy ? DateTime.now().add(const Duration(minutes: 1)) : null,
+        hasta: esHoy ? DateTime.now().add(Duration(minutes: 1)) : null,
         masAntigosPrimero: _grupo == GrupoPedido.pendientes,
         limite: 200,
       );
@@ -91,13 +92,13 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
 
   Future<void> _nuevoPedido() async {
     final creado = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const NuevoPedidoPage()),
+      MaterialPageRoute(builder: (_) => NuevoPedidoPage()),
     );
     if (creado == true) {
       _cargar();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Pedido registrado.')),
+          SnackBar(content: Text('Pedido registrado.')),
         );
       }
     }
@@ -116,23 +117,23 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
       appBar: AppBar(
         title: Text(_grupo == GrupoPedido.hoy ? 'Pedidos de hoy' : 'Pedidos'),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(56),
+          preferredSize: Size.fromHeight(56),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+            padding: EdgeInsets.fromLTRB(12, 0, 12, 10),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
                   for (final g in GrupoPedido.values)
                     Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                      padding: EdgeInsets.only(right: 8),
                       child: ChoiceChip(
                         label: Text(g.label),
                         avatar: Icon(g.icono, size: 16),
                         selected: _grupo == g,
                         selectedColor: AppTheme.primary.withValues(alpha: 0.15),
                         labelStyle: TextStyle(
-                          color: _grupo == g ? AppTheme.primary : Colors.black87,
+                          color: _grupo == g ? AppTheme.primary : AppColors.textoPrincipal,
                           fontWeight: _grupo == g ? FontWeight.w600 : FontWeight.normal,
                         ),
                         onSelected: (_) {
@@ -153,11 +154,11 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _nuevoPedido,
         backgroundColor: AppTheme.primary,
-        icon: const Icon(Icons.add),
-        label: const Text('Nuevo pedido'),
+        icon: Icon(Icons.add),
+        label: Text('Nuevo pedido'),
       ),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _pedidos.isEmpty
               ? EstadoVacio(
                   icono: Icons.receipt_long_outlined,
@@ -169,9 +170,9 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
               : RefreshIndicator(
                   onRefresh: _cargar,
                   child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
+                    padding: EdgeInsets.fromLTRB(16, 8, 16, 96),
                     itemCount: _pedidos.length,
-                    separatorBuilder: (_, i) => const SizedBox(height: 10),
+                    separatorBuilder: (_, i) => SizedBox(height: 10),
                     itemBuilder: (context, i) {
                       final p = _pedidos[i];
                       return TarjetaPedido(
@@ -183,8 +184,8 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
                         trailer: _grupo == GrupoPedido.hoy
                             ? Text(
                                 horaCorta(parseFecha(p['fecha'])),
-                                style: const TextStyle(
-                                  color: Colors.black54,
+                                style: TextStyle(
+                                  color: AppColors.textoSecundario,
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -192,8 +193,8 @@ class _PedidosPageState extends ConsumerState<PedidosPage> {
                             : _grupo == GrupoPedido.pendientes
                                 ? Text(
                                     antiguedad(parseFecha(p['fecha'])),
-                                    style: const TextStyle(
-                                      color: Colors.black54,
+                                    style: TextStyle(
+                                      color: AppColors.textoSecundario,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                     ),

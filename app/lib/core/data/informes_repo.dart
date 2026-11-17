@@ -29,7 +29,7 @@ class InformesResumen {
   final double combustible;
   final double gastos;
 
-  const InformesResumen({
+  InformesResumen({
     this.totalPedidos = 0,
     this.pendientes = 0,
     this.entregados = 0,
@@ -59,7 +59,7 @@ class RendimientoMotorizado {
   final double cobrado;
   final double pendiente;
 
-  const RendimientoMotorizado({
+  RendimientoMotorizado({
     required this.id,
     required this.nombre,
     this.pedidos = 0,

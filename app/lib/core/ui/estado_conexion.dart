@@ -11,7 +11,7 @@ import '../../app/theme.dart';
 import '../state/bus.dart';
 
 class EstadoConexion extends StatelessWidget {
-  const EstadoConexion({super.key});
+  EstadoConexion({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,14 +21,14 @@ class EstadoConexion extends StatelessWidget {
         return ValueListenableBuilder<bool>(
           valueListenable: SyncBus.sincronizando,
           builder: (context, sincronizando, _) {
-            if (enLinea && !sincronizando) return const SizedBox.shrink();
+            if (enLinea && !sincronizando) return SizedBox.shrink();
             final color = enLinea ? AppTheme.info : AppTheme.warning;
             final texto = sincronizando
                 ? 'Sincronizando cambios guardados...'
                 : 'Sin conexión. Los cambios se guardan en el dispositivo.';
             return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              margin: EdgeInsets.only(bottom: 10),
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.09),
                 borderRadius: BorderRadius.circular(12),
@@ -41,7 +41,7 @@ class EstadoConexion extends StatelessWidget {
                     size: 17,
                     color: color,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       texto,

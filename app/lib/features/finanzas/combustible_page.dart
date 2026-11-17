@@ -1,3 +1,4 @@
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,7 +8,7 @@ import '../auth/auth_controller.dart';
 
 /// Registro de gastos de combustible por vehículo.
 class CombustiblePage extends ConsumerStatefulWidget {
-  const CombustiblePage({super.key});
+  CombustiblePage({super.key});
 
   @override
   ConsumerState<CombustiblePage> createState() => _CombustiblePageState();
@@ -112,36 +113,36 @@ class _CombustiblePageState extends ConsumerState<CombustiblePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Combustible')),
+      appBar: AppBar(title: Text('Combustible')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _agregar,
         backgroundColor: AppTheme.primary,
-        icon: const Icon(Icons.local_gas_station_outlined),
-        label: const Text('Cargar'),
+        icon: Icon(Icons.local_gas_station_outlined),
+        label: Text('Cargar'),
       ),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : RefreshIndicator(
               onRefresh: _cargar,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(16),
                 children: [
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16),
                       child: Row(
                         children: [
-                          const Icon(Icons.local_gas_station_outlined,
+                          Icon(Icons.local_gas_station_outlined,
                               size: 36, color: AppTheme.info),
-                          const SizedBox(width: 14),
+                          SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Gastado este mes',
-                                    style: TextStyle(color: Colors.black54)),
+                                Text('Gastado este mes',
+                                    style: TextStyle(color: AppColors.textoSecundario)),
                                 Text('S/ ${_totalMes.toStringAsFixed(2)}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         fontSize: 24, fontWeight: FontWeight.bold)),
                               ],
                             ),
@@ -150,24 +151,24 @@ class _CombustiblePageState extends ConsumerState<CombustiblePage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   if (_registros.isEmpty)
-                    const Card(
+                    Card(
                       child: Padding(
                         padding: EdgeInsets.all(20),
                         child: Text('Sin registros de combustible.',
-                            style: TextStyle(color: Colors.black54)),
+                            style: TextStyle(color: AppColors.textoSecundario)),
                       ),
                     )
                   else
                     for (final r in _registros)
                       Card(
                         child: ListTile(
-                          leading: const Icon(Icons.local_gas_station_outlined,
+                          leading: Icon(Icons.local_gas_station_outlined,
                               color: AppTheme.info),
                           title: Text(
                             (r['vehiculos'] as Map?)?['nombre'] as String? ?? 'Vehículo',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                           subtitle: Text([
                             _fecha(r['fecha'] as String?),
@@ -175,10 +176,10 @@ class _CombustiblePageState extends ConsumerState<CombustiblePage> {
                             if ((r['observacion'] as String? ?? '').isNotEmpty) r['observacion'],
                           ].join('  ·  ')),
                           trailing: Text('S/ ${(r['monto'] as num).toStringAsFixed(2)}',
-                              style: const TextStyle(fontWeight: FontWeight.bold)),
+                              style: TextStyle(fontWeight: FontWeight.bold)),
                         ),
                       ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                 ],
               ),
             ),
@@ -220,12 +221,12 @@ class _CombustibleSheetState extends State<_CombustibleSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Cargar combustible',
+            Text('Cargar combustible',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             DropdownButtonFormField<String>(
               initialValue: _vehiculoId,
-              decoration: const InputDecoration(labelText: 'Vehículo (opcional)'),
+              decoration: InputDecoration(labelText: 'Vehículo (opcional)'),
               items: [
                 for (final v in widget.vehiculos)
                   DropdownMenuItem(
@@ -235,30 +236,30 @@ class _CombustibleSheetState extends State<_CombustibleSheet> {
               ],
               onChanged: (v) => setState(() => _vehiculoId = v),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextField(
               controller: _montoCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Monto (S/) *'),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(labelText: 'Monto (S/) *'),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextField(
               controller: _kmCtrl,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Kilometraje (opcional)'),
+              decoration: InputDecoration(labelText: 'Kilometraje (opcional)'),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextField(
               controller: _obsCtrl,
-              decoration: const InputDecoration(labelText: 'Observación'),
+              decoration: InputDecoration(labelText: 'Observación'),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             FilledButton(
               onPressed: () {
                 final monto = double.tryParse(_montoCtrl.text) ?? 0;
                 if (monto <= 0) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('El monto debe ser mayor a cero.')),
+                    SnackBar(content: Text('El monto debe ser mayor a cero.')),
                   );
                   return;
                 }
@@ -273,9 +274,9 @@ class _CombustibleSheetState extends State<_CombustibleSheet> {
                   'observacion': _obsCtrl.text.trim().isEmpty ? null : _obsCtrl.text.trim(),
                 });
               },
-              child: const Text('Guardar'),
+              child: Text('Guardar'),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
         ),
       ),

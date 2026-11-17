@@ -5,6 +5,7 @@
 /// real cuando un motorizado registra algo.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -21,7 +22,7 @@ import '../../core/ui/actividad_tile.dart';
 import '../../core/ui/widgets.dart';
 
 class MotorizadosActividadPage extends ConsumerStatefulWidget {
-  const MotorizadosActividadPage({super.key});
+  MotorizadosActividadPage({super.key});
 
   @override
   ConsumerState<MotorizadosActividadPage> createState() =>
@@ -59,7 +60,7 @@ class _MotorizadosActividadPageState
     try {
       final motos = await motorizadosRepo.listar();
       final inicio = inicioHoy();
-      final fin = DateTime.now().add(const Duration(minutes: 1));
+      final fin = DateTime.now().add(Duration(minutes: 1));
       final resumenes = <String, Rendicion>{};
       await Future.wait(motos.map((m) async {
         final r = await rendicionRepo.calcular(
@@ -114,11 +115,11 @@ class _MotorizadosActividadPageState
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(ctx).pop(false),
-                child: const Text('Cancelar'),
+                child: Text('Cancelar'),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: const Text('Guardar'),
+                child: Text('Guardar'),
               ),
             ],
           ),
@@ -155,16 +156,16 @@ class _MotorizadosActividadPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Motorizados')),
+      appBar: AppBar(title: Text('Motorizados')),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : RefreshIndicator(
               onRefresh: _cargar,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
                 children: [
                   if (_motorizados.isEmpty)
-                    const EstadoVacio(
+                    EstadoVacio(
                       icono: Icons.delivery_dining_outlined,
                       titulo: 'No hay motorizados registrados',
                     )
@@ -173,7 +174,7 @@ class _MotorizadosActividadPageState
                       _TarjetaMotorizado(
                         nombre: m['nombre'] as String? ?? '',
                         activo: m['activo'] as bool? ?? true,
-                        resumen: _resumen[m['id'] as String] ?? const Rendicion(),
+                        resumen: _resumen[m['id'] as String] ?? Rendicion(),
                         onTap: () => _abrirDetalle(m),
                         onConfigurarDias: () => _configurarDias(m),
                       ),
@@ -202,12 +203,12 @@ class _TarjetaMotorizado extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: EdgeInsets.only(bottom: 10),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -217,20 +218,20 @@ class _TarjetaMotorizado extends StatelessWidget {
                     backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
                     child: Text(
                       nombre.isEmpty ? '?' : nombre[0].toUpperCase(),
-                      style: const TextStyle(color: AppTheme.primary),
+                      style: TextStyle(color: AppTheme.primary),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(nombre, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text(nombre, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                         Text(
                           activo ? 'Activo' : 'Inactivo',
                           style: TextStyle(
                             fontSize: 12,
-                            color: activo ? AppTheme.success : Colors.black45,
+                            color: activo ? AppTheme.success : AppColors.textoMuted,
                           ),
                         ),
                       ],
@@ -239,12 +240,12 @@ class _TarjetaMotorizado extends StatelessWidget {
                   IconButton(
                     tooltip: 'Días de trabajo',
                     onPressed: onConfigurarDias,
-                    icon: const Icon(Icons.calendar_today_outlined, size: 18),
+                    icon: Icon(Icons.calendar_today_outlined, size: 18),
                   ),
-                  const Icon(Icons.chevron_right, color: Colors.black45),
+                  Icon(Icons.chevron_right, color: AppColors.textoMuted),
                 ],
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Row(
                 children: [
                   _Mini('Pedidos', '${resumen.pedidosRealizados}'),
@@ -254,7 +255,7 @@ class _TarjetaMotorizado extends StatelessWidget {
                 ],
               ),
               if (resumen.gastosTotal > 0 || resumen.pendiente > 0) ...[
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Row(
                   children: [
                     if (resumen.gastosTotal > 0)
@@ -288,13 +289,13 @@ class _Mini extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(etiqueta, style: const TextStyle(fontSize: 10.5, color: Colors.black45)),
+          Text(etiqueta, style: TextStyle(fontSize: 10.5, color: AppColors.textoMuted)),
           Text(
             valor,
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: color ?? Colors.black87,
+              color: color ?? AppColors.textoPrincipal,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -326,7 +327,7 @@ class _ActividadMotorizadoPage extends ConsumerStatefulWidget {
 class _ActividadMotorizadoPageState
     extends ConsumerState<_ActividadMotorizadoPage> {
   DateTime _dia = inicioHoy();
-  Rendicion _resumen = const Rendicion();
+  Rendicion _resumen = Rendicion();
   List<MovimientoActividad> _movimientos = [];
   UbicacionMotorizado? _ubicacion;
   bool _cargando = true;
@@ -359,7 +360,7 @@ class _ActividadMotorizadoPageState
 
   Future<void> _cargar() async {
     final miPeticion = ++_peticion;
-    final hasta = _dia.add(const Duration(days: 1));
+    final hasta = _dia.add(Duration(days: 1));
     try {
       final res = await Future.wait([
         rendicionRepo.calcular(
@@ -403,7 +404,7 @@ class _ActividadMotorizadoPageState
   String get _tituloDia {
     final hoy = inicioHoy();
     if (_dia == hoy) return 'Hoy';
-    if (_dia == hoy.subtract(const Duration(days: 1))) return 'Ayer';
+    if (_dia == hoy.subtract(Duration(days: 1))) return 'Ayer';
     return fechaCorta(_dia);
   }
 
@@ -419,7 +420,7 @@ class _ActividadMotorizadoPageState
             Text(widget.nombre),
             Text(
               'Actividad · $_tituloDia',
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.normal),
             ),
           ],
         ),
@@ -427,15 +428,15 @@ class _ActividadMotorizadoPageState
       body: RefreshIndicator(
         onRefresh: _cargar,
         child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          physics: AlwaysScrollableScrollPhysics(),
+          padding: EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
             Row(
               children: [
                 IconButton(
                   tooltip: 'Día anterior',
                   onPressed: () => _cambiarDia(-1),
-                  icon: const Icon(Icons.chevron_left),
+                  icon: Icon(Icons.chevron_left),
                 ),
                 Expanded(
                   child: Center(
@@ -446,13 +447,13 @@ class _ActividadMotorizadoPageState
                 IconButton(
                   tooltip: 'Día siguiente',
                   onPressed: esHoy ? null : () => _cambiarDia(1),
-                  icon: const Icon(Icons.chevron_right),
+                  icon: Icon(Icons.chevron_right),
                 ),
               ],
             ),
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -465,7 +466,7 @@ class _ActividadMotorizadoPageState
                         _Mini('Cobrado', dinero(r.cobrado)),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 6),
                     Row(
                       children: [
                         _Mini('Efectivo', dinero(r.efectivo)),
@@ -476,7 +477,7 @@ class _ActividadMotorizadoPageState
                             color: r.pendiente > 0 ? AppTheme.danger : null),
                       ],
                     ),
-                    const Divider(height: 18),
+                    Divider(height: 18),
                     FilaValor('Fondo de vuelto', dinero(r.fondoInicial)),
                     FilaValor('Efectivo esperado', dinero(r.efectivoEsperado),
                         destacado: true),
@@ -492,14 +493,14 @@ class _ActividadMotorizadoPageState
                     FilaValor('Fallas', '${r.incidencias}'),
                     FilaValor('Balones entregados', '${r.balonesEntregados}'),
                     FilaValor('Balones devueltos', '${r.balonesDevueltos}'),
-                    const Divider(height: 18),
+                    Divider(height: 18),
                     FilaValor(
                       'Ubicación',
                       _ubicacion == null
                           ? 'Sin ubicación compartida'
                           : '${_ubicacion!.estado.label} · ${_ubicacion!.haceTexto}',
                       color: _ubicacion == null
-                          ? Colors.black45
+                          ? AppColors.textoMuted
                           : (_ubicacion!.estado == EstadoUbicacion.activo
                               ? AppTheme.success
                               : AppTheme.warning),
@@ -508,18 +509,18 @@ class _ActividadMotorizadoPageState
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text('Movimientos', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             if (_cargando)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(vertical: 28),
                 child: Center(
                   child: CircularProgressIndicator(color: AppTheme.primary),
                 ),
               )
             else if (_movimientos.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 24),
                 child: EstadoVacio(
                   icono: Icons.history_outlined,

@@ -5,6 +5,7 @@
 /// es un movimiento nuevo (queda la trazabilidad).
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,7 +16,7 @@ import '../../core/domain/formato.dart';
 import '../auth/auth_controller.dart';
 
 class BalonesPage extends ConsumerStatefulWidget {
-  const BalonesPage({super.key});
+  BalonesPage({super.key});
 
   @override
   ConsumerState<BalonesPage> createState() => _BalonesPageState();
@@ -101,17 +102,17 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
   Widget build(BuildContext context) {
     final lista = _mostrarFierros ? _fierros : _balones;
     return Scaffold(
-      appBar: AppBar(title: const Text('Balones')),
+      appBar: AppBar(title: Text('Balones')),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : RefreshIndicator(
               onRefresh: _cargar,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 24),
                 children: [
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16),
+                      padding: EdgeInsets.all(16),
                       child: Row(
                         children: [
                           Icon(
@@ -119,7 +120,7 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
                             size: 36,
                             color: AppTheme.warning,
                           ),
-                          const SizedBox(width: 14),
+                          SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,13 +129,13 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
                                   _mostrarFierros
                                       ? 'Fierros pendientes de devolución'
                                       : 'Balones vacíos pendientes',
-                                  style: const TextStyle(color: Colors.black54),
+                                  style: TextStyle(color: AppColors.textoSecundario),
                                 ),
                                 Text(
                                   _mostrarFierros
                                       ? '${_fierros.fold(0, (s, p) => s + p.cantidad)}'
                                       : '$_totalBalones',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                       fontSize: 26, fontWeight: FontWeight.bold),
                                 ),
                               ],
@@ -144,7 +145,7 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   SegmentedButton<bool>(
                     segments: const [
                       ButtonSegment(value: false, label: Text('Balones')),
@@ -153,29 +154,29 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
                     selected: {_mostrarFierros},
                     onSelectionChanged: (s) => setState(() => _mostrarFierros = s.first),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Text(
                     lista.isEmpty
                         ? 'Sin pendientes'
                         : '${lista.length} cliente(s) con pendiente',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   if (lista.isEmpty)
-                    const Card(
+                    Card(
                       child: Padding(
                         padding: EdgeInsets.all(20),
                         child: Text('Nadie tiene pendiente de devolución.',
-                            style: TextStyle(color: Colors.black54)),
+                            style: TextStyle(color: AppColors.textoSecundario)),
                       ),
                     )
                   else
                     for (final p in lista)
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
+                        padding: EdgeInsets.only(bottom: 10),
                         child: Card(
                           child: Padding(
-                            padding: const EdgeInsets.all(14),
+                            padding: EdgeInsets.all(14),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -184,12 +185,12 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
                                     Expanded(
                                       child: Text(
                                         p.nombre,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                             fontWeight: FontWeight.bold, fontSize: 16),
                                       ),
                                     ),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(
+                                      padding: EdgeInsets.symmetric(
                                           horizontal: 12, vertical: 6),
                                       decoration: BoxDecoration(
                                         color: AppTheme.warning.withValues(alpha: 0.15),
@@ -197,7 +198,7 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
                                       ),
                                       child: Text(
                                         '${p.cantidad}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: AppTheme.warning,
                                         ),
@@ -207,17 +208,17 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
                                 ),
                                 if ((p.telefono ?? '').isNotEmpty)
                                   Text(p.telefono!,
-                                      style: const TextStyle(color: Colors.black54)),
-                                const SizedBox(height: 10),
+                                      style: TextStyle(color: AppColors.textoSecundario)),
+                                SizedBox(height: 10),
                                 SizedBox(
                                   width: double.infinity,
                                   child: OutlinedButton.icon(
                                     onPressed: () =>
                                         _registrarDevolucion(p, esFierro: _mostrarFierros),
-                                    icon: const Icon(Icons.assignment_return_outlined),
-                                    label: const Text('Registrar devolución'),
+                                    icon: Icon(Icons.assignment_return_outlined),
+                                    label: Text('Registrar devolución'),
                                     style: OutlinedButton.styleFrom(
-                                      minimumSize: const Size.fromHeight(44),
+                                      minimumSize: Size.fromHeight(44),
                                     ),
                                   ),
                                 ),
@@ -226,9 +227,9 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
                           ),
                         ),
                       ),
-                  const SizedBox(height: 20),
+                  SizedBox(height: 20),
                   Text('Movimientos recientes', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   for (final m in _movimientos)
                     ListTile(
                       dense: true,
@@ -249,7 +250,7 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
                         '${(m['clientes'] as Map?)?['nombre'] ?? ''} · ${fechaHora(parseFecha(m['fecha'] as String?))}',
                       ),
                     ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                 ],
               ),
             ),
@@ -306,9 +307,9 @@ class _DevolucionSheetState extends State<_DevolucionSheet> {
             widget.esFierro
                 ? 'Devolución de fierro — ${widget.pendiente.nombre}'
                 : 'Devolución de balón vacío — ${widget.pendiente.nombre}',
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           TextField(
             controller: _ctrl,
             keyboardType: TextInputType.number,
@@ -316,13 +317,13 @@ class _DevolucionSheetState extends State<_DevolucionSheet> {
               labelText: 'Cantidad (máx. ${widget.pendiente.cantidad})',
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           FilledButton(
             onPressed: _confirmar,
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-            child: const Text('Registrar devolución'),
+            style: FilledButton.styleFrom(minimumSize: Size.fromHeight(52)),
+            child: Text('Registrar devolución'),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
         ],
       ),
     );

@@ -39,7 +39,7 @@ class SyncService with WidgetsBindingObserver {
         sincronizar();
       }
     });
-    _reloj = Timer.periodic(const Duration(seconds: 60), (_) => sincronizar());
+    _reloj = Timer.periodic(Duration(seconds: 60), (_) => sincronizar());
     sincronizar();
   }
 

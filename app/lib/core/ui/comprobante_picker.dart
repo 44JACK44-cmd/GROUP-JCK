@@ -4,6 +4,7 @@
 /// iconos Material, texto claro y aviso cuando falta la evidencia.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -16,7 +17,7 @@ class ComprobantePicker extends StatelessWidget {
   final ValueChanged<String?> onChanged;
   final bool obligatorio;
 
-  const ComprobantePicker({
+  ComprobantePicker({
     super.key,
     required this.fotoPath,
     required this.onChanged,
@@ -43,15 +44,15 @@ class ComprobantePicker extends StatelessWidget {
       children: [
         Row(
           children: [
-            const Icon(Icons.photo_camera_outlined, size: 18, color: Colors.black54),
-            const SizedBox(width: 8),
+            Icon(Icons.photo_camera_outlined, size: 18, color: AppColors.textoSecundario),
+            SizedBox(width: 8),
             Text(
               obligatorio ? 'Foto del comprobante *' : 'Foto del comprobante (opcional)',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+              style: TextStyle(fontWeight: FontWeight.w600),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         if (fotoPath != null) ...[
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
@@ -66,8 +67,8 @@ class ComprobantePicker extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: TextButton.icon(
               onPressed: () => onChanged(null),
-              icon: const Icon(Icons.delete_outline, size: 18),
-              label: const Text('Quitar foto'),
+              icon: Icon(Icons.delete_outline, size: 18),
+              label: Text('Quitar foto'),
             ),
           ),
         ] else ...[
@@ -76,24 +77,24 @@ class ComprobantePicker extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => _tomar(ImageSource.camera),
-                  icon: const Icon(Icons.photo_camera_outlined, size: 19),
-                  label: const Text('Tomar foto'),
-                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                  icon: Icon(Icons.photo_camera_outlined, size: 19),
+                  label: Text('Tomar foto'),
+                  style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(46)),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () => _tomar(ImageSource.gallery),
-                  icon: const Icon(Icons.photo_library_outlined, size: 19),
-                  label: const Text('Galería'),
-                  style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                  icon: Icon(Icons.photo_library_outlined, size: 19),
+                  label: Text('Galería'),
+                  style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(46)),
                 ),
               ),
             ],
           ),
           if (obligatorio)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 6),
               child: Text(
                 'Necesaria para dejar evidencia del pago por Yape.',

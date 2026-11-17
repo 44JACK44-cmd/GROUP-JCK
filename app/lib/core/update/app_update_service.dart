@@ -14,7 +14,7 @@ class VersionInfo {
   final String? notas;
   final bool obligatoria;
 
-  const VersionInfo({
+  VersionInfo({
     required this.versionCode,
     required this.versionName,
     required this.apkUrl,

@@ -4,6 +4,7 @@
 /// evidencia. Sin foto se permite continuar solo con confirmación explícita.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
@@ -57,7 +58,7 @@ class _PagoSheetState extends State<_PagoSheet> {
     final monto = double.tryParse(_montoCtrl.text) ?? 0;
     if (monto <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El monto debe ser mayor a cero.')),
+        SnackBar(content: Text('El monto debe ser mayor a cero.')),
       );
       return;
     }
@@ -66,18 +67,18 @@ class _PagoSheetState extends State<_PagoSheet> {
       final continuar = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Sin comprobante'),
-          content: const Text(
+          title: Text('Sin comprobante'),
+          content: Text(
             'El pago fue por Yape pero no tomaste foto. ¿Registrar igual?',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Volver a la foto'),
+              child: Text('Volver a la foto'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Continuar sin foto'),
+              child: Text('Continuar sin foto'),
             ),
           ],
         ),
@@ -108,15 +109,15 @@ class _PagoSheetState extends State<_PagoSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('Cobrar a ${widget.clienteNombre}',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            SizedBox(height: 16),
             TextField(
               controller: _montoCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(prefixText: 'S/ ', labelText: 'Monto'),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              decoration: InputDecoration(prefixText: 'S/ ', labelText: 'Monto'),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -133,7 +134,7 @@ class _PagoSheetState extends State<_PagoSheet> {
                     selected: _metodo == e.key,
                     selectedColor: AppTheme.primary.withValues(alpha: 0.12),
                     labelStyle: TextStyle(
-                      color: _metodo == e.key ? AppTheme.primary : Colors.black87,
+                      color: _metodo == e.key ? AppTheme.primary : AppColors.textoPrincipal,
                       fontWeight: _metodo == e.key ? FontWeight.w600 : FontWeight.normal,
                     ),
                     onSelected: (_) => setState(() => _metodo = e.key),
@@ -141,20 +142,20 @@ class _PagoSheetState extends State<_PagoSheet> {
               ],
             ),
             if (_metodo == 'YAPE') ...[
-              const SizedBox(height: 18),
+              SizedBox(height: 18),
               ComprobantePicker(
                 fotoPath: _fotoPath,
                 onChanged: (v) => setState(() => _fotoPath = v),
               ),
             ],
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             FilledButton.icon(
               onPressed: _confirmar,
-              icon: const Icon(Icons.check_circle_outline),
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-              label: const Text('Registrar pago'),
+              icon: Icon(Icons.check_circle_outline),
+              style: FilledButton.styleFrom(minimumSize: Size.fromHeight(52)),
+              label: Text('Registrar pago'),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
         ),
       ),

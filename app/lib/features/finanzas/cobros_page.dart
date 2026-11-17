@@ -4,6 +4,7 @@
 /// usuario que lo registró. Un cobro no se registra dos veces.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,7 +20,7 @@ import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
 class CobrosPage extends ConsumerStatefulWidget {
-  const CobrosPage({super.key});
+  CobrosPage({super.key});
 
   @override
   ConsumerState<CobrosPage> createState() => _CobrosPageState();
@@ -118,27 +119,27 @@ class _CobrosPageState extends ConsumerState<CobrosPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cobros'),
+        title: Text('Cobros'),
         actions: [
           IconButton(
             tooltip: 'Ver deudas',
             onPressed: () => context.push('/deudas'),
-            icon: const Icon(Icons.account_balance_wallet_outlined),
+            icon: Icon(Icons.account_balance_wallet_outlined),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _registrar,
         backgroundColor: AppTheme.primary,
-        icon: const Icon(Icons.payments_outlined),
-        label: const Text('Cobrar'),
+        icon: Icon(Icons.payments_outlined),
+        label: Text('Cobrar'),
       ),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : RefreshIndicator(
               onRefresh: _cargar,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                padding: EdgeInsets.fromLTRB(16, 12, 16, 96),
                 children: [
                   Row(
                     children: [
@@ -150,7 +151,7 @@ class _CobrosPageState extends ConsumerState<CobrosPage> {
                           color: AppTheme.success,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       Expanded(
                         child: TarjetaMetrica(
                           titulo: 'Yape hoy',
@@ -161,15 +162,15 @@ class _CobrosPageState extends ConsumerState<CobrosPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   Text('Historial', style: Theme.of(context).textTheme.titleMedium),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8),
                   if (_pagos.isEmpty)
-                    const Card(
+                    Card(
                       child: Padding(
                         padding: EdgeInsets.all(20),
                         child: Text('Sin cobros registrados.',
-                            style: TextStyle(color: Colors.black54)),
+                            style: TextStyle(color: AppColors.textoSecundario)),
                       ),
                     )
                   else
@@ -184,18 +185,18 @@ class _CobrosPageState extends ConsumerState<CobrosPage> {
                           ),
                           title: Text(
                             (p['clientes'] as Map?)?['nombre'] as String? ?? 'Cliente',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                           subtitle: Text(
                             '${fechaRelativa(parseFecha(p['fecha'] as String?))}  ·  '
                             '${metodoPago(p['metodo'] as String?)}',
                           ),
                           trailing: Text(dinero((p['monto'] as num? ?? 0)),
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontWeight: FontWeight.bold, color: AppTheme.success)),
                         ),
                       ),
-                  const SizedBox(height: 24),
+                  SizedBox(height: 24),
                 ],
               ),
             ),
@@ -257,7 +258,7 @@ class _CobroSheetState extends State<_CobroSheet> {
     final monto = double.tryParse(_montoCtrl.text) ?? 0;
     if (monto <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El monto debe ser mayor a cero.')),
+        SnackBar(content: Text('El monto debe ser mayor a cero.')),
       );
       return;
     }
@@ -265,18 +266,18 @@ class _CobroSheetState extends State<_CobroSheet> {
       final continuar = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Sin comprobante'),
-          content: const Text(
+          title: Text('Sin comprobante'),
+          content: Text(
             'El cobro fue por Yape pero no tomaste foto. ¿Registrar igual?',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Volver a la foto'),
+              child: Text('Volver a la foto'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Continuar sin foto'),
+              child: Text('Continuar sin foto'),
             ),
           ],
         ),
@@ -307,18 +308,18 @@ class _CobroSheetState extends State<_CobroSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Registrar cobro',
+            Text('Registrar cobro',
                 style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             if (_cliente == null) ...[
               TextField(
                 controller: _busquedaCtrl,
                 onChanged: _buscar,
                 decoration: InputDecoration(
                   hintText: 'Buscar cliente',
-                  prefixIcon: const Icon(Icons.search),
+                  prefixIcon: Icon(Icons.search),
                   suffixIcon: _buscando
-                      ? const Padding(
+                      ? Padding(
                           padding: EdgeInsets.all(12),
                           child: SizedBox(
                             height: 18,
@@ -348,23 +349,23 @@ class _CobroSheetState extends State<_CobroSheet> {
                   backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
                   child: Text(
                     (_cliente!['nombre'] as String? ?? '?')[0].toUpperCase(),
-                    style: const TextStyle(color: AppTheme.primary),
+                    style: TextStyle(color: AppTheme.primary),
                   ),
                 ),
                 title: Text(_cliente!['nombre'] as String? ?? ''),
                 trailing: TextButton(
                   onPressed: () => setState(() => _cliente = null),
-                  child: const Text('Cambiar'),
+                  child: Text('Cambiar'),
                 ),
               ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextField(
               controller: _montoCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              decoration: const InputDecoration(prefixText: 'S/ ', labelText: 'Monto'),
+              keyboardType: TextInputType.numberWithOptions(decimal: true),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              decoration: InputDecoration(prefixText: 'S/ ', labelText: 'Monto'),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Wrap(
               spacing: 8,
               runSpacing: 8,
@@ -375,7 +376,7 @@ class _CobroSheetState extends State<_CobroSheet> {
                     selected: _metodo == e.key,
                     selectedColor: AppTheme.primary.withValues(alpha: 0.15),
                     labelStyle: TextStyle(
-                      color: _metodo == e.key ? AppTheme.primary : Colors.black87,
+                      color: _metodo == e.key ? AppTheme.primary : AppColors.textoPrincipal,
                       fontWeight: _metodo == e.key ? FontWeight.w600 : FontWeight.normal,
                     ),
                     onSelected: (_) => setState(() => _metodo = e.key),
@@ -383,19 +384,19 @@ class _CobroSheetState extends State<_CobroSheet> {
               ],
             ),
             if (_metodo == 'YAPE') ...[
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               ComprobantePicker(
                 fotoPath: _fotoPath,
                 onChanged: (v) => setState(() => _fotoPath = v),
               ),
             ],
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             FilledButton(
               onPressed: _cliente == null ? null : _confirmar,
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-              child: const Text('Guardar cobro'),
+              style: FilledButton.styleFrom(minimumSize: Size.fromHeight(52)),
+              child: Text('Guardar cobro'),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
           ],
         ),
       ),

@@ -5,6 +5,7 @@
 ///  - MOTORIZADO: Inicio · Mis pedidos · Historial · Más
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,7 +20,7 @@ class Pestana {
   final IconData icono;
   final IconData? iconoActivo;
 
-  const Pestana({
+  Pestana({
     required this.ruta,
     required this.label,
     required this.icono,
@@ -30,7 +31,7 @@ class Pestana {
 }
 
 /// Pestañas del administrador.
-const List<Pestana> pestanasAdmin = [
+List<Pestana> pestanasAdmin = [
   Pestana(ruta: '/inicio', label: 'Inicio', icono: Icons.home_outlined, iconoActivo: Icons.home),
   Pestana(
       ruta: '/pedidos',
@@ -43,31 +44,26 @@ const List<Pestana> pestanasAdmin = [
       icono: Icons.people_outline,
       iconoActivo: Icons.people),
   Pestana(
-      ruta: '/cobros',
-      label: 'Cobros',
-      icono: Icons.payments_outlined,
-      iconoActivo: Icons.payments),
+      ruta: '/caja',
+      label: 'Caja',
+      icono: Icons.account_balance_outlined,
+      iconoActivo: Icons.account_balance),
   Pestana(ruta: '/mas', label: 'Más', icono: Icons.grid_view_outlined, iconoActivo: Icons.grid_view),
 ];
 
 /// Pestañas del motorizado.
-const List<Pestana> pestanasMotorizado = [
+List<Pestana> pestanasMotorizado = [
   Pestana(ruta: '/inicio', label: 'Inicio', icono: Icons.home_outlined, iconoActivo: Icons.home),
   Pestana(
       ruta: '/mis-pedidos',
-      label: 'Mis pedidos',
-      icono: Icons.delivery_dining_outlined,
-      iconoActivo: Icons.delivery_dining),
+      label: 'Pedidos',
+      icono: Icons.receipt_long_outlined,
+      iconoActivo: Icons.receipt_long),
   Pestana(
-      ruta: '/mi-registro',
-      label: 'Mi registro',
-      icono: Icons.edit_note_outlined,
-      iconoActivo: Icons.edit_note),
-  Pestana(
-      ruta: '/historial',
-      label: 'Historial',
-      icono: Icons.history_outlined,
-      iconoActivo: Icons.history),
+      ruta: '/movimientos',
+      label: 'Movimientos',
+      icono: Icons.timeline_outlined,
+      iconoActivo: Icons.timeline),
   Pestana(ruta: '/mas-moto', label: 'Más', icono: Icons.grid_view_outlined, iconoActivo: Icons.grid_view),
 ];
 
@@ -75,7 +71,7 @@ class AppShell extends ConsumerWidget {
   final Widget child;
   final String location;
 
-  const AppShell({super.key, required this.child, required this.location});
+  AppShell({super.key, required this.child, required this.location});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -88,9 +84,10 @@ class AppShell extends ConsumerWidget {
       body: child,
       bottomNavigationBar: NavigationBar(
         selectedIndex: index,
-        backgroundColor: Colors.white,
-        indicatorColor: AppTheme.primary.withValues(alpha: 0.12),
-        height: 68,
+        backgroundColor: AppColors.superficie,
+        indicatorColor: AppTheme.primary.withValues(alpha: 0.14),
+        surfaceTintColor: AppColors.superficie,
+        height: 70,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         onDestinationSelected: (i) {
           final ruta = pestanas[i].ruta;

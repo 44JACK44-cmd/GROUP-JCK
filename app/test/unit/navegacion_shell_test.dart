@@ -35,8 +35,8 @@ void main() {
       );
     });
 
-    test('una pantalla suelta no rompe la barra', () {
-      expect(indicePestanaActiva(pestanasAdmin, '/caja', esAdmin: true), 0);
+    test('caja resalta su pestaña', () {
+      expect(indicePestanaActiva(pestanasAdmin, '/caja', esAdmin: true), 3);
     });
   });
 
@@ -48,25 +48,25 @@ void main() {
       );
     });
 
-    test('mis pedidos, mi registro e historial se resaltan', () {
+    test('pedidos y movimientos se resaltan', () {
       expect(
         indicePestanaActiva(pestanasMotorizado, '/mis-pedidos', esAdmin: false),
         1,
       );
       expect(
-        indicePestanaActiva(pestanasMotorizado, '/mi-registro', esAdmin: false),
+        indicePestanaActiva(pestanasMotorizado, '/movimientos', esAdmin: false),
         2,
       );
       expect(
-        indicePestanaActiva(pestanasMotorizado, '/historial', esAdmin: false),
-        3,
+        indicePestanaActiva(pestanasMotorizado, '/mi-registro', esAdmin: false),
+        0,
       );
     });
 
     test('el menú del motorizado es su propio "Más"', () {
       expect(
         indicePestanaActiva(pestanasMotorizado, '/mas-moto', esAdmin: false),
-        4,
+        3,
       );
     });
   });

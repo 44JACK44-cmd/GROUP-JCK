@@ -1,3 +1,4 @@
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,7 +9,7 @@ import 'motorizado_form_page.dart';
 /// Lista de motorizados de la empresa (solo ADMIN).
 /// RLS se encarga de mostrar solo los de la empresa del usuario.
 class MotorizadosPage extends ConsumerStatefulWidget {
-  const MotorizadosPage({super.key});
+  MotorizadosPage({super.key});
 
   @override
   ConsumerState<MotorizadosPage> createState() => _MotorizadosPageState();
@@ -75,23 +76,23 @@ class _MotorizadosPageState extends ConsumerState<MotorizadosPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Motorizados')),
+      appBar: AppBar(title: Text('Motorizados')),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _abrirFormulario(),
         backgroundColor: AppTheme.primary,
-        icon: const Icon(Icons.person_add_alt_1),
-        label: const Text('Agregar'),
+        icon: Icon(Icons.person_add_alt_1),
+        label: Text('Agregar'),
       ),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primary))
+          ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _motorizados.isEmpty
               ? const _EstadoVacio()
               : RefreshIndicator(
                   onRefresh: _cargar,
                   child: ListView.separated(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.all(16),
                     itemCount: _motorizados.length,
-                    separatorBuilder: (_, i) => const SizedBox(height: 10),
+                    separatorBuilder: (_, i) => SizedBox(height: 10),
                     itemBuilder: (context, i) {
                       final m = _motorizados[i];
                       final vehiculo = _vehiculoDe(m['id'] as String);
@@ -102,11 +103,11 @@ class _MotorizadosPageState extends ConsumerState<MotorizadosPage> {
                             backgroundColor: AppTheme.primary.withValues(alpha: 0.12),
                             child: Text(
                               (m['nombre'] as String? ?? '?')[0].toUpperCase(),
-                              style: const TextStyle(color: AppTheme.primary),
+                              style: TextStyle(color: AppTheme.primary),
                             ),
                           ),
                           title: Text(m['nombre'] as String? ?? '',
-                              style: const TextStyle(fontWeight: FontWeight.w600)),
+                              style: TextStyle(fontWeight: FontWeight.w600)),
                           subtitle: Text(
                             [
                               if (m['telefono'] != null) m['telefono'],
@@ -117,14 +118,14 @@ class _MotorizadosPageState extends ConsumerState<MotorizadosPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               if (!activo)
-                                const Padding(
+                                Padding(
                                   padding: EdgeInsets.only(right: 6),
                                   child: Text('Inactivo',
                                       style: TextStyle(color: AppTheme.danger, fontSize: 12)),
                                 ),
                               IconButton(
                                 tooltip: 'Editar',
-                                icon: const Icon(Icons.edit_outlined),
+                                icon: Icon(Icons.edit_outlined),
                                 onPressed: () => _abrirFormulario(m),
                               ),
                             ],
@@ -145,15 +146,15 @@ class _EstadoVacio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      children: const [
-        SizedBox(height: 120),
-        Icon(Icons.delivery_dining_outlined, size: 56, color: Colors.black26),
+      children: [
+        const SizedBox(height: 120),
+        Icon(Icons.delivery_dining_outlined, size: 56, color: AppColors.textoMuted),
         SizedBox(height: 12),
         Center(
           child: Text(
             'No tienes motorizados registrados.\nToca "Agregar" para crear el primero.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.black54),
+            style: TextStyle(color: AppColors.textoSecundario),
           ),
         ),
       ],

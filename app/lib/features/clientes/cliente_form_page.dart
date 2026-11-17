@@ -5,6 +5,7 @@
 /// usa como ubicación del cliente (solo como ayuda para el punto actual).
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
@@ -18,7 +19,7 @@ import 'mapa_selector_page.dart';
 class ClienteFormPage extends ConsumerStatefulWidget {
   final Map<String, dynamic>? cliente;
 
-  const ClienteFormPage({super.key, this.cliente});
+  ClienteFormPage({super.key, this.cliente});
 
   @override
   ConsumerState<ClienteFormPage> createState() => _ClienteFormPageState();
@@ -109,13 +110,13 @@ class _ClienteFormPageState extends ConsumerState<ClienteFormPage> {
           permiso == LocationPermission.deniedForever) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Necesitamos permiso de ubicación para marcar el punto.')),
+            SnackBar(content: Text('Necesitamos permiso de ubicación para marcar el punto.')),
           );
         }
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: LocationSettings(accuracy: LocationAccuracy.high),
       );
       if (!mounted) return;
       setState(() {
@@ -124,7 +125,7 @@ class _ClienteFormPageState extends ConsumerState<ClienteFormPage> {
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text('Punto actual marcado. Ajústalo en el mapa si hace falta.'),
           ),
         );
@@ -132,7 +133,7 @@ class _ClienteFormPageState extends ConsumerState<ClienteFormPage> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No pudimos obtener tu ubicación. Inténtalo de nuevo.')),
+          SnackBar(content: Text('No pudimos obtener tu ubicación. Inténtalo de nuevo.')),
         );
       }
     } finally {
@@ -193,67 +194,67 @@ class _ClienteFormPageState extends ConsumerState<ClienteFormPage> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20),
           children: [
             TextFormField(
               controller: _nombre,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(labelText: 'Nombre *', prefixIcon: Icon(Icons.person_outline)),
+              decoration: InputDecoration(labelText: 'Nombre *', prefixIcon: Icon(Icons.person_outline)),
               validator: (v) => (v == null || v.trim().isEmpty) ? 'Escribe el nombre' : null,
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             TextFormField(
               controller: _telefono,
               keyboardType: TextInputType.phone,
-              decoration: const InputDecoration(labelText: 'Teléfono', prefixIcon: Icon(Icons.phone_outlined)),
+              decoration: InputDecoration(labelText: 'Teléfono', prefixIcon: Icon(Icons.phone_outlined)),
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             DropdownButtonFormField<String>(
               initialValue: _tipo,
-              decoration: const InputDecoration(labelText: 'Tipo de cliente', prefixIcon: Icon(Icons.category_outlined)),
+              decoration: InputDecoration(labelText: 'Tipo de cliente', prefixIcon: Icon(Icons.category_outlined)),
               items: [
                 for (final e in _tipos.entries)
                   DropdownMenuItem(value: e.key, child: Text(e.value)),
               ],
               onChanged: (v) => setState(() => _tipo = v ?? 'PARTICULAR'),
             ),
-            const SizedBox(height: 18),
+            SizedBox(height: 18),
             Text('Dirección de entrega',
                 style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             TextFormField(
               controller: _direccion,
               textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Dirección',
                 hintText: 'Ej. Av. Ejército 123',
                 prefixIcon: Icon(Icons.place_outlined),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextFormField(
               controller: _referencia,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Referencia',
                 hintText: 'Ej. A dos cuadras del parque',
                 prefixIcon: Icon(Icons.signpost_outlined),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             TextFormField(
               controller: _zona,
               textCapitalization: TextCapitalization.words,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Zona de reparto',
                 hintText: 'Ej. Centro, Yanahuara, Cayma',
                 prefixIcon: Icon(Icons.map_outlined),
               ),
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             // --- Ubicación ---
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(14),
+                padding: EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -261,76 +262,76 @@ class _ClienteFormPageState extends ConsumerState<ClienteFormPage> {
                       children: [
                         Icon(
                           tieneUbicacion ? Icons.location_on : Icons.location_off_outlined,
-                          color: tieneUbicacion ? AppTheme.success : Colors.black45,
+                          color: tieneUbicacion ? AppTheme.success : AppColors.textoMuted,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             tieneUbicacion ? 'Ubicación guardada' : 'Sin ubicación',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
+                            style: TextStyle(fontWeight: FontWeight.w600),
                           ),
                         ),
                       ],
                     ),
                     if (tieneUbicacion)
                       Padding(
-                        padding: const EdgeInsets.only(top: 4, left: 28),
+                        padding: EdgeInsets.only(top: 4, left: 28),
                         child: Text(
                           '${_latitud!.toStringAsFixed(6)}, ${_longitud!.toStringAsFixed(6)}',
-                          style: const TextStyle(color: Colors.black54, fontSize: 13),
+                          style: TextStyle(color: AppColors.textoSecundario, fontSize: 13),
                         ),
                       ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10),
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
                         onPressed: _elegirEnMapa,
-                        icon: const Icon(Icons.map_outlined),
+                        icon: Icon(Icons.map_outlined),
                         label: Text(tieneUbicacion ? 'Cambiar en el mapa' : 'Elegir en el mapa'),
-                        style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                        style: FilledButton.styleFrom(minimumSize: Size.fromHeight(48)),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
                         onPressed: _obteniendoGps ? null : _usarMiUbicacion,
                         icon: _obteniendoGps
-                            ? const SizedBox(
+                            ? SizedBox(
                                 height: 18,
                                 width: 18,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Icon(Icons.my_location),
-                        label: const Text('Usar el punto actual (ajústalo después)'),
-                        style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                            : Icon(Icons.my_location),
+                        label: Text('Usar el punto actual (ajústalo después)'),
+                        style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(46)),
                       ),
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 14),
+            SizedBox(height: 14),
             TextFormField(
               controller: _observaciones,
               maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Observaciones'),
+              decoration: InputDecoration(labelText: 'Observaciones'),
             ),
             if (_esEdicion) ...[
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Cliente activo'),
+                title: Text('Cliente activo'),
                 value: _activo,
                 onChanged: (v) => setState(() => _activo = v),
               ),
             ],
-            const SizedBox(height: 20),
+            SizedBox(height: 20),
             FilledButton(
               onPressed: _guardando ? null : _guardar,
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+              style: FilledButton.styleFrom(minimumSize: Size.fromHeight(52)),
               child: _guardando
-                  ? const SizedBox(
+                  ? SizedBox(
                       height: 22,
                       width: 22,
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),

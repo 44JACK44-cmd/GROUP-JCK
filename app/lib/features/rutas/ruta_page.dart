@@ -1,4 +1,4 @@
-﻿/// Navegación en la app hasta el cliente.
+/// Navegación en la app hasta el cliente.
 ///
 /// * Con clave de Google Maps: mapa de Google + recorrido real (Directions) y
 ///   asistente de voz en español con las indicaciones reales.
@@ -9,6 +9,7 @@
 /// teléfono solo indica dónde está el motorizado.
 library;
 
+import 'package:gas_app/core/theme/app_colors.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -31,7 +32,7 @@ class RutaPage extends StatefulWidget {
   final String? clienteNombre;
   final String? direccion;
 
-  const RutaPage({
+  RutaPage({
     super.key,
     required this.latitud,
     required this.longitud,
@@ -46,7 +47,7 @@ class RutaPage extends StatefulWidget {
 class _RutaPageState extends State<RutaPage> {
   gmaps.GoogleMapController? _mapaGoogle;
   final fm.MapController _mapaAlterno = fm.MapController();
-  final RutaService _rutas = const RutaService();
+  final RutaService _rutas = RutaService();
   final VozService _voz = VozService.instance;
 
   StreamSubscription<Position>? _seguimiento;
@@ -127,7 +128,7 @@ class _RutaPageState extends State<RutaPage> {
         return;
       }
       final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
+        locationSettings: LocationSettings(
           accuracy: LocationAccuracy.high,
           timeLimit: Duration(seconds: 20),
         ),
@@ -173,7 +174,7 @@ class _RutaPageState extends State<RutaPage> {
     if (puntos.isEmpty) return;
     if (hayClaveGoogleMaps) {
       _esperaMapa?.cancel();
-      _esperaMapa = Timer(const Duration(milliseconds: 600), () {
+      _esperaMapa = Timer(Duration(milliseconds: 600), () {
         if (!mounted) return;
         final latitudes = [...puntos.map((p) => p.latitude), widget.latitud];
         final longitudes = [...puntos.map((p) => p.longitude), widget.longitud];
@@ -195,7 +196,7 @@ class _RutaPageState extends State<RutaPage> {
           bounds: fm.LatLngBounds.fromPoints(
             puntos.map((p) => LatLng(p.latitude, p.longitude)).toList(),
           ),
-          padding: const EdgeInsets.all(48),
+          padding: EdgeInsets.all(48),
         ),
       );
     }
@@ -204,7 +205,7 @@ class _RutaPageState extends State<RutaPage> {
   void _seguirUbicacion() {
     _seguimiento?.cancel();
     _seguimiento = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
+      locationSettings: LocationSettings(
         accuracy: LocationAccuracy.high,
         distanceFilter: 15,
       ),
@@ -274,21 +275,21 @@ class _RutaPageState extends State<RutaPage> {
           IconButton(
             tooltip: 'Abrir en Google Maps',
             onPressed: _abrirGoogleMaps,
-            icon: const Icon(Icons.open_in_new),
+            icon: Icon(Icons.open_in_new),
           ),
         ],
       ),
       body: Stack(
         children: [
           _mapa(),
-          const Positioned(
+          Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: AvisoGoogleMaps(),
           ),
           if (_cargandoUbicacion || _cargandoRuta)
-            const Positioned.fill(
+            Positioned.fill(
               child: ColoredBox(
                 color: Color(0x66000000),
                 child: Center(child: CircularProgressIndicator()),
@@ -368,11 +369,11 @@ class _RutaPageState extends State<RutaPage> {
               point: LatLng(widget.latitud, widget.longitud),
               width: 46,
               height: 46,
-              child: const Icon(
+              child: Icon(
                 Icons.location_on,
                 size: 46,
                 color: AppTheme.danger,
-                shadows: [Shadow(color: Colors.black26, blurRadius: 6)],
+                shadows: [Shadow(color: AppColors.textoMuted, blurRadius: 6)],
               ),
             ),
             if (miPosicion != null)
@@ -397,34 +398,34 @@ class _RutaPageState extends State<RutaPage> {
   Widget _aviso() {
     final ruta = _ruta;
     final error = ruta?.error;
-    if (error == null) return const SizedBox.shrink();
+    if (error == null) return SizedBox.shrink();
     return Card(
-      color: const Color(0xFFFFF8E1),
+      color: Color(0xFFFFF8E1),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
-                const Icon(Icons.info_outline, color: AppTheme.warning),
-                const SizedBox(width: 8),
+                Icon(Icons.info_outline, color: AppTheme.warning),
+                SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     error,
-                    style: const TextStyle(fontWeight: FontWeight.w600),
+                    style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6),
             Text(
               hayClaveGoogleMaps
                   ? 'Puedes abrir la ruta en Google Maps con el botón de arriba.'
                   : 'Esta compilación no tiene clave de Google Maps: el mapa '
                       'alternativo no calcula el recorrido. Abre la ruta en '
                       'Google Maps con el botón de arriba.',
-              style: const TextStyle(fontSize: 12, color: Colors.black54),
+              style: TextStyle(fontSize: 12, color: AppColors.textoSecundario),
             ),
           ],
         ),
@@ -434,7 +435,7 @@ class _RutaPageState extends State<RutaPage> {
 
   Widget _panel() {
     final ruta = _ruta;
-    if (ruta == null) return const SizedBox.shrink();
+    if (ruta == null) return SizedBox.shrink();
 
     final instrucciones = ruta.instrucciones;
     final paso = _pasoActual >= 0 && _pasoActual < instrucciones.length
@@ -443,7 +444,7 @@ class _RutaPageState extends State<RutaPage> {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -451,52 +452,52 @@ class _RutaPageState extends State<RutaPage> {
             if (ruta.hayRuta) ...[
               Row(
                 children: [
-                  const Icon(Icons.route, size: 18, color: AppTheme.primary),
-                  const SizedBox(width: 8),
+                  Icon(Icons.route, size: 18, color: AppTheme.primary),
+                  SizedBox(width: 8),
                   Text(
                     [
                       if (ruta.distanciaTexto.isNotEmpty) ruta.distanciaTexto,
                       if (ruta.duracionTexto.isNotEmpty) ruta.duracionTexto,
                     ].join(' · '),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
+                    style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  const Spacer(),
+                  Spacer(),
                   if (_vozActiva)
-                    const Icon(Icons.volume_up_outlined,
+                    Icon(Icons.volume_up_outlined,
                         size: 18, color: AppTheme.primary),
                 ],
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
             ],
             if (paso != null) ...[
               Text(
                 paso.texto,
-                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4),
               Text(
                 'En ${paso.distanciaTexto}',
-                style: const TextStyle(fontSize: 12, color: Colors.black54),
+                style: TextStyle(fontSize: 12, color: AppColors.textoSecundario),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
             ] else if (ruta.hayRuta)
-              const Text(
+              Text(
                 'El recorrido no trae indicaciones. Sigue la línea de la ruta.',
-                style: TextStyle(color: Colors.black54),
+                style: TextStyle(color: AppColors.textoSecundario),
               ),
             Row(
               children: [
                 FilledButton.icon(
                   onPressed: paso == null ? null : _escucharAhora,
-                  icon: const Icon(Icons.volume_up),
-                  label: const Text('Escuchar'),
+                  icon: Icon(Icons.volume_up),
+                  label: Text('Escuchar'),
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: _abrirGoogleMaps,
-                    icon: const Icon(Icons.navigation_outlined),
-                    label: const Text('Abrir en Google Maps'),
+                    icon: Icon(Icons.navigation_outlined),
+                    label: Text('Abrir en Google Maps'),
                   ),
                 ),
               ],
