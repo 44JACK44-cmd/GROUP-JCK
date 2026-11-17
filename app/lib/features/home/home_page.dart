@@ -14,6 +14,7 @@ import '../../core/data/pedidos_repo.dart';
 import '../../core/data/ubicaciones_repo.dart';
 import '../../core/domain/formato.dart';
 import '../../core/state/bus.dart';
+import '../../core/ui/acciones_rapidas.dart';
 import '../../core/ui/estado_conexion.dart';
 import '../auth/auth_controller.dart';
 
@@ -222,6 +223,44 @@ class _HomePageState extends ConsumerState<HomePage> {
                 icon: const Icon(Icons.timeline),
                 label: const Text('Movimientos'),
                 style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+              ),
+              const SizedBox(height: 16),
+              const Text('Acciones directas',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              const SizedBox(height: 8),
+              AccionesDirectas(
+                acciones: [
+                  AccionDirecta(
+                    texto: 'Deudas por cobrar',
+                    icono: Icons.account_balance_wallet_outlined,
+                    color: AppTheme.danger,
+                    onPressed: () => context.push('/deudas'),
+                  ),
+                  AccionDirecta(
+                    texto: 'Balones pendientes',
+                    icono: Icons.local_fire_department_outlined,
+                    color: AppTheme.warning,
+                    onPressed: () => context.push('/balones'),
+                  ),
+                  AccionDirecta(
+                    texto: 'Seguimiento',
+                    icono: Icons.map_outlined,
+                    color: AppTheme.info,
+                    onPressed: () => context.push('/seguimiento'),
+                  ),
+                  AccionDirecta(
+                    texto: 'Pagos',
+                    icono: Icons.payments_outlined,
+                    color: AppTheme.success,
+                    onPressed: () => context.push('/cobros'),
+                  ),
+                  AccionDirecta(
+                    texto: 'Devolución balón',
+                    icono: Icons.assignment_return_outlined,
+                    color: AppTheme.success,
+                    onPressed: () => context.push('/devolucion-balon'),
+                  ),
+                ],
               ),
               const SizedBox(height: 20),
               Row(

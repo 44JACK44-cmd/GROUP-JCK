@@ -30,6 +30,7 @@ Repetir en orden, uno por uno, esperando `Success` antes de pasar al siguiente.
 | 15 | `v7_15_flujo_simple.sql` | **IMPORTANTE — aplicar este paso sí o sí.** Repone TODAS las políticas del motorizado (corrige "No autorizado"), crea `fondo_vuelto`, añade columnas aditivas y publica Realtime. Es autónomo: se puede ejecutar aunque los pasos 10–14 no estén aplicados. |
 | 15b | `v7_15b_republicar_realtime.sql` | Reparación: si el paso 15 falló con `42P01: relation "public.ubicaciones_motorizado" does not exist`, ejecuta este archivo y vuelve a correr el 15. |
 | 16 | `v7_16_comprobantes_gasto_falla.sql` | Foto opcional del comprobante en gastos y fallas (`comprobante_url`). Aditivo y reejecutable. |
+| 17 | `v7_17_fondo_yape.sql` | El fondo de vuelto puede ser EFECTIVO o YAPE. Solo el efectivo suma al efectivo esperado de la rendición. |
 
 Después: `99_verificar.sql` — todo debe salir en `OK`.
 

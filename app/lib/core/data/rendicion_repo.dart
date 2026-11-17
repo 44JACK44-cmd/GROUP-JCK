@@ -57,7 +57,11 @@ class Rendicion {
   final double gastosTotal;
 
   // Fondo de vuelto y cierre
+  /// Fondo entregado en EFECTIVO (sí se cuenta en el efectivo esperado).
   final double fondoInicial;
+
+  /// Fondo enviado por YAPE (no se mezcla con el efectivo físico).
+  final double fondoYape;
   final double efectivoEsperado;
   final double efectivoDeclarado;
   final double diferencia;
@@ -90,6 +94,7 @@ class Rendicion {
     this.gastosOtros = 0,
     this.gastosTotal = 0,
     this.fondoInicial = 0,
+    this.fondoYape = 0,
     this.efectivoEsperado = 0,
     this.efectivoDeclarado = 0,
     this.diferencia = 0,
@@ -102,6 +107,7 @@ class Rendicion {
       cobrado <= 0.009 &&
       gastosTotal <= 0.009 &&
       fondoInicial <= 0.009 &&
+      fondoYape <= 0.009 &&
       incidencias == 0;
 
   /// Sobra dinero (positivo) o falta dinero (negativo).
@@ -254,24 +260,43 @@ class RendicionRepo {
       (s, i) => s + (i['monto'] as num? ?? 0).toDouble(),
     );
 
-    // 4. Fondo de vuelto entregado por el administrador.
+    // 4. Fondo de vuelto. Solo el EFECTIVO suma al efectivo esperado:
+    //    un vuelto enviado por Yape NO es dinero físico en el bolsillo.
     var fondoInicial = 0.0;
+    var fondoYape = 0.0;
     if (motorizadoId != null) {
       try {
         final f = await sb
             .from('fondo_vuelto')
-            .select('monto')
+            .select('monto, medio_pago')
             .eq('motorizado_id', motorizadoId)
             .gte('fecha', desde.toIso8601String())
             .lte('fecha', hastaIso)
             .limit(500);
         for (final fila in f) {
-          fondoInicial += (fila['monto'] as num? ?? 0).toDouble();
+          final monto = (fila['monto'] as num? ?? 0).toDouble();
+          if (fila['medio_pago'] == 'YAPE') {
+            fondoYape += monto;
+          } else {
+            fondoInicial += monto;
+          }
         }
       } catch (e) {
-        // Tabla aún no migrada (PGRST205) o sin permiso: se muestra 0 y la
-        // pantalla explica que falta aplicar el paso 15.
-        if (!esPermisoDenegado(e) && !esTablaAusente(e)) rethrow;
+        if (esColumnaAusente(e)) {
+          // Base sin paso 17: todo se consideraba efectivo (compatibilidad).
+          final f = await sb
+              .from('fondo_vuelto')
+              .select('monto')
+              .eq('motorizado_id', motorizadoId)
+              .gte('fecha', desde.toIso8601String())
+              .lte('fecha', hastaIso)
+              .limit(500);
+          for (final fila in f) {
+            fondoInicial += (fila['monto'] as num? ?? 0).toDouble();
+          }
+        } else if (!esPermisoDenegado(e) && !esTablaAusente(e)) {
+          rethrow;
+        }
       }
     }
 
@@ -435,6 +460,7 @@ class RendicionRepo {
       gastosOtros: gastosOtros,
       gastosTotal: gastosTotal,
       fondoInicial: fondoInicial,
+      fondoYape: fondoYape,
       efectivoEsperado: efectivoEsperado,
       efectivoDeclarado: efectivoDeclarado,
       diferencia: diferencia,

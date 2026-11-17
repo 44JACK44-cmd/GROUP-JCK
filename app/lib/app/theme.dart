@@ -63,6 +63,22 @@ class AppTheme {
         ),
       ),
       snackBarTheme: const SnackBarThemeData(behavior: SnackBarBehavior.floating),
+      progressIndicatorTheme: const ProgressIndicatorThemeData(color: primary),
+      dividerTheme: const DividerThemeData(
+        color: Color(0xFFE6E8E5),
+        thickness: 1,
+        space: 16,
+      ),
+      chipTheme: ChipThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        side: const BorderSide(color: Color(0xFFE0E4E0)),
+        labelStyle: const TextStyle(fontSize: 12.5),
+      ),
+      iconTheme: const IconThemeData(size: 22),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: primary,
+        foregroundColor: Colors.white,
+      ),
     );
   }
 }

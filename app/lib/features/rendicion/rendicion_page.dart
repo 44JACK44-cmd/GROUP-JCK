@@ -155,6 +155,7 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
       return;
     }
     String? moto = _motorizadoId ?? _motorizados.first['id'] as String;
+    String medio = 'EFECTIVO';
     final montoCtrl = TextEditingController();
     final obsCtrl = TextEditingController();
 
@@ -194,6 +195,45 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.swap_horiz, size: 18, color: Colors.black45),
+                    const SizedBox(width: 8),
+                    const Text('Cómo se entrega',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    ChoiceChip(
+                      avatar: const Icon(Icons.payments_outlined, size: 17),
+                      label: const Text('Efectivo'),
+                      selected: medio == 'EFECTIVO',
+                      selectedColor: AppTheme.success.withValues(alpha: 0.12),
+                      onSelected: (_) => setDlg(() => medio = 'EFECTIVO'),
+                    ),
+                    ChoiceChip(
+                      avatar: const Icon(Icons.account_balance_wallet_outlined,
+                          size: 17),
+                      label: const Text('Yape'),
+                      selected: medio == 'YAPE',
+                      selectedColor: AppTheme.info.withValues(alpha: 0.12),
+                      onSelected: (_) => setDlg(() => medio = 'YAPE'),
+                    ),
+                  ],
+                ),
+                if (medio == 'YAPE')
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text(
+                      'El vuelto por Yape no se cuenta como efectivo físico '
+                      'en la rendición.',
+                      style: TextStyle(fontSize: 12, color: AppTheme.info),
+                    ),
+                  ),
+                const SizedBox(height: 12),
                 TextField(
                   controller: obsCtrl,
                   decoration: const InputDecoration(
@@ -232,6 +272,7 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
         motorizadoId: moto!,
         entregadoPor: auth.usuarioId!,
         monto: monto,
+        medioPago: medio,
         observaciones: obsCtrl.text.trim().isEmpty ? null : obsCtrl.text.trim(),
       );
       if (!mounted) return;
@@ -380,8 +421,12 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                               FilaValor('Efectivo', dinero(r.efectivo)),
                               if (r.otros > 0) FilaValor('Otros', dinero(r.otros)),
                               const Divider(height: 22),
-                              FilaValor('Fondo de vuelto', dinero(r.fondoInicial),
-                                  color: AppTheme.info),
+                              FilaValor('Fondo en efectivo',
+                                  dinero(r.fondoInicial), color: AppTheme.info),
+                              if (r.fondoYape > 0)
+                                FilaValor('Fondo por Yape (no es efectivo)',
+                                    dinero(r.fondoYape),
+                                    color: AppTheme.info),
                               FilaValor('Gastos en efectivo', dinero(r.gastosEfectivo),
                                   color: r.gastosEfectivo > 0 ? AppTheme.danger : null),
                               FilaValor('Efectivo esperado', dinero(r.efectivoEsperado),

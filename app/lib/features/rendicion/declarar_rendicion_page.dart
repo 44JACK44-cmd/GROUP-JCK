@@ -158,8 +158,11 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
                     if (r.incidencias > 0)
                       FilaValor('Fallas (${r.incidencias})',
                           dinero(r.incidenciasTotal), color: AppTheme.danger),
-                    FilaValor('Fondo de vuelto', dinero(r.fondoInicial),
+                    FilaValor('Fondo en efectivo', dinero(r.fondoInicial),
                         color: AppTheme.info),
+                    if (r.fondoYape > 0)
+                      FilaValor('Fondo por Yape (no es efectivo)',
+                          dinero(r.fondoYape), color: AppTheme.info),
                     const Divider(height: 18),
                     FilaValor('Efectivo esperado', dinero(r.efectivoEsperado),
                         destacado: true),

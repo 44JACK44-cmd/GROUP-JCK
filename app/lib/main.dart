@@ -14,6 +14,7 @@ import 'features/auth/login_page.dart';
 import 'features/auth/register_empresa_page.dart';
 import 'features/auth/welcome_page.dart';
 import 'features/balones/balones_page.dart';
+import 'features/balones/devolucion_balon_page.dart';
 import 'features/clientes/clientes_page.dart';
 import 'features/deudas/deudas_page.dart';
 import 'features/finanzas/caja_page.dart';
@@ -279,6 +280,11 @@ GoRoute(path: '/motorizados-actividad', builder: (_, state) => const Motorizados
         GoRoute(path: '/combustible', builder: (_, state) => const CombustiblePage()),
         GoRoute(path: '/mi-registro/pedido', builder: (_, state) => const RegistroPedidoPage()),
         GoRoute(path: '/mi-registro/gasto', builder: (_, state) => const RegistroGastoPage()),
+        GoRoute(
+          path: '/mi-registro/combustible',
+          builder: (_, state) => const RegistroGastoPage(categoriaInicial: 'Combustible'),
+        ),
+        GoRoute(path: '/devolucion-balon', builder: (_, state) => const DevolucionBalonPage()),
         GoRoute(path: '/mi-registro/incidencia', builder: (_, state) => const RegistroIncidenciaPage()),
       ],
     );

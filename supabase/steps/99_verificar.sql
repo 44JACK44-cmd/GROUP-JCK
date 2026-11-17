@@ -160,6 +160,12 @@ select 'realtime ubicaciones',
                             and schemaname = 'public' and tablename = 'ubicaciones_motorizado')
             then 'OK' else 'FALTA' end
 union all
+select 'fondo_vuelto.medio_pago',
+       case when exists (select 1 from information_schema.columns
+                           where table_schema = 'public' and table_name = 'fondo_vuelto'
+                             and column_name = 'medio_pago')
+            then 'OK' else 'FALTA' end
+union all
 select 'foto comprobante de gasto',
        case when exists (select 1 from information_schema.columns
                            where table_schema = 'public' and table_name = 'gastos'

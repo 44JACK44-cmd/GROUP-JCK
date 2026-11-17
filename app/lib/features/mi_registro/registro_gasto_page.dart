@@ -19,7 +19,10 @@ import '../../core/storage/comprobante_service.dart';
 import '../auth/auth_controller.dart';
 
 class RegistroGastoPage extends ConsumerStatefulWidget {
-  const RegistroGastoPage({super.key});
+  /// Categoría preseleccionada (permite un botón directo de "Llenar combustible").
+  final String? categoriaInicial;
+
+  const RegistroGastoPage({super.key, this.categoriaInicial});
 
   @override
   ConsumerState<RegistroGastoPage> createState() => _RegistroGastoPageState();
@@ -30,7 +33,7 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
   final _montoCtrl = TextEditingController();
   final _observacionCtrl = TextEditingController();
 
-  String _categoria = 'Combustible';
+  late String _categoria;
   String _medioPago = 'EFECTIVO';
   String? _fotoPath;
   bool _guardando = false;
@@ -45,6 +48,15 @@ class _RegistroGastoPageState extends ConsumerState<RegistroGastoPage> {
     'Peaje': Icons.toll_outlined,
     'Otro': Icons.receipt_long_outlined,
   };
+
+  @override
+  void initState() {
+    super.initState();
+    final inicial = widget.categoriaInicial;
+    _categoria = inicial != null && _categorias.containsKey(inicial)
+        ? inicial
+        : 'Combustible';
+  }
 
   @override
   void dispose() {

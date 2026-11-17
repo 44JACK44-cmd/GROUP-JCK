@@ -16,6 +16,7 @@ import '../../core/data/rendicion_repo.dart';
 import '../../core/domain/formato.dart';
 import '../../core/location/ubicacion_service.dart';
 import '../../core/state/bus.dart';
+import '../../core/ui/acciones_rapidas.dart';
 import '../../core/ui/estado_conexion.dart';
 import '../auth/auth_controller.dart';
 
@@ -227,6 +228,45 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
               const EstadoConexion(),
+              const SizedBox(height: 4),
+              const Text('Acciones directas',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              const SizedBox(height: 8),
+              AccionesDirectas(
+                acciones: [
+                  AccionDirecta(
+                    texto: 'Llenar combustible',
+                    icono: Icons.local_gas_station_outlined,
+                    color: AppTheme.warning,
+                    onPressed: () => context.push('/mi-registro/combustible'),
+                  ),
+                  AccionDirecta(
+                    texto: 'Cobrar',
+                    icono: Icons.account_balance_wallet_outlined,
+                    color: AppTheme.success,
+                    onPressed: () => context.push('/cobros'),
+                  ),
+                  AccionDirecta(
+                    texto: 'Devolver balón',
+                    icono: Icons.local_fire_department_outlined,
+                    color: AppTheme.info,
+                    onPressed: () => context.push('/devolucion-balon'),
+                  ),
+                  AccionDirecta(
+                    texto: 'Deudas',
+                    icono: Icons.assignment_outlined,
+                    color: AppTheme.danger,
+                    onPressed: () => context.push('/deudas'),
+                  ),
+                  AccionDirecta(
+                    texto: 'Informe final',
+                    icono: Icons.assignment_turned_in_outlined,
+                    color: AppTheme.primary,
+                    onPressed: () => context.push('/declarar-rendicion'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
               Row(
                 children: [
                   Expanded(

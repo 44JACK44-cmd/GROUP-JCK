@@ -35,6 +35,18 @@ void main() {
       );
       expect(esperado, 0);
     });
+
+    test('un vuelto enviado por Yape NO aumenta el efectivo esperado', () {
+      // El billete de 50 no servía para dar cambio: el admin lo yapeó.
+      const r = Rendicion(fondoInicial: 0, fondoYape: 50, efectivo: 100);
+      final esperado = RendicionRepo.calcularEsperado(
+        fondoInicial: r.fondoInicial,
+        efectivoCobrado: r.efectivo,
+        gastosEfectivo: 0,
+      );
+      expect(esperado, 100);
+      expect(r.vacio, isFalse, reason: 'El fondo por Yape también es movimiento');
+    });
   });
 
   group('diferencia', () {
