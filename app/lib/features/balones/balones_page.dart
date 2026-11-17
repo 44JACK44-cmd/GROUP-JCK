@@ -13,6 +13,7 @@ import '../../app/theme.dart';
 import '../../core/data/balones_repo.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
+import '../../core/ui/app_bar_volver.dart';
 import '../auth/auth_controller.dart';
 
 class BalonesPage extends ConsumerStatefulWidget {
@@ -102,7 +103,7 @@ class _BalonesPageState extends ConsumerState<BalonesPage> {
   Widget build(BuildContext context) {
     final lista = _mostrarFierros ? _fierros : _balones;
     return Scaffold(
-      appBar: AppBar(title: Text('Balones')),
+      appBar: AppBarVolver(titulo: 'Balones'),
       body: _cargando
           ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : RefreshIndicator(

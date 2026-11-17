@@ -14,6 +14,7 @@ import '../../core/data/motorizados_repo.dart';
 import '../../core/data/rendicion_repo.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
+import '../../core/ui/app_bar_volver.dart';
 import '../../core/state/bus.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
@@ -302,18 +303,18 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
         .firstOrNull;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Rendición'),
+      appBar: AppBarVolver(
+        titulo: 'Rendición',
         actions: [
           TextButton.icon(
             onPressed: _entregarFondo,
-            icon: Icon(Icons.money_outlined),
-            label: Text('Fondo'),
+            icon: const Icon(Icons.money_outlined),
+            label: const Text('Fondo'),
           ),
           IconButton(
             tooltip: 'Actualizar',
             onPressed: _cargar,
-            icon: Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh),
           ),
         ],
       ),

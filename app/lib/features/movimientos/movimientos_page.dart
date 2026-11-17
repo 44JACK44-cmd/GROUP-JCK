@@ -11,6 +11,7 @@ import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
 import '../../core/state/bus.dart';
 import '../../core/ui/diseno.dart';
+import '../../core/ui/app_bar_volver.dart';
 import '../../core/ui/estado_conexion.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
@@ -95,7 +96,7 @@ class _MovimientosPageState extends ConsumerState<MovimientosPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Movimientos')),
+      appBar: AppBarVolver(titulo: 'Movimientos'),
       body: RefreshIndicator(
         onRefresh: _cargar,
         child: ListView(

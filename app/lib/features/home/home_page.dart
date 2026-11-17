@@ -30,6 +30,8 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   int _pendientes = 0;
   int _enCamino = 0;
+  int _entregados = 0;
+  int _diferencias = 0;
   bool _cargando = true;
 
   Map<String, ResumenVivo> _vivo = {};
@@ -69,6 +71,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       final res = await Future.wait([
         pedidosRepo.contar(estados: const ['NUEVO', 'ASIGNADO']),
         pedidosRepo.contar(estados: const ['EN_CAMINO']),
+        pedidosRepo.contar(estados: const ['ENTREGADO']),
         actividadRepo.resumenVivoHoy(),
         motorizadosRepo.listar(),
         ubicacionesRepo.listar(),
@@ -76,15 +79,20 @@ class _HomePageState extends ConsumerState<HomePage> {
       ]);
       if (!mounted || miPeticion != _peticion) return;
       final ubicaciones = <String, UbicacionMotorizado>{
-        for (final u in res[4] as List<UbicacionMotorizado>) u.usuarioId: u,
+        for (final u in res[5] as List<UbicacionMotorizado>) u.usuarioId: u,
       };
+      final pendientes = res[6] as List<Map<String, dynamic>>;
       setState(() {
         _pendientes = res[0] as int;
         _enCamino = res[1] as int;
-        _vivo = res[2] as Map<String, ResumenVivo>;
-        _motos = res[3] as List<Map<String, dynamic>>;
+        _entregados = res[2] as int;
+        _vivo = res[3] as Map<String, ResumenVivo>;
+        _motos = res[4] as List<Map<String, dynamic>>;
         _ubicaciones = ubicaciones;
-        _rendicionesPendientes = res[5] as List<Map<String, dynamic>>;
+        _rendicionesPendientes = pendientes;
+        _diferencias = pendientes
+            .where((r) => ((r['diferencia'] as num?) ?? 0).abs() > 0.009)
+            .length;
         _cargando = false;
       });
     } catch (_) {
@@ -149,7 +157,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Rendiciones pendientes: ${_rendicionesPendientes.length}',
+                    'Rendiciones pendientes: ${_rendicionesPendientes.length}'
+                    '${_diferencias > 0 ? ' · $_diferencias con diferencia' : ''}',
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
@@ -261,7 +270,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 titulo: 'Pedidos de hoy',
                 detalle: _cargando
                     ? '...'
-                    : '$_pendientes pendientes · $_enCamino en camino',
+                    : '$_pendientes pendientes · $_enCamino en camino · '
+                        '$_entregados entregados',
                 color: AppTheme.warning,
                 onTap: () => context.push('/pedidos'),
               ),
@@ -272,14 +282,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                 detalle: 'Actividad, ubicación y estado de cada uno',
                 color: AppTheme.info,
                 onTap: () => context.push('/motorizados-actividad'),
-              ),
-              SizedBox(height: 8),
-              _acceso(
-                icono: Icons.point_of_sale_outlined,
-                titulo: 'Caja',
-                detalle: 'Ingresos, egresos y cierre del día',
-                color: AppTheme.success,
-                onTap: () => context.push('/caja'),
               ),
               SizedBox(height: 8),
               _acceso(

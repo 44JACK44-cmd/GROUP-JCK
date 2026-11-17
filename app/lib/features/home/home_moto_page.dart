@@ -14,13 +14,16 @@ import 'package:go_router/go_router.dart';
 import '../../app/theme.dart';
 import '../../core/data/pedidos_repo.dart';
 import '../../core/data/rendicion_repo.dart';
+import '../../core/domain/estado_pedido.dart';
 import '../../core/domain/formato.dart';
+import '../../core/domain/navegacion.dart';
 import '../../core/location/ubicacion_service.dart';
 import '../../core/navegacion/navegacion_service.dart';
 import '../../core/state/bus.dart';
 import '../../core/ui/acciones_rapidas.dart';
 import '../../core/ui/estado_conexion.dart';
 import '../auth/auth_controller.dart';
+import '../pedidos/pedido_detalle_page.dart';
 
 class HomeMotoPage extends ConsumerStatefulWidget {
   HomeMotoPage({super.key});
@@ -31,6 +34,7 @@ class HomeMotoPage extends ConsumerStatefulWidget {
 
 class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
   Rendicion _hoy = Rendicion();
+  Map<String, dynamic>? _proximo;
   int _porEntregar = 0;
   bool _cargando = true;
   int? _ultimoConteo;
@@ -80,7 +84,9 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
         ),
       ]);
       if (!mounted) return;
-      final conteo = (res[1] as List).length;
+      final activos = res[1] as List;
+      final conteo = activos.length;
+      _proximo = activos.isEmpty ? null : Map<String, dynamic>.from(activos.first as Map);
       if (_ultimoConteo != null && conteo > _ultimoConteo!) {
         NavegacionService.mostrarAviso('Nuevo pedido asignado');
       }
@@ -222,6 +228,121 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
     );
   }
 
+  Widget _proximoPedidoCard() {
+    final p = _proximo;
+    if (p == null) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Icon(Icons.receipt_long_outlined, color: AppColors.textoMuted),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'No tienes pedidos pendientes por ahora.',
+                  style: TextStyle(color: AppColors.textoSecundario),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    final cliente = p['clientes'] as Map? ?? const {};
+    final lat = (cliente['latitud'] as num?)?.toDouble();
+    final lng = (cliente['longitud'] as num?)?.toDouble();
+    final direccion = cliente['direccion'] as String? ?? '';
+    final referencia = cliente['referencia'] as String? ?? '';
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.delivery_dining_outlined, color: AppTheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Próximo pedido #${p['numero'] ?? ''}',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
+                ),
+                Chip(
+                  label: Text(EstadoPedido.desdeDb(p['estado'] as String?).label),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(cliente['nombre'] as String? ?? 'Cliente',
+                style: const TextStyle(fontWeight: FontWeight.w600)),
+            if (direccion.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Icon(Icons.place_outlined, size: 16, color: AppColors.textoMuted),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      referencia.isEmpty ? direccion : '$direccion · $referencia',
+                      style: TextStyle(fontSize: 13, color: AppColors.textoSecundario),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => PedidoDetallePage(pedido: p),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.visibility_outlined),
+                    label: const Text('VER PEDIDO'),
+                    style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      final ok = await navegarACliente(
+                        latitud: lat,
+                        longitud: lng,
+                        direccion: direccion.isEmpty ? null : direccion,
+                      );
+                      if (!ok && context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('El cliente no tiene ubicación guardada.'),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.directions_outlined),
+                    label: const Text('IR AL CLIENTE'),
+                    style: OutlinedButton.styleFrom(minimumSize: const Size.fromHeight(46)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
@@ -274,7 +395,9 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                   );
                 },
               ),
-              SizedBox(height: 4),
+              SizedBox(height: 12),
+              _proximoPedidoCard(),
+              SizedBox(height: 12),
               Text('Acciones directas',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
               SizedBox(height: 8),
@@ -383,13 +506,6 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                     '${_hoy.hayDeclaracion ? ' · declarado ${dinero(_hoy.efectivoDeclarado)}' : ''}',
                 accion: 'VER MI RENDICIÓN',
                 onTap: () => context.push('/declarar-rendicion'),
-              ),
-              SizedBox(height: 12),
-              OutlinedButton.icon(
-                onPressed: () => context.push('/movimientos'),
-                icon: Icon(Icons.timeline),
-                label: Text('Movimientos de mi jornada'),
-                style: OutlinedButton.styleFrom(minimumSize: Size.fromHeight(50)),
               ),
               SizedBox(height: 12),
               _gpsCard(),

@@ -16,6 +16,7 @@ import '../../core/data/actividad_repo.dart';
 import '../../core/data/motorizados_repo.dart';
 import '../../core/data/rendicion_repo.dart';
 import '../../core/data/ubicaciones_repo.dart';
+import '../../core/ui/app_bar_volver.dart';
 import '../../core/domain/formato.dart';
 import '../../core/state/bus.dart';
 import '../../core/ui/actividad_tile.dart';
@@ -156,7 +157,7 @@ class _MotorizadosActividadPageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Motorizados')),
+      appBar: AppBarVolver(titulo: 'Motorizados'),
       body: _cargando
           ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : RefreshIndicator(

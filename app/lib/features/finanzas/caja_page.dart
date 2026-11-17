@@ -13,6 +13,7 @@ import '../../app/theme.dart';
 import '../../core/data/caja_repo.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
+import '../../core/ui/app_bar_volver.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
@@ -216,7 +217,7 @@ class _CajaPageState extends ConsumerState<CajaPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Caja')),
+      appBar: AppBarVolver(titulo: 'Caja'),
       body: _cargando
           ? Center(child: CircularProgressIndicator(color: AppTheme.primary))
           : _caja == null
