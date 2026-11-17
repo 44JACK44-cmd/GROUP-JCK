@@ -469,7 +469,7 @@ class _BotonPago extends StatelessWidget {
         height: 52,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: seleccionado ? color.withValues(alpha: 0.14) : Colors.white,
+          color: seleccionado ? color.withValues(alpha: 0.14) : AppColors.superficie,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: seleccionado ? color : AppColors.borde,

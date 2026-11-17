@@ -236,15 +236,23 @@ class _CajaPageState extends ConsumerState<CajaPage> {
                           padding: EdgeInsets.all(16),
                           child: Column(
                             children: [
-                              FilaValor('Total cobrado', dinero(_resumen.totalCobrado),
+                              FilaValor('Ventas cobradas',
+                                  dinero(_resumen.totalCobrado)),
+                              FilaValor('Efectivo recibido', dinero(_resumen.efectivo)),
+                              FilaValor('Yape recibido', dinero(_resumen.yape),
+                                  color: AppTheme.info),
+                              FilaValor('TOTAL RECIBIDO',
+                                  dinero(_resumen.totalRecibido),
                                   destacado: true),
-                              FilaValor('Efectivo', dinero(_resumen.efectivo)),
-                              FilaValor('Yape', dinero(_resumen.yape), color: AppTheme.info),
-                              if (_resumen.otros > 0)
-                                FilaValor('Otros', dinero(_resumen.otros)),
-                              FilaValor('Deudas', dinero(_resumen.deudas),
+                              FilaValor('Deudas pendientes', dinero(_resumen.deudas),
                                   color: _resumen.deudas > 0 ? AppTheme.danger : null),
-                              FilaValor('Gastos', dinero(_resumen.gastos), color: AppTheme.danger),
+                              Divider(height: 20),
+                              FilaValor('Total gastos', dinero(_resumen.gastos),
+                                  color: AppTheme.danger),
+                              FilaValor('DINERO ESPERADO',
+                                  dinero(_resumen.dineroEsperado),
+                                  destacado: true,
+                                  color: AppTheme.success),
                               Divider(height: 20),
                               FilaValor('Fondo inicial',
                                   dinero(_resumen.fondoInicial)),
@@ -310,7 +318,10 @@ class _CajaPageState extends ConsumerState<CajaPage> {
                               ),
                               title: Text(m['descripcion'] as String? ??
                                   _labelOrigen(m['origen'] as String? ?? '')),
-                              subtitle: Text(_labelOrigen(m['origen'] as String? ?? '')),
+                              subtitle: Text(
+                                '${fechaHora(DateTime.tryParse(m['fecha'] as String? ?? ''))}'
+                                '  ·  ${_labelOrigen(m['origen'] as String? ?? '')}',
+                              ),
                               trailing: Text(
                                 '${m['tipo'] == 'INGRESO' ? '+' : '-'}S/ ${(m['monto'] as num? ?? 0).toStringAsFixed(2)}',
                                 style: TextStyle(

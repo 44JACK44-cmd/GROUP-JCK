@@ -127,6 +127,33 @@ void main() {
     });
   });
 
+  group('dinero recibido, gastos y dinero esperado', () {
+    test('efectivo + Yape menos gastos da el dinero esperado', () {
+      final cierre = CalculoCierre.calcular(
+        pedidos: [_pedido('ENTREGADO', 500)],
+        pagos: [_pago(300, 'EFECTIVO'), _pago(200, 'YAPE')],
+        gastos: [
+          _gasto(50, 'EFECTIVO'),
+          _gasto(10, 'EFECTIVO'),
+        ],
+        rendiciones: const [],
+      );
+      expect(cierre.totalRecibido, 500);
+      expect(cierre.gastosTotal, 60);
+      expect(cierre.dineroEsperado, 440);
+    });
+
+    test('los gastos nunca superan el dinero recibido', () {
+      final cierre = CalculoCierre.calcular(
+        pedidos: [_pedido('ENTREGADO', 100)],
+        pagos: [_pago(50, 'EFECTIVO')],
+        gastos: [_gasto(80, 'EFECTIVO')],
+        rendiciones: const [],
+      );
+      expect(cierre.dineroEsperado, 0);
+    });
+  });
+
   group('efectivo declarado y diferencias', () {
     test('sin rendiciones no se inventa una diferencia', () {
       final cierre = CalculoCierre.calcular(

@@ -64,10 +64,21 @@ class Rendicion {
   final double fondoYape;
   final double efectivoEsperado;
 
-  /// Total de dinero de la jornada: efectivo esperado + Yape cobrado.
-  /// Se muestra aparte del efectivo para no mezclar conceptos.
+  /// Efectivo + Yape realmente cobrados en la jornada.
+  final double totalRecibido;
+
+  /// Total de gastos de la jornada (cualquier medio).
+  final double totalGastos;
+
+  /// Dinero que debería quedar: total recibido − total de gastos.
+  final double dineroEsperado;
+
+  /// Compatibilidad con pantallas anteriores: mismo valor que [dineroEsperado].
   final double totalEsperado;
   final double efectivoDeclarado;
+
+  /// Gastos agrupados por categoría (Combustible, Peaje, ...).
+  final Map<String, double> gastosPorCategoria;
   final double diferencia;
   final bool hayDeclaracion;
 
@@ -100,8 +111,12 @@ class Rendicion {
     this.fondoInicial = 0,
     this.fondoYape = 0,
     this.efectivoEsperado = 0,
+    this.totalRecibido = 0,
+    this.totalGastos = 0,
+    this.dineroEsperado = 0,
     this.totalEsperado = 0,
     this.efectivoDeclarado = 0,
+    this.gastosPorCategoria = const {},
     this.diferencia = 0,
     this.hayDeclaracion = false,
   });
@@ -412,10 +427,15 @@ class RendicionRepo {
 
     final pendiente = (totalACobrar - cobrado) > 0 ? totalACobrar - cobrado : 0.0;
 
-    // 10. Gastos por medio de pago.
+    // 10. Gastos por medio de pago y por categoría.
     var gastosEfectivo = 0.0, gastosYape = 0.0, gastosOtros = 0.0;
+    final porCategoria = <String, double>{};
     for (final g in gastosData) {
       final monto = (g['monto'] as num? ?? 0).toDouble();
+      final categoria = (g['categoria'] as String?)?.trim().isEmpty == false
+          ? g['categoria'] as String
+          : 'Otros';
+      porCategoria[categoria] = (porCategoria[categoria] ?? 0) + monto;
       switch (g['medio_pago'] as String? ?? 'EFECTIVO') {
         case 'YAPE':
           gastosYape += monto;
@@ -467,7 +487,15 @@ class RendicionRepo {
       fondoInicial: fondoInicial,
       fondoYape: fondoYape,
       efectivoEsperado: efectivoEsperado,
-      totalEsperado: efectivoEsperado + yape,
+      totalRecibido: efectivo + yape,
+      totalGastos: gastosTotal,
+      dineroEsperado: ((efectivo + yape - gastosTotal) > 0)
+          ? efectivo + yape - gastosTotal
+          : 0,
+      totalEsperado: ((efectivo + yape - gastosTotal) > 0)
+          ? efectivo + yape - gastosTotal
+          : 0,
+      gastosPorCategoria: porCategoria,
       efectivoDeclarado: efectivoDeclarado,
       diferencia: diferencia,
       hayDeclaracion: hayDeclaracion,

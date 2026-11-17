@@ -42,7 +42,7 @@ class AccionesDirectas extends StatelessWidget {
               button: true,
               label: a.texto,
               child: Material(
-                color: Colors.white,
+                color: AppColors.superficie,
                 borderRadius: BorderRadius.circular(14),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(14),

@@ -31,6 +31,12 @@ class ResumenCaja {
   /// Gastos registrados en el periodo.
   final double gastos;
 
+  /// Efectivo + Yape (dinero realmente recibido).
+  final double totalRecibido;
+
+  /// Total recibido − gastos.
+  final double dineroEsperado;
+
   ResumenCaja({
     this.fondoInicial = 0,
     this.ingresos = 0,
@@ -42,6 +48,8 @@ class ResumenCaja {
     this.totalCobrado = 0,
     this.deudas = 0,
     this.gastos = 0,
+    this.totalRecibido = 0,
+    this.dineroEsperado = 0,
   });
 }
 
@@ -64,7 +72,7 @@ class CajaRepo {
   Future<List<Map<String, dynamic>>> movimientos(String cajaId, {int limite = 100}) async {
     final data = await sb
         .from('movimiento_caja')
-        .select('id, tipo, origen, monto, descripcion, fecha, referencia_id')
+        .select('id, tipo, origen, monto, descripcion, fecha, referencia_id, usuario_id')
         .eq('caja_id', cajaId)
         .order('fecha', ascending: false)
         .limit(limite);
@@ -258,6 +266,10 @@ class CajaRepo {
       totalCobrado: totalCobrado,
       deudas: (vendido - totalCobrado) > 0 ? vendido - totalCobrado : 0,
       gastos: gastos,
+      totalRecibido: efectivo + yape,
+      dineroEsperado: ((efectivo + yape - gastos) > 0)
+          ? efectivo + yape - gastos
+          : 0,
     );
   }
 }

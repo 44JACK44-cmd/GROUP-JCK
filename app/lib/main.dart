@@ -15,12 +15,10 @@ import 'features/auth/login_page.dart';
 import 'features/auth/register_empresa_page.dart';
 import 'features/auth/welcome_page.dart';
 import 'features/balones/balones_page.dart';
-import 'features/balones/devolucion_balon_page.dart';
 import 'features/clientes/clientes_page.dart';
 import 'features/deudas/deudas_page.dart';
 import 'features/finanzas/caja_page.dart';
 import 'features/finanzas/cobros_page.dart';
-import 'features/finanzas/combustible_page.dart';
 import 'features/home/home_moto_page.dart';
 import 'features/home/home_page.dart';
 import 'features/mas/mas_page.dart';
@@ -124,12 +122,15 @@ class _GasAppState extends ConsumerState<GasApp> {
   }
 
   void _mostrarDialogoUpdate(VersionInfo remota) {
-    final context = _rootNavigatorKey.currentContext;
+    // Contexto raíz estable: el del router puede desactivarse al cambiar el
+    // estado de autenticación y hacer que el diálogo desaparezca solo.
+    final context = WidgetsBinding.instance.rootElement;
     if (context == null) return;
 
     showDialog(
       context: context,
-      barrierDismissible: !remota.obligatoria,
+      useRootNavigator: true,
+      barrierDismissible: false,
       builder: (ctx) => FutureBuilder<String>(
         future: AppUpdateService.versionLocalName(),
         builder: (ctx, snap) => AlertDialog(
@@ -279,14 +280,22 @@ class _GasAppState extends ConsumerState<GasApp> {
         GoRoute(path: '/motorizados', builder: (_, state) => MotorizadosPage()),
 GoRoute(path: '/motorizados-actividad', builder: (_, state) => MotorizadosActividadPage()),
         GoRoute(path: '/seguimiento', builder: (_, state) => SeguimientoPage()),
-        GoRoute(path: '/combustible', builder: (_, state) => CombustiblePage()),
+        // El combustible es un gasto con categoría "Combustible": una sola función.
+        GoRoute(
+          path: '/combustible',
+          redirect: (_, __) => '/mi-registro/combustible',
+        ),
         GoRoute(path: '/mi-registro/pedido', builder: (_, state) => RegistroPedidoPage()),
         GoRoute(path: '/mi-registro/gasto', builder: (_, state) => RegistroGastoPage()),
         GoRoute(
           path: '/mi-registro/combustible',
           builder: (_, state) => RegistroGastoPage(categoriaInicial: 'Combustible'),
         ),
-        GoRoute(path: '/devolucion-balon', builder: (_, state) => DevolucionBalonPage()),
+        // La devolución ya vive dentro del módulo Balones (con fierro asociado).
+        GoRoute(
+          path: '/devolucion-balon',
+          redirect: (_, __) => '/balones',
+        ),
         GoRoute(path: '/mi-registro/incidencia', builder: (_, state) => RegistroIncidenciaPage()),
       ],
     );

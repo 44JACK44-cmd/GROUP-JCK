@@ -321,7 +321,7 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
         children: [
           // ---- Filtros ----
           Container(
-            color: Colors.white,
+            color: AppColors.superficie,
             padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Column(
               children: [
@@ -418,9 +418,11 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                               FilaValor('Pendiente', dinero(r.pendiente),
                                   color: r.pendiente > 0 ? AppTheme.danger : null),
                               Divider(height: 22),
-                              FilaValor('Yape', dinero(r.yape), color: AppTheme.info),
-                              FilaValor('Efectivo', dinero(r.efectivo)),
-                              if (r.otros > 0) FilaValor('Otros', dinero(r.otros)),
+                              FilaValor('Efectivo cobrado', dinero(r.efectivo)),
+                              FilaValor('Yape cobrado', dinero(r.yape),
+                                  color: AppTheme.info),
+                              FilaValor('Total recibido', dinero(r.totalRecibido),
+                                  destacado: true),
                               Divider(height: 22),
                               FilaValor('Fondo en efectivo',
                                   dinero(r.fondoInicial), color: AppTheme.info),
@@ -428,14 +430,13 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                                 FilaValor('Fondo por Yape (no es efectivo)',
                                     dinero(r.fondoYape),
                                     color: AppTheme.info),
-                              FilaValor('Gastos en efectivo', dinero(r.gastosEfectivo),
-                                  color: r.gastosEfectivo > 0 ? AppTheme.danger : null),
-                              FilaValor('Efectivo esperado', dinero(r.efectivoEsperado),
-                                  destacado: true),
-                              FilaValor('Total a entregar (efectivo + Yape)',
-                                  dinero(r.totalEsperado),
-                                  destacado: true,
-                                  color: AppTheme.info),
+                              FilaValor('Total gastos', dinero(r.totalGastos),
+                                  color: r.totalGastos > 0 ? AppTheme.danger : null),
+                              Divider(height: 22),
+                              FilaValor('DINERO ESPERADO', dinero(r.dineroEsperado),
+                                  destacado: true, color: AppTheme.success),
+                              FilaValor('Efectivo físico esperado',
+                                  dinero(r.efectivoEsperado)),
                               if (r.hayDeclaracion) ...[
                                 FilaValor('Efectivo declarado',
                                     dinero(r.efectivoDeclarado)),
@@ -464,13 +465,9 @@ class _RendicionPageState extends ConsumerState<RendicionPage> {
                                 FilaValor('Combustible', dinero(r.combustible),
                                     color: AppTheme.danger),
                               Divider(height: 22),
-                              FilaValor('Gastos en efectivo', dinero(r.gastosEfectivo),
-                                  color: r.gastosEfectivo > 0 ? AppTheme.danger : null),
-                              FilaValor('Gastos en Yape', dinero(r.gastosYape),
-                                  color: r.gastosYape > 0 ? AppTheme.danger : null),
-                              if (r.gastosOtros > 0)
-                                FilaValor('Gastos en otros', dinero(r.gastosOtros),
-                                    color: AppTheme.danger),
+                              for (final e in r.gastosPorCategoria.entries)
+                                FilaValor(e.key, dinero(e.value),
+                                    color: AppTheme.warning),
                               FilaValor('Total gastos', dinero(r.gastosTotal),
                                   destacado: true,
                                   color: r.gastosTotal > 0 ? AppTheme.danger : null),

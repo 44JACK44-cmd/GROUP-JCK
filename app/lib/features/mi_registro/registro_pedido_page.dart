@@ -742,7 +742,7 @@ class _RegistroPedidoPageState extends ConsumerState<RegistroPedidoPage> {
       bottomSheet: Container(
         padding: EdgeInsets.fromLTRB(20, 10, 20, 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.superficie,
           border: Border(top: BorderSide(color: AppColors.borde)),
         ),
         child: SafeArea(
@@ -822,7 +822,7 @@ class _BotonOpcion extends StatelessWidget {
         height: 62,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: seleccionado ? color.withValues(alpha: 0.14) : Colors.white,
+          color: seleccionado ? color.withValues(alpha: 0.14) : AppColors.superficie,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: seleccionado ? color : AppColors.borde,

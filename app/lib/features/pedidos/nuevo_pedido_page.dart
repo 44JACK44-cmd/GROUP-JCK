@@ -831,7 +831,7 @@ class _NuevoPedidoPageState extends ConsumerState<NuevoPedidoPage> {
     return Container(
       padding: EdgeInsets.fromLTRB(20, 10, 20, 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.superficie,
         border: Border(top: BorderSide(color: AppColors.borde)),
       ),
       child: SafeArea(
@@ -924,7 +924,9 @@ class _ChipProducto extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: seleccionado ? AppTheme.primary.withValues(alpha: 0.12) : Colors.white,
+          color: seleccionado
+              ? AppTheme.primary.withValues(alpha: 0.12)
+              : AppColors.superficie,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: seleccionado ? AppTheme.primary : AppColors.borde,
@@ -1070,7 +1072,7 @@ class _BotonOpcion extends StatelessWidget {
         height: 62,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: seleccionado ? color.withValues(alpha: 0.14) : Colors.white,
+          color: seleccionado ? color.withValues(alpha: 0.14) : AppColors.superficie,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: seleccionado ? color : AppColors.borde,

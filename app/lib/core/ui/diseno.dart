@@ -113,7 +113,7 @@ class SectionTitle extends StatelessWidget {
 
 /// Indicador de carga pequeño y alineado.
 class LoadingState extends StatelessWidget {
-  LoadingState({super.key});
+  const LoadingState({super.key});
 
   @override
   Widget build(BuildContext context) {

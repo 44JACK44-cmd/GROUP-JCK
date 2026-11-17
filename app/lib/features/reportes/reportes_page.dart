@@ -85,7 +85,7 @@ class _ReportesPageState extends ConsumerState<ReportesPage> {
       body: Column(
         children: [
           Container(
-            color: Colors.white,
+            color: AppColors.superficie,
             padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
             child: Row(
               children: [

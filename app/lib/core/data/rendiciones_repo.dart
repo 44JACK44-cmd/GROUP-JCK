@@ -1,6 +1,8 @@
 /// Repositorio de rendiciones: declaración de dinero y aprobación.
 library;
 
+import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import 'auditoria_repo.dart';
@@ -25,6 +27,12 @@ class CierreCalculado {
 
   /// Cobros por Yape del día.
   final double yapeTotal;
+
+  /// Efectivo + Yape cobrados.
+  final double totalRecibido;
+
+  /// Total recibido − total de gastos.
+  final double dineroEsperado;
 
   /// Gastos pagados en efectivo (los únicos que descuentan del efectivo).
   final double gastosEfectivo;
@@ -55,6 +63,8 @@ class CierreCalculado {
     this.totalVentas = 0,
     this.efectivoEsperado = 0,
     this.yapeTotal = 0,
+    this.totalRecibido = 0,
+    this.dineroEsperado = 0,
     this.gastosEfectivo = 0,
     this.gastosTotal = 0,
     this.fondoInicial = 0,
@@ -127,6 +137,10 @@ class CalculoCierre {
       gastosEfectivo: gastosEfectivo,
       gastosTotal: gastosTotal,
       fondoInicial: fondoInicial,
+      totalRecibido: efectivoEsperado + yapeTotal,
+      dineroEsperado: ((efectivoEsperado + yapeTotal - gastosTotal) > 0)
+          ? efectivoEsperado + yapeTotal - gastosTotal
+          : 0,
       efectivoNeto: efectivoNeto,
       efectivoRecibido: efectivoRecibido,
       diferencias: diferencias,
@@ -153,17 +167,41 @@ class RendicionesRepo {
     String? uuidOffline,
   }) async {
     final uuid = uuidOffline ?? Uuid().v4();
+    final fecha = DateTime.now().toIso8601String().substring(0, 10);
 
-    // Verificar que no exista ya una rendición para hoy
+    // Un motorizado tiene UNA rendición por día (índice único en la base).
+    // Si ya existe se actualiza, no se lanza un error: así un reintento o un
+    // doble toque nunca duplica la rendición.
     final existente = await sb
         .from('rendiciones')
-        .select('id')
+        .select('id, estado')
         .eq('motorizado_id', motorizadoId)
-        .eq('fecha', DateTime.now().toIso8601String().substring(0, 10))
+        .eq('fecha', fecha)
         .maybeSingle();
 
+    final campos = <String, dynamic>{
+      'efectivo_declarado': efectivoDeclarado,
+      'yape_declarado': yapeDeclarado,
+      'observaciones':
+          observaciones?.trim().isEmpty == true ? null : observaciones?.trim(),
+      if (fondoInicial > 0 || efectivoEsperado != null) ...{
+        'fondo_inicial': fondoInicial,
+        'efectivo_esperado': efectivoEsperado ?? 0,
+      },
+    };
+
     if (existente != null) {
-      throw Exception('Ya declaraste tu rendición de hoy.');
+      if (existente['estado'] == EstadoRendicion.aprobada) {
+        throw Exception(
+          'Esta rendición ya fue aprobada y no se puede modificar.',
+        );
+      }
+      await sb
+          .from('rendiciones')
+          .update(campos)
+          .eq('id', existente['id'] as String);
+      debugPrint('[RENDICION] Rendición existente actualizada: ${existente['id']}');
+      return existente['id'] as String;
     }
 
     final fila = <String, dynamic>{
@@ -190,6 +228,16 @@ class RendicionesRepo {
           .select('id')
           .single();
     } catch (e) {
+      debugPrint('[RENDICION] Error real al guardar: $e');
+      if (e is PostgrestException && e.code == '23505') {
+        final ya = await sb
+            .from('rendiciones')
+            .select('id')
+            .eq('motorizado_id', motorizadoId)
+            .eq('fecha', fecha)
+            .maybeSingle();
+        if (ya != null) return ya['id'] as String;
+      }
       if (!esColumnaAusente(e)) rethrow;
       final basica = Map<String, dynamic>.from(fila)
         ..remove('fondo_inicial')

@@ -3,6 +3,7 @@
 /// El motorizado declara cuánto dinero entrega al final de la jornada.
 library;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,8 +11,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/theme.dart';
 import '../../core/data/rendicion_repo.dart';
 import '../../core/data/rendiciones_repo.dart';
-import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
+import '../../core/ui/diseno.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
@@ -28,6 +29,7 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
   final _observacionesCtrl = TextEditingController();
 
   bool _guardando = false;
+  bool _cargando = true;
   Rendicion? _rendicionCalculada;
 
   @override
@@ -50,16 +52,38 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
     try {
       final inicio = inicioHoy();
       final fin = DateTime.now().add(Duration(minutes: 1));
-      final data = await rendicionRepo.calcular(desde: inicio, hasta: fin, motorizadoId: uid);
+      final res = await Future.wait([
+        rendicionRepo.calcular(desde: inicio, hasta: fin, motorizadoId: uid),
+        rendicionesRepo.listar(
+          motorizadoId: uid,
+          desde: inicio,
+          hasta: fin.add(const Duration(days: 1)),
+        ),
+      ]);
       if (!mounted) return;
+      final data = res[0] as Rendicion;
+      final yaDeclarado = (res[1] as List).isEmpty
+          ? null
+          : (res[1] as List).first as Map<String, dynamic>;
       setState(() {
         _rendicionCalculada = data;
-        // Se precarga lo que DEBERÍA entregarse (con fondo y menos gastos),
-        // no solo lo cobrado: el motorizado declara el dinero físico.
-        _efectivoCtrl.text = data.efectivoEsperado.toStringAsFixed(2);
-        _yapeCtrl.text = data.yape.toStringAsFixed(2);
+        _cargando = false;
+        // Si ya existe una rendición para hoy se carga, no se crea otra.
+        _efectivoCtrl.text = yaDeclarado != null
+            ? (yaDeclarado['efectivo_declarado'] as num? ?? 0).toStringAsFixed(2)
+            : data.efectivoEsperado.toStringAsFixed(2);
+        _yapeCtrl.text = yaDeclarado != null
+            ? (yaDeclarado['yape_declarado'] as num? ?? 0).toStringAsFixed(2)
+            : data.yape.toStringAsFixed(2);
+        if (yaDeclarado != null) {
+          _observacionesCtrl.text = yaDeclarado['observaciones'] as String? ?? '';
+        }
       });
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('[RENDICION] Error al cargar: $e');
+      if (!mounted) return;
+      setState(() => _cargando = false);
+    }
   }
 
   Future<void> _declarar() async {
@@ -89,10 +113,17 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
         SnackBar(content: Text('Rendición declarada. El administrador la revisará.')),
       );
     } catch (e) {
+      debugPrint('[RENDICION] Error al declarar: $e');
       if (!mounted) return;
       setState(() => _guardando = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(traducirError(e, contexto: 'No pudimos declarar la rendición').mensaje)),
+        SnackBar(
+          content: Text(
+            e is Exception && e.toString().contains('aprobada')
+                ? 'Esta rendición ya fue aprobada y no se puede modificar.'
+                : 'No se pudo registrar la rendición. Revisa los datos e inténtalo nuevamente.',
+          ),
+        ),
       );
     }
   }
@@ -132,9 +163,11 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
   Widget build(BuildContext context) {
     final r = _rendicionCalculada;
     return Scaffold(
-      appBar: AppBar(title: Text('Declarar rendición')),
-      body: ListView(
-        padding: EdgeInsets.all(20),
+      appBar: AppBar(title: const Text('Mi rendición')),
+      body: _cargando
+          ? const LoadingState()
+          : ListView(
+        padding: const EdgeInsets.all(20),
         children: [
           if (r != null) ...[
             Card(
@@ -149,12 +182,16 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
                     FilaValor('Registrados por mí', '${r.pedidosManuales}'),
                     FilaValor('Ventas', dinero(r.totalACobrar)),
                     FilaValor('Efectivo cobrado', dinero(r.efectivo)),
-                    FilaValor('Yape (no va en efectivo)', dinero(r.yape),
-                        color: AppTheme.info),
-                    FilaValor('Deuda (no va en efectivo)', dinero(r.pendiente),
+                    FilaValor('Yape cobrado', dinero(r.yape), color: AppTheme.info),
+                    FilaValor('Total recibido', dinero(r.totalRecibido),
+                        destacado: true),
+                    FilaValor('Deuda pendiente', dinero(r.pendiente),
                         color: AppTheme.warning),
-                    if (r.gastosTotal > 0)
-                      FilaValor('Gastos', dinero(r.gastosTotal), color: AppTheme.danger),
+                    Divider(height: 18),
+                    for (final e in r.gastosPorCategoria.entries)
+                      FilaValor(e.key, dinero(e.value), color: AppTheme.warning),
+                    FilaValor('Total gastos', dinero(r.totalGastos),
+                        color: AppTheme.danger),
                     if (r.incidencias > 0)
                       FilaValor('Fallas (${r.incidencias})',
                           dinero(r.incidenciasTotal), color: AppTheme.danger),
@@ -164,10 +201,10 @@ class _DeclararRendicionPageState extends ConsumerState<DeclararRendicionPage> {
                       FilaValor('Fondo por Yape (no es efectivo)',
                           dinero(r.fondoYape), color: AppTheme.info),
                     Divider(height: 18),
-                    FilaValor('Efectivo esperado', dinero(r.efectivoEsperado),
-                        destacado: true),
-                    FilaValor('Total (efectivo + Yape)', dinero(r.totalEsperado),
-                        destacado: true, color: AppTheme.info),
+                    FilaValor('DINERO ESPERADO', dinero(r.dineroEsperado),
+                        destacado: true, color: AppTheme.success),
+                    FilaValor('Efectivo físico esperado',
+                        dinero(r.efectivoEsperado)),
                     FilaValor('Balones entregados', '${r.balonesEntregados}'),
                     FilaValor('Balones devueltos', '${r.balonesDevueltos}'),
                   ],

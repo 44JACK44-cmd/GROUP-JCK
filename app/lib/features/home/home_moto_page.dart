@@ -261,7 +261,7 @@ class _HomeMotoPageState extends ConsumerState<HomeMotoPage> {
                     texto: 'Devolver balón',
                     icono: Icons.local_fire_department_outlined,
                     color: AppTheme.info,
-                    onPressed: () => context.push('/devolucion-balon'),
+                    onPressed: () => context.push('/balones'),
                   ),
                   AccionDirecta(
                     texto: 'Deudas',

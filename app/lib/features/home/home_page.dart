@@ -278,7 +278,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     texto: 'Devolución balón',
                     icono: Icons.assignment_return_outlined,
                     color: AppTheme.success,
-                    onPressed: () => context.push('/devolucion-balon'),
+                    onPressed: () => context.push('/balones'),
                   ),
                 ],
               ),
