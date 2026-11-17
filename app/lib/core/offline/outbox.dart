@@ -140,13 +140,18 @@ class Outbox {
   }
 
   /// Encola un pago suelto (abono a cuenta de una deuda).
-  static Future<void> encolarPago({required Map<String, dynamic> pago}) async {
+  static Future<void> encolarPago({
+    required Map<String, dynamic> pago,
+    String? comprobanteLocalPath,
+  }) async {
     pago['uuid_offline'] ??= _uuid.v4();
     final ops = await _leer();
     ops.add({
       'tipo': 'pago',
       'uuid_offline': pago['uuid_offline'],
       'pago': pago,
+      'comprobante_local_path': comprobanteLocalPath ??
+          pago['comprobante_local_path'] as String?,
       'fecha': DateTime.now().toIso8601String(),
     });
     await _escribir(ops);
@@ -674,6 +679,7 @@ class Outbox {
 
   static Future<void> _insertarPago(Map<String, dynamic> op) async {
     final pago = _limpiarPago(op['pago'] as Map);
+    final comprobanteLocalPath = op['comprobante_local_path'] as String?;
     final yaHay = await _sb
         .from('pagos')
         .select('id')
@@ -681,7 +687,11 @@ class Outbox {
         .maybeSingle();
     var pagoId = yaHay?['id'] as String?;
     if (pagoId == null) {
-      final insertado = await _sb.from('pagos').insert(pago).select('id').single();
+      if (comprobanteLocalPath != null) {
+        final url = await _subirComprobante(comprobanteLocalPath);
+        if (url != null) pago['comprobante_url'] = url;
+      }
+      final insertado = await _insertarPagoConRespaldo(pago);
       pagoId = insertado['id'] as String;
     }
     await asegurarIngresoCaja(

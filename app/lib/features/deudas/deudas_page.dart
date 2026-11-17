@@ -8,9 +8,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/clientes_repo.dart';
-import '../../core/data/pagos_repo.dart';
+import '../../core/data/pago_con_comprobante.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
+import '../../core/ui/comprobante_picker.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
@@ -81,17 +82,22 @@ class _DeudasPageState extends ConsumerState<DeudasPage> {
 
     final auth = ref.read(authProvider);
     try {
-      await pagosRepo.registrar(
+      final offline = await pagoConComprobante.registrar(
         empresaId: auth.empresaId!,
         usuarioId: auth.usuarioId!,
         clienteId: cliente['id'] as String,
         monto: resultado['monto'] as double,
         metodo: resultado['metodo'] as String,
+        fotoPath: resultado['fotoPath'] as String?,
       );
       _cargar();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Pago de ${dinero(resultado['monto'] as double)} registrado.')),
+        SnackBar(
+          content: Text(offline
+              ? 'Guardado en el dispositivo. Se sincronizará con su foto.'
+              : 'Pago de ${dinero(resultado['monto'] as double)} registrado.'),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -217,6 +223,7 @@ class _PagoDeudaSheetState extends State<_PagoDeudaSheet> {
     text: ((widget.cliente['deuda'] as num? ?? 0).toDouble()).toStringAsFixed(2),
   );
   String _metodo = 'EFECTIVO';
+  String? _fotoPath;
 
   static const _metodos = {
     'EFECTIVO': 'Efectivo',
@@ -232,7 +239,7 @@ class _PagoDeudaSheetState extends State<_PagoDeudaSheet> {
     super.dispose();
   }
 
-  void _confirmar() {
+  Future<void> _confirmar() async {
     final monto = double.tryParse(_montoCtrl.text) ?? 0;
     if (monto <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -240,7 +247,35 @@ class _PagoDeudaSheetState extends State<_PagoDeudaSheet> {
       );
       return;
     }
-    Navigator.of(context).pop({'monto': monto, 'metodo': _metodo});
+    if (_metodo == 'YAPE' && _fotoPath == null) {
+      final continuar = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Sin comprobante'),
+          content: const Text(
+            'El pago fue por Yape pero no tomaste foto. ¿Registrar igual?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Volver a la foto'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Continuar sin foto'),
+            ),
+          ],
+        ),
+      );
+      if (continuar != true) return;
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pop({
+      'monto': monto,
+      'metodo': _metodo,
+      'fotoPath': _fotoPath,
+    });
   }
 
   @override
@@ -284,6 +319,13 @@ class _PagoDeudaSheetState extends State<_PagoDeudaSheet> {
                   ),
               ],
             ),
+            if (_metodo == 'YAPE') ...[
+              const SizedBox(height: 18),
+              ComprobantePicker(
+                fotoPath: _fotoPath,
+                onChanged: (v) => setState(() => _fotoPath = v),
+              ),
+            ],
             const SizedBox(height: 20),
             FilledButton(
               onPressed: _confirmar,

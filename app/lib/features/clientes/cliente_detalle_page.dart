@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/clientes_repo.dart';
-import '../../core/data/pagos_repo.dart';
+import '../../core/data/pago_con_comprobante.dart';
 import '../../core/data/productos_repo.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/estado_pedido.dart';
@@ -114,17 +114,22 @@ class _ClienteDetallePageState extends ConsumerState<ClienteDetallePage> {
 
     final auth = ref.read(authProvider);
     try {
-      await pagosRepo.registrar(
+      final offline = await pagoConComprobante.registrar(
         empresaId: auth.empresaId!,
         usuarioId: auth.usuarioId!,
         clienteId: _clienteId,
         monto: resultado['monto'] as double,
         metodo: resultado['metodo'] as String,
+        fotoPath: resultado['fotoPath'] as String?,
       );
       _cargar();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pago registrado.')),
+        SnackBar(
+          content: Text(offline
+              ? 'Guardado en el dispositivo. La foto se subirá sola.'
+              : 'Pago registrado.'),
+        ),
       );
     } catch (e) {
       if (!mounted) return;

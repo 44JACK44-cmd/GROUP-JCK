@@ -1,13 +1,15 @@
-/// Hoja de registro de pago de una deuda.
+/// Hoja de registro de pago de una deuda o cobro suelto.
 ///
-/// La usan la sección "Deudas" y la ficha del cliente.
+/// Si el cliente paga por Yape se pide SIEMPRE la foto del comprobante como
+/// evidencia. Sin foto se permite continuar solo con confirmación explícita.
 library;
 
 import 'package:flutter/material.dart';
 
 import '../../app/theme.dart';
+import '../../core/ui/comprobante_picker.dart';
 
-/// Abre la hoja de cobro. Devuelve {monto, metodo} o null si se cancela.
+/// Devuelve {monto, metodo, fotoPath} o null si se cancela.
 Future<Map<String, dynamic>?> mostrarHojaPago(
   BuildContext context, {
   required String clienteNombre,
@@ -35,6 +37,7 @@ class _PagoSheetState extends State<_PagoSheet> {
     text: widget.suggestedMonto.toStringAsFixed(2),
   );
   String _metodo = 'EFECTIVO';
+  String? _fotoPath;
 
   static const _metodos = {
     'EFECTIVO': 'Efectivo',
@@ -50,7 +53,7 @@ class _PagoSheetState extends State<_PagoSheet> {
     super.dispose();
   }
 
-  void _confirmar() {
+  Future<void> _confirmar() async {
     final monto = double.tryParse(_montoCtrl.text) ?? 0;
     if (monto <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -58,7 +61,36 @@ class _PagoSheetState extends State<_PagoSheet> {
       );
       return;
     }
-    Navigator.of(context).pop({'monto': monto, 'metodo': _metodo});
+
+    if (_metodo == 'YAPE' && _fotoPath == null) {
+      final continuar = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Sin comprobante'),
+          content: const Text(
+            'El pago fue por Yape pero no tomaste foto. ¿Registrar igual?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Volver a la foto'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Continuar sin foto'),
+            ),
+          ],
+        ),
+      );
+      if (continuar != true) return;
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pop({
+      'monto': monto,
+      'metodo': _metodo,
+      'fotoPath': _fotoPath,
+    });
   }
 
   @override
@@ -91,9 +123,15 @@ class _PagoSheetState extends State<_PagoSheet> {
               children: [
                 for (final e in _metodos.entries)
                   ChoiceChip(
+                    avatar: Icon(
+                      e.key == 'YAPE'
+                          ? Icons.account_balance_wallet_outlined
+                          : Icons.payments_outlined,
+                      size: 17,
+                    ),
                     label: Text(e.value),
                     selected: _metodo == e.key,
-                    selectedColor: AppTheme.primary.withValues(alpha: 0.15),
+                    selectedColor: AppTheme.primary.withValues(alpha: 0.12),
                     labelStyle: TextStyle(
                       color: _metodo == e.key ? AppTheme.primary : Colors.black87,
                       fontWeight: _metodo == e.key ? FontWeight.w600 : FontWeight.normal,
@@ -102,11 +140,19 @@ class _PagoSheetState extends State<_PagoSheet> {
                   ),
               ],
             ),
+            if (_metodo == 'YAPE') ...[
+              const SizedBox(height: 18),
+              ComprobantePicker(
+                fotoPath: _fotoPath,
+                onChanged: (v) => setState(() => _fotoPath = v),
+              ),
+            ],
             const SizedBox(height: 20),
-            FilledButton(
+            FilledButton.icon(
               onPressed: _confirmar,
+              icon: const Icon(Icons.check_circle_outline),
               style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-              child: const Text('Registrar pago'),
+              label: const Text('Registrar pago'),
             ),
             const SizedBox(height: 8),
           ],

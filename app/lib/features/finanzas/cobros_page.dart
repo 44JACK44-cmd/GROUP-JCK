@@ -10,9 +10,11 @@ import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../core/data/clientes_repo.dart';
+import '../../core/data/pago_con_comprobante.dart';
 import '../../core/data/pagos_repo.dart';
 import '../../core/data/sb.dart';
 import '../../core/domain/formato.dart';
+import '../../core/ui/comprobante_picker.dart';
 import '../../core/ui/widgets.dart';
 import '../auth/auth_controller.dart';
 
@@ -60,17 +62,22 @@ class _CobrosPageState extends ConsumerState<CobrosPage> {
 
     final auth = ref.read(authProvider);
     try {
-      await pagosRepo.registrar(
+      final offline = await pagoConComprobante.registrar(
         empresaId: auth.empresaId!,
         usuarioId: auth.usuarioId!,
         clienteId: datos['clienteId'] as String,
         monto: datos['monto'] as double,
         metodo: datos['metodo'] as String,
+        fotoPath: datos['fotoPath'] as String?,
       );
       _cargar();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cobro registrado.')),
+        SnackBar(
+          content: Text(offline
+              ? 'Guardado en el dispositivo. La foto se subirá sola.'
+              : 'Cobro registrado.'),
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -209,6 +216,7 @@ class _CobroSheetState extends State<_CobroSheet> {
   List<Map<String, dynamic>> _sugerencias = [];
   Map<String, dynamic>? _cliente;
   String _metodo = 'EFECTIVO';
+  String? _fotoPath;
   bool _buscando = false;
 
   static const _metodos = {
@@ -245,7 +253,7 @@ class _CobroSheetState extends State<_CobroSheet> {
     }
   }
 
-  void _confirmar() {
+  Future<void> _confirmar() async {
     final monto = double.tryParse(_montoCtrl.text) ?? 0;
     if (monto <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -253,10 +261,35 @@ class _CobroSheetState extends State<_CobroSheet> {
       );
       return;
     }
+    if (_metodo == 'YAPE' && _fotoPath == null) {
+      final continuar = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Sin comprobante'),
+          content: const Text(
+            'El cobro fue por Yape pero no tomaste foto. ¿Registrar igual?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: const Text('Volver a la foto'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: const Text('Continuar sin foto'),
+            ),
+          ],
+        ),
+      );
+      if (continuar != true) return;
+    }
+
+    if (!mounted) return;
     Navigator.of(context).pop({
       'clienteId': _cliente!['id'],
       'monto': monto,
       'metodo': _metodo,
+      'fotoPath': _fotoPath,
     });
   }
 
@@ -349,6 +382,13 @@ class _CobroSheetState extends State<_CobroSheet> {
                   ),
               ],
             ),
+            if (_metodo == 'YAPE') ...[
+              const SizedBox(height: 16),
+              ComprobantePicker(
+                fotoPath: _fotoPath,
+                onChanged: (v) => setState(() => _fotoPath = v),
+              ),
+            ],
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _cliente == null ? null : _confirmar,
